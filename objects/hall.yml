@@ -1,0 +1,24 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkHall
+  data:
+    - name: "Hall-A"
+      pods:
+        data:
+          - name: "Pod-A1"
+            pod_id: 1
+          - name: "Pod-A2"
+            pod_id: 2
+          - name: "Pod-A3"
+            pod_id: 3
+    - name: "Hall-B"
+      pods:
+        data:
+          - name: "Pod-B1"
+            pod_id: 1
+          - name: "Pod-B2"
+            pod_id: 2
+          - name: "Pod-B3"
+            pod_id: 3

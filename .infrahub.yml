@@ -1,0 +1,15 @@
+---
+schemas:
+  - schemas
+  
+queries:
+  - name: generate_hall
+    file_path: "./generators/generate_hall.gql"
+
+generator_definitions:
+  - name: Generate hall
+    file_path: "./generators/generate_hall.py"
+    query: generate_hall
+    targets: halls
+    class_name: HallGenerator
+    convert_query_response: false

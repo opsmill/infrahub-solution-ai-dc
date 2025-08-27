@@ -1,0 +1,11 @@
+# Changes here will be overwritten by Copier
+_commit: v0.0.1-12-g478e7f3
+_src_path: https://github.com/opsmill/infrahub-template.git
+generators: true
+menus: true
+objects: true
+package_mode: false
+project_name: solution-ai-dc
+scripts: false
+tests: true
+transforms: true

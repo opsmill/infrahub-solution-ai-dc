@@ -1,0 +1,12 @@
+query($hall_name: String!) {
+    NetworkHall(name__value: $hall_name) {
+        edges {
+            node {
+                id
+                name {
+                    value
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Network
+    generate_template: True
+    attributes:
+      - name: hostname
+        kind: Text
+        unique: true
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: super_spine
+            label: Super spine
+          - name: spine
+            label: Spine
+          - name: leaf
+            label: Leaf
+    relationships:
+      - name: rack
+        peer: NetworkRack
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "rack__device"
+      - name: interfaces
+        peer: NetworkInterface
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "device__interface"
+
+  - name: Interface
+    namespace: Network
+    uniqueness_constraints:
+     - [device, name__value]
+    attributes:
+      - name: name
+        kind: Text
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: uplink
+            label: Uplink
+          - name: access
+            label: Access
+          - name: downlink
+            label: Downlink
+    relationships:
+      - name: device
+        peer: NetworkDevice
+        kind: Parent
+        optional: false
+        cardinality: one
+        identifier: device__interface

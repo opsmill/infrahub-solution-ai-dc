@@ -1,0 +1,3 @@
+---
+schema: "http://localhost:8000/schema.graphql"
+documents: "**/*.gql"
