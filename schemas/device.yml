@@ -1,6 +1,16 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
+generics:
+  - name: Endpoint
+    namespace: Network
+    include_in_menu: false
+    relationships:
+      - name: link
+        peer: NetworkLink
+        cardinality: one
+        kind: Attribute
+        optional: true
 nodes:
   - name: Device
     namespace: Network
@@ -48,8 +58,10 @@ nodes:
 
   - name: Interface
     namespace: Network
+    inherit_from:
+      - NetworkEndpoint
     uniqueness_constraints:
-     - [device, name__value]
+      - [device, name__value]
     attributes:
       - name: name
         kind: Text
