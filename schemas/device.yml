@@ -4,7 +4,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    generate_template: True
+    generate_template: true
     attributes:
       - name: hostname
         kind: Text
@@ -19,6 +19,12 @@ nodes:
           - name: leaf
             label: Leaf
     relationships:
+      - name: loopback_ip
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "device__ip_address"
       - name: rack
         peer: LocationRack
         kind: Attribute
