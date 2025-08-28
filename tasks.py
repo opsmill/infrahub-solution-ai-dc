@@ -28,9 +28,7 @@ def destroy(context: Context) -> None:
 @task
 def load(context: Context) -> None:
     context.run("infrahubctl schema load schemas/")
-    context.run("infrahubctl object load objects/hall.yml")
-    context.run("infrahubctl object load objects/device_template.yml")
-    context.run("infrahubctl object load objects/group.yml")
+    context.run("infrahubctl object load objects/")
     return
 
 @task
@@ -81,7 +79,7 @@ def download_compose_file(context: Context, override: bool = False) -> Path:  # 
     if compose_file.exists() and not override:
         return compose_file
 
-    response = httpx.get("https://infrahub.opsmill.io")
+    response = httpx.get("https://infrahub.opsmill.io/enterprise")
     response.raise_for_status()
 
     with compose_file.open("w") as f:

@@ -7,7 +7,7 @@ queries:
     file_path: "./generators/generate_hall.gql"
 
 generator_definitions:
-  - name: Generate hall
+  - name: generate-hall
     file_path: "./generators/generate_hall.py"
     query: generate_hall
     targets: halls

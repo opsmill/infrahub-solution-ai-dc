@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: IPPrefix
+    namespace: Ipam
+    human_friendly_id: 
+      - prefix__value
+    inherit_from:
+      - BuiltinIPPrefix
+    attributes:
+      - name: role
+        kind: Dropdown
+        optional: false
+        choices:
+          - name: supernet
+            label: Supernet
+
+  - name: IPAddress
+    namespace: Ipam
+    inherit_from:
+      - BuiltinIPAddress

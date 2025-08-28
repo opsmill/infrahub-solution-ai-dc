@@ -15,7 +15,12 @@ class HallGenerator(InfrahubGenerator):
 
         hall_name: str = data["NetworkHall"]["edges"][0]["node"]["name"]["value"]
 
-        for idx in range(0, 5):
-            device = await self.client.create("NetworkDevice", name=f"fabric-{hall_name}-{idx}", template="Generic Switch")
+        for idx in range(1, 5):
+            device = await self.client.create(
+                "NetworkDevice",
+                hostname=f"fabric-{hall_name}-{idx}",
+                template="Generic Switch",
+                role="super_spine"
+            )
             await device.save(allow_upsert=True)
 
