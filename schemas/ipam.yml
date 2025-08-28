@@ -4,7 +4,7 @@ version: "1.0"
 nodes:
   - name: IPPrefix
     namespace: Ipam
-    human_friendly_id: 
+    human_friendly_id:
       - prefix__value
     inherit_from:
       - BuiltinIPPrefix
@@ -19,7 +19,10 @@ nodes:
             label: Fabric Supernet
           - name: super_spine_loopback
             label: Super Spine Loopback
-
+          - name: pod_supernet
+            label: Pod Supernet
+          - name: pod_loopback
+            label: Pod Loopback
   - name: IPAddress
     namespace: Ipam
     inherit_from:
