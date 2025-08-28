@@ -65,7 +65,7 @@ class FabricGenerator(InfrahubGenerator):
             device = await self.client.create(
                 "NetworkDevice",
                 hostname=f"ss-{fabric_name}-{idx}",
-                object_template={ "hfid": ["Generic Switch"]}, #generic_switch_tpl,
+                object_template={ "hfid": ["Super Spine Switch"]},
                 loopback_ip=ss_loopback_pool,
                 role="super_spine",
                 pod=fabric_pod
