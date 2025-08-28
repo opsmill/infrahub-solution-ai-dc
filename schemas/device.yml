@@ -5,6 +5,8 @@ nodes:
   - name: Device
     namespace: Network
     generate_template: true
+    display_labels:
+      - hostname__value
     attributes:
       - name: hostname
         kind: Text
