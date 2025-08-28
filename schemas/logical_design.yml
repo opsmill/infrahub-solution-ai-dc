@@ -26,6 +26,13 @@ nodes:
       - NetworkBuildingBlock
     parent: NetworkFabric
     children: ""
+    attributes:
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: fabric
+            label: Fabric
+        optional: true
     relationships:
       - name: devices
         peer: NetworkDevice
