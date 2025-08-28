@@ -1,15 +1,26 @@
 ---
 schemas:
   - schemas
-  
+
 queries:
-  - name: generate_hall
-    file_path: "./generators/generate_hall.gql"
+  - name: generate_fabric
+    file_path: "./generators/generate_fabric.gql"
+
+  - name: generate_pod
+    file_path: "./generators/generate_pod.gql"
+
 
 generator_definitions:
-  - name: generate-hall
-    file_path: "./generators/generate_hall.py"
-    query: generate_hall
-    targets: halls
-    class_name: HallGenerator
+  - name: generate-fabric
+    file_path: "./generators/generate_fabric.py"
+    query: generate_fabric
+    targets: fabrics
+    class_name: FabricGenerator
+    convert_query_response: false
+
+  - name: generate-pod
+    file_path: "./generators/generate_pod.py"
+    query: generate_pod
+    targets: pods
+    class_name: PodGenerator
     convert_query_response: false

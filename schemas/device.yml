@@ -20,11 +20,17 @@ nodes:
             label: Leaf
     relationships:
       - name: rack
-        peer: NetworkRack
+        peer: LocationRack
         kind: Attribute
         cardinality: one
         optional: true
         identifier: "rack__device"
+      - name: pod
+        peer: NetworkPod
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__device"
       - name: interfaces
         peer: NetworkInterface
         kind: Component

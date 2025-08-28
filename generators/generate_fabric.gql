@@ -1,5 +1,5 @@
-query($hall_name: String!) {
-    NetworkHall(name__value: $hall_name) {
+query($fabric_name: String!) {
+    NetworkFabric(name__value: $fabric_name) {
         edges {
             node {
                 id

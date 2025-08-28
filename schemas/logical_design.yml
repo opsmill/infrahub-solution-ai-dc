@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: BuildingBlock
+    namespace: Network
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: index
+        kind: Number
+
+nodes:
+  - name: Fabric
+    namespace: Network
+    inherit_from:
+      - NetworkBuildingBlock
+    parent: ""
+    children: NetworkPod
+
+  - name: Pod
+    namespace: Network
+    inherit_from:
+      - NetworkBuildingBlock
+    parent: NetworkFabric
+    children: ""
+    relationships:
+      - name: devices
+        peer: NetworkDevice
+        kind: Generic
+        cardinality: many
+        identifier: "pod__device"

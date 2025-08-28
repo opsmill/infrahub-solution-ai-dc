@@ -5,5 +5,7 @@ spec:
   kind: CoreStandardGroup
   data:
     - name: halls
-    - name: pods
     - name: racks
+    - name: fabrics
+    - name: pods
+

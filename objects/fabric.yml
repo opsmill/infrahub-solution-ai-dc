@@ -2,32 +2,36 @@
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
-  kind: NetworkHall
+  kind: NetworkFabric
   data:
-    - name: "Hall-A"
-      member_of_groups: [ "halls" ]
-      pods:
+    - name: "Fabric-A"
+      index: 1
+      member_of_groups: [ "fabrics" ]
+      children:
+        kind: NetworkPod
         data:
           - name: "Pod-A1"
-            pod_id: 1
+            index: 1
             member_of_groups: [ "pods" ]
           - name: "Pod-A2"
-            pod_id: 2
+            index: 2
             member_of_groups: [ "pods" ]
           - name: "Pod-A3"
-            pod_id: 3
+            index: 3
             member_of_groups: [ "pods" ]
 
-    - name: "Hall-B"
-      member_of_groups: [ "halls" ]
-      pods:
+    - name: "Fabric-B"
+      index: 2
+      member_of_groups: [ "fabrics" ]
+      children:
+        kind: NetworkPod
         data:
           - name: "Pod-B1"
-            pod_id: 1
+            index: 1
             member_of_groups: [ "pods" ]
           - name: "Pod-B2"
-            pod_id: 2
+            index: 2
             member_of_groups: [ "pods" ]
           - name: "Pod-B3"
-            pod_id: 3
+            index: 3
             member_of_groups: [ "pods" ]

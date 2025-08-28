@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: Physical
+    namespace: Location
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+      - name: index
+        kind: Number
+nodes:
+  - name: Hall
+    namespace: Location
+    inherit_from:
+      - LocationPhysical
+    children: LocationRack
+    parent: ""
+  - name: Rack
+    namespace: Location
+    inherit_from:
+      - LocationPhysical
+    parent: LocationHall
+    children: ""
+    relationships:
+      - name: devices
+        peer: NetworkDevice
+        kind: Generic
+        cardinality: many
+        identifier: "rack__device"
+    # attributes:
+    #   - name: rack_id
+    #     kind: Number
+    # relationships:
+    #   - name: pod
+    #     peer: NetworkPod
+    #     cardinality: one
+    #     kind: Attribute
+    #     identifier: "pod__rack"
