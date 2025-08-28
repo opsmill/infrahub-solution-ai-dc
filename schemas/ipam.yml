@@ -15,6 +15,10 @@ nodes:
         choices:
           - name: supernet
             label: Supernet
+          - name: fabric_supernet
+            label: Fabric Supernet
+          - name: super_spine_loopback
+            label: Super Spine Loopback
 
   - name: IPAddress
     namespace: Ipam
