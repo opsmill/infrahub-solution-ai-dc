@@ -86,3 +86,30 @@ nodes:
         optional: false
         cardinality: one
         identifier: device__interface
+
+  - name: Link
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+      - name: medium
+        label: Medium
+        kind: Dropdown
+        optional: false
+        choices:
+          - name: mmf
+            label: Multi-Mode Fibre
+          - name: smf
+            label: Single-Mode Fibre
+          - name: copper
+            label: Copper
+    relationships:
+      - name: endpoints
+        peer: NetworkEndpoint
+        cardinality: many
+        kind: Attribute
+        optional: true
+        min_count: 2
+        max_count: 2
