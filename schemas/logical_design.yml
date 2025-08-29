@@ -11,6 +11,8 @@ generics:
         unique: true
       - name: index
         kind: Number
+      - name: checksum
+        kind: Text
 
 nodes:
   - name: Fabric
@@ -34,6 +36,11 @@ nodes:
             label: Fabric
         optional: true
     relationships:
+      - name: racks
+        peer: LocationRack
+        cardinality: many
+        kind: Generic
+        identifier: "rack__pod"
       - name: devices
         peer: NetworkDevice
         kind: Generic
