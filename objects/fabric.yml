@@ -6,32 +6,32 @@ spec:
   data:
     - name: "Fabric-A"
       index: 1
-      member_of_groups: [ "fabrics" ]
+      member_of_groups: ["fabrics"]
       children:
         kind: NetworkPod
         data:
           - name: "Pod-A1"
             index: 1
-            member_of_groups: [ "pods" ]
+            role: "fabric"
           - name: "Pod-A2"
             index: 2
-            member_of_groups: [ "pods" ]
+            member_of_groups: ["pods"]
           - name: "Pod-A3"
             index: 3
-            member_of_groups: [ "pods" ]
+            member_of_groups: ["pods"]
 
     - name: "Fabric-B"
       index: 2
-      member_of_groups: [ "fabrics" ]
+      member_of_groups: ["fabrics"]
       children:
         kind: NetworkPod
         data:
           - name: "Pod-B1"
             index: 1
-            member_of_groups: [ "pods" ]
+            role: "fabric"
           - name: "Pod-B2"
             index: 2
-            member_of_groups: [ "pods" ]
+            member_of_groups: ["pods"]
           - name: "Pod-B3"
             index: 3
-            member_of_groups: [ "pods" ]
+            member_of_groups: ["pods"]

@@ -1,0 +1,12 @@
+query($rack_name: String!) {
+    LocationRack(name__value: $rack_name) {
+        edges {
+            node {
+                id
+                name {
+                    value
+                }
+            }
+        }
+    }
+}

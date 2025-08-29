@@ -1,10 +1,22 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
+generics:
+  - name: Endpoint
+    namespace: Network
+    include_in_menu: false
+    relationships:
+      - name: link
+        peer: NetworkLink
+        cardinality: one
+        kind: Attribute
+        optional: true
 nodes:
   - name: Device
     namespace: Network
-    generate_template: True
+    generate_template: true
+    display_labels:
+      - hostname__value
     attributes:
       - name: hostname
         kind: Text
@@ -19,6 +31,12 @@ nodes:
           - name: leaf
             label: Leaf
     relationships:
+      - name: loopback_ip
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "device__ip_address"
       - name: rack
         peer: LocationRack
         kind: Attribute
@@ -40,8 +58,10 @@ nodes:
 
   - name: Interface
     namespace: Network
+    inherit_from:
+      - NetworkEndpoint
     uniqueness_constraints:
-     - [device, name__value]
+      - [device, name__value]
     attributes:
       - name: name
         kind: Text
@@ -53,8 +73,12 @@ nodes:
             label: Uplink
           - name: access
             label: Access
-          - name: downlink
-            label: Downlink
+          - name: spine
+            label: Spine
+          - name: super_spine
+            label: Super Spine
+          - name: leaf
+            label: Leaf
     relationships:
       - name: device
         peer: NetworkDevice
@@ -62,3 +86,30 @@ nodes:
         optional: false
         cardinality: one
         identifier: device__interface
+
+  - name: Link
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+      - name: medium
+        label: Medium
+        kind: Dropdown
+        optional: false
+        choices:
+          - name: mmf
+            label: Multi-Mode Fibre
+          - name: smf
+            label: Single-Mode Fibre
+          - name: copper
+            label: Copper
+    relationships:
+      - name: endpoints
+        peer: NetworkEndpoint
+        cardinality: many
+        kind: Attribute
+        optional: true
+        min_count: 2
+        max_count: 2

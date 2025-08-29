@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from time import sleep
 
 import httpx
 from invoke import Context, task
@@ -28,6 +29,7 @@ def destroy(context: Context) -> None:
 @task
 def load(context: Context) -> None:
     context.run("infrahubctl schema load schemas/")
+    sleep(5)
     context.run("infrahubctl object load objects/")
     return
 

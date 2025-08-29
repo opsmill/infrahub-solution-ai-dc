@@ -17,6 +17,7 @@ nodes:
       - LocationPhysical
     children: LocationRack
     parent: ""
+
   - name: Rack
     namespace: Location
     inherit_from:
@@ -24,6 +25,12 @@ nodes:
     parent: LocationHall
     children: ""
     relationships:
+      - name: pod
+        peer: NetworkPod
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "rack__pod"
       - name: devices
         peer: NetworkDevice
         kind: Generic
