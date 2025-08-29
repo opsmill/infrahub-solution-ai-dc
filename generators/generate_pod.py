@@ -3,11 +3,34 @@ from __future__ import annotations
 import logging
 
 from collections import defaultdict
+from typing import Dict, List
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
 from netutils.interface import sort_interface_list
 
+def create_sorted_device_interface_map(interfaces: List[InfrahubNode]) -> Dict[str, List[InfrahubNode]]:
+    """
+    Creates a dictionary that maps a device hostname to a sorted list of interfaces from a list of interfaces
+    """
+
+    device_interface_map = defaultdict(list)
+
+    for interface in interfaces:
+        device_interface_map[interface.device.display_label].append(interface)
+
+    for device, interfaces in device_interface_map.items():
+        interface_map = {
+            interface.name.value: interface
+            for interface in interfaces
+        }
+        sorted_interface_names = sort_interface_list(list(interface_map.keys()))
+        device_interface_map[device] = [
+            interface_map[interface]
+            for interface in sorted_interface_names
+        ]
+
+    return device_interface_map
 
 class PodGenerator(InfrahubGenerator):
 
@@ -84,46 +107,22 @@ class PodGenerator(InfrahubGenerator):
         fabric_pod = await self.client.get(kind="NetworkPod", parent__ids=[fabric_id], role__value="fabric")
         super_spine_switches = await self.client.filters(kind="NetworkDevice", pod__ids=[fabric_pod.id], role__value="super_spine")
 
-        super_spine_interfaces = defaultdict(list)
-        for interface in await self.client.filters(kind="NetworkInterface", device__ids=[ss.id for ss in super_spine_switches], role__value="spine"):
-            super_spine_interfaces[interface.device.display_label].append(interface)
+        super_spine_interfaces = await self.client.filters(kind="NetworkInterface", device__ids=[ss.id for ss in super_spine_switches], role__value="spine")
+        super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
-        for super_spine, interfaces in super_spine_interfaces.items():
-            interface_map = {
-                interface.name.value: interface
-                for interface in interfaces
-            }
-            sorted_interface_names = sort_interface_list(list(interface_map.keys()))
-            super_spine_interfaces[super_spine] = [
-                interface_map[interface]
-                for interface in sorted_interface_names
-            ]
+        spine_interfaces = await self.client.filters(kind="NetworkInterface", device__ids=[spine.id for spine in spine_switches], role__value="super_spine")
+        spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
 
-        spine_interfaces = defaultdict(list)
-        for interface in await self.client.filters(kind="NetworkInterface", device__ids=[spine.id for spine in spine_switches], role__value="super_spine"):
-            spine_interfaces[interface.device.display_label].append(interface)
-
-        for spine, interfaces in spine_interfaces.items():
-            interface_map = {
-                interface.name.value: interface
-                for interface in interfaces
-            }
-            sorted_interface_names = sort_interface_list(list(interface_map.keys()))
-            spine_interfaces[spine] = [
-                interface_map[interface]
-                for interface in sorted_interface_names
-            ]
-
-        super_spine_interface_base_index = (pod_index - 2) * len(super_spine_interfaces)
+        super_spine_interface_base_index = (pod_index - 2) * len(super_spine_interface_map)
         spine_index = 0
 
-        super_spine_names = list(super_spine_interfaces.keys())
-        for spine, src_interfaces in spine_interfaces.items():
+        super_spine_names = list(super_spine_interface_map.keys())
+        for spine, src_interfaces in spine_interface_map.items():
             super_spine_interface_index = super_spine_interface_base_index + spine_index
 
-            for super_spine_index, src_interface in enumerate(src_interfaces[:len(super_spine_interfaces)]):
+            for super_spine_index, src_interface in enumerate(src_interfaces[:len(super_spine_interface_map)]):
 
-                dst_interface = super_spine_interfaces[super_spine_names[super_spine_index]][super_spine_interface_index]
+                dst_interface = super_spine_interface_map[super_spine_names[super_spine_index]][super_spine_interface_index]
                 network_link = await self.client.create(
                     kind="NetworkLink",
                     name=f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}",
