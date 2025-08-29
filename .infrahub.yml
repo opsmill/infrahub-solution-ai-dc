@@ -9,6 +9,9 @@ queries:
   - name: generate_pod
     file_path: "./generators/generate_pod.gql"
 
+  - name: generate_rack
+    file_path: "./generators/generate_rack.gql"
+
 
 generator_definitions:
   - name: generate-fabric
@@ -23,4 +26,11 @@ generator_definitions:
     query: generate_pod
     targets: pods
     class_name: PodGenerator
+    convert_query_response: false
+
+  - name: generate-rack
+    file_path: "./generators/generate_rack.py"
+    query: generate_rack
+    targets: racks
+    class_name: RackGenerator
     convert_query_response: false
