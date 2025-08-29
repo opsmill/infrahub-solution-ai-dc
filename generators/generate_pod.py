@@ -5,6 +5,7 @@ import logging
 from collections import defaultdict
 from typing import Dict, List
 
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
 from netutils.interface import sort_interface_list
@@ -32,9 +33,43 @@ def create_sorted_device_interface_map(interfaces: List[InfrahubNode]) -> Dict[s
 
     return device_interface_map
 
+async def connect_interface_maps(
+    client: InfrahubClient,
+    logger: logging.Logger,
+    pod_index: int,
+    src_interface_map: Dict[str, InfrahubNode],
+    dst_interface_map: Dict[str, InfrahubNode]
+):
+    """
+    """
+
+    dst_device_names = list(dst_interface_map.keys())
+    dst_device_count = len(dst_device_names)
+    dst_interface_base_index = (pod_index - 2) * len(dst_interface_map)
+    src_index = 0
+
+    for src_device, src_interfaces in src_interface_map.items():
+        dst_interface_index = dst_interface_base_index + src_index
+
+        for dst_index, src_interface in enumerate(src_interfaces[:dst_device_count]):
+
+            dst_interface = dst_interface_map[dst_device_names[dst_index]][dst_interface_index]
+            name=f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}"
+            network_link = await client.create(
+                kind="NetworkLink",
+                name=name,
+                medium="copper",
+                endpoints = [src_interface, dst_interface]
+            )
+            await network_link.save(allow_upsert=True)
+            logger.info(f"Connected {name}")
+
+        src_index += 1
+        dst_interface_index = dst_interface_base_index + src_index
+
 class PodGenerator(InfrahubGenerator):
 
-    log = logging.getLogger("infrahub.tasks")
+    logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
 
@@ -104,33 +139,35 @@ class PodGenerator(InfrahubGenerator):
             spine_switches.append(device)
 
         # Connect the Spine to the SuperSpine
-        fabric_pod = await self.client.get(kind="NetworkPod", parent__ids=[fabric_id], role__value="fabric")
-        super_spine_switches = await self.client.filters(kind="NetworkDevice", pod__ids=[fabric_pod.id], role__value="super_spine")
+        fabric_pod = await self.client.get(
+            kind="NetworkPod",
+            parent__ids=[fabric_id],
+            role__value="fabric"
+        )
+        super_spine_switches = await self.client.filters(
+            kind="NetworkDevice",
+            pod__ids=[fabric_pod.id],
+            role__value="super_spine"
+        )
 
-        super_spine_interfaces = await self.client.filters(kind="NetworkInterface", device__ids=[ss.id for ss in super_spine_switches], role__value="spine")
-        super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
-
-        spine_interfaces = await self.client.filters(kind="NetworkInterface", device__ids=[spine.id for spine in spine_switches], role__value="super_spine")
+        spine_interfaces = await self.client.filters(
+            kind="NetworkInterface",
+            device__ids=[spine.id for spine in spine_switches],
+            role__value="super_spine"
+        )
         spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
 
-        super_spine_interface_base_index = (pod_index - 2) * len(super_spine_interface_map)
-        spine_index = 0
+        super_spine_interfaces = await self.client.filters(
+            kind="NetworkInterface",
+            device__ids=[ss.id for ss in super_spine_switches],
+            role__value="spine"
+        )
+        super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
-        super_spine_names = list(super_spine_interface_map.keys())
-        for spine, src_interfaces in spine_interface_map.items():
-            super_spine_interface_index = super_spine_interface_base_index + spine_index
-
-            for super_spine_index, src_interface in enumerate(src_interfaces[:len(super_spine_interface_map)]):
-
-                dst_interface = super_spine_interface_map[super_spine_names[super_spine_index]][super_spine_interface_index]
-                network_link = await self.client.create(
-                    kind="NetworkLink",
-                    name=f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}",
-                    medium="copper",
-                    endpoints = [src_interface, dst_interface]
-                )
-                await network_link.save(allow_upsert=True)
-                print(f"Connect {src_interface.device.display_label} {src_interface.name.value} - {dst_interface.device.display_label} {dst_interface.name.value}")
-
-            spine_index += 1
-            super_spine_interface_index = super_spine_interface_base_index + spine_index
+        await connect_interface_maps(
+            client=self.client,
+            logger=self.logger,
+            pod_index=pod_index,
+            src_interface_map=spine_interface_map,
+            dst_interface_map=super_spine_interface_map
+        )
