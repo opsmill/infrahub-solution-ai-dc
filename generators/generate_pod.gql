@@ -1,23 +1,23 @@
 query($pod_name: String!) {
-    NetworkPod(name__value: $pod_name) {
-        edges {
-            node {
-                id
-                name {
-                    value
-                }
-		index {
-		  value
-		}
-                parent {
-                    node {
-                        id
-                        name {
-                            value
-                        }
-                    }
-                }
-            }
+  NetworkPod(name__value: $pod_name) {
+    edges {
+      node {
+        id
+        name {
+          value
         }
+        index {
+	  value
+        }
+        parent {
+          node {
+            id
+            name {
+              value
+            }
+          }
+        }
+      }
     }
+  }
 }
