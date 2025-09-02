@@ -5,6 +5,7 @@ generics:
   - name: BuildingBlock
     namespace: Network
     hierarchical: true
+    display_labels: [ name__value ]
     attributes:
       - name: name
         kind: Text
@@ -13,6 +14,7 @@ generics:
         kind: Number
       - name: checksum
         kind: Text
+        optional: true
 
 nodes:
   - name: Fabric

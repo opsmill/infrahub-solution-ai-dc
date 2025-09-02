@@ -5,6 +5,7 @@ generics:
   - name: Physical
     namespace: Location
     hierarchical: true
+    display_labels: [ name__value ]
     attributes:
       - name: name
         kind: Text

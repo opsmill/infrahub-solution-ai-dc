@@ -354,6 +354,7 @@ services:
       replicas: 2
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.1}"
     command: prefect worker start --type infrahubentasync --pool infrahub-worker --with-healthcheck
+
     restart: unless-stopped
     depends_on:
       - infrahub-server
@@ -374,6 +375,8 @@ services:
       INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
       PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     tty: true
+    volumes:
+      - ./:/upstream
 
 volumes:
   database_data:

@@ -62,6 +62,7 @@ nodes:
       - NetworkEndpoint
     uniqueness_constraints:
       - [device, name__value]
+    order_by: [ index__value ]
     attributes:
       - name: name
         kind: Text
@@ -79,6 +80,14 @@ nodes:
             label: Super Spine
           - name: leaf
             label: Leaf
+      - name: index
+        kind: Text
+        read_only: true
+        optional: true
+        computed_attribute:
+          jinja2_template: "{{ name__value | split_interface | last }}"
+          # jinja2_template: "{{ name__value | split_interface | last | int | format('%03d') | str }}"
+          kind: Jinja2
     relationships:
       - name: device
         peer: NetworkDevice

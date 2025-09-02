@@ -23,3 +23,57 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+exclude = [
+    ".git",
+    ".tox",
+    ".venv",
+    "env",
+    "_build",
+    "build",
+    "dist",
+    "examples",
+]
+
+
+[tool.ruff.lint]
+preview = true
+
+task-tags = ["FIXME", "TODO", "XXX"]
+
+select = ["ALL"]
+
+ignore = [
+    "D",      # pydocstyle
+    "DOC",    # pydoclint
+    "CPY",    # flake8-copyright
+    "T201",   # use of `print`
+    "ISC",    # flake8-implicit-str-concat
+    "COM812", # missing-trailing-comma
+]
+
+
+#https://docs.astral.sh/ruff/formatter/black/
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["infrahub_sdk", "infrahub_ctl"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
+
+[tool.ruff.lint.mccabe]
+# Target max-complexity=10
+max-complexity = 17

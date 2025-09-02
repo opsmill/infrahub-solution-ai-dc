@@ -7,12 +7,15 @@ query($pod_name: String!) {
           value
         }
         index {
-	  value
+	        value
         }
         parent {
           node {
             id
             name {
+              value
+            }
+            checksum {
               value
             }
           }

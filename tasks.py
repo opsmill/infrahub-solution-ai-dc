@@ -7,6 +7,8 @@ from invoke import Context, task
 
 # If no version is indicated, we will take the latest
 VERSION = os.getenv("INFRAHUB_IMAGE_VER", None)
+CURRENT_DIRECTORY = Path(__file__).resolve()
+MAIN_DIRECTORY_PATH = Path(__file__).parent
 
 
 @task
@@ -26,12 +28,13 @@ def destroy(context: Context) -> None:
     download_compose_file(context, override=False)
     context.run("docker compose down -v")
 
+
 @task
 def load(context: Context) -> None:
     context.run("infrahubctl schema load schemas/")
     sleep(5)
     context.run("infrahubctl object load objects/")
-    return
+
 
 @task
 def stop(context: Context) -> None:
@@ -88,3 +91,48 @@ def download_compose_file(context: Context, override: bool = False) -> Path:  # 
         f.write(response.content.decode())
 
     return compose_file
+
+
+@task
+def format(context: Context) -> None:
+    """Run RUFF to format all Python files."""
+
+    exec_cmds = ["ruff format .", "ruff check . --fix"]
+    with context.cd(MAIN_DIRECTORY_PATH):
+        for cmd in exec_cmds:
+            context.run(cmd)
+
+
+@task
+def lint_yaml(context: Context) -> None:
+    """Run Linter to check all Python files."""
+    print(" - Check code with yamllint")
+    exec_cmd = "yamllint ."
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def lint_mypy(context: Context) -> None:
+    """Run Linter to check all Python files."""
+    print(" - Check code with mypy")
+    exec_cmd = "mypy --show-error-codes infrahub_sdk"
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def lint_ruff(context: Context) -> None:
+    """Run Linter to check all Python files."""
+    print(" - Check code with ruff")
+    exec_cmd = "ruff check ."
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(exec_cmd)
+
+
+@task(name="lint")
+def lint_all(context: Context) -> None:
+    """Run all linters."""
+    lint_yaml(context)
+    lint_ruff(context)
+    lint_mypy(context)
