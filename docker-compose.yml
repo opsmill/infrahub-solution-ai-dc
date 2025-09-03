@@ -228,7 +228,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.1}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.3}"
     command: gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'
     restart: unless-stopped
     ports:
@@ -266,7 +266,7 @@ services:
     deploy:
       mode: replicated
       replicas: *task_manager_background_workers
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.3.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.3}"
     command: prefect server services start
     restart: unless-stopped
     depends_on:
@@ -308,7 +308,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.1}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.3}"
     restart: unless-stopped
     command: >
       gunicorn --config community/backend/infrahub/serve/gunicorn_config.py
