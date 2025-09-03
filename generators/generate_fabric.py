@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import logging
-
 import hashlib
+import logging
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
-
-
-
 
 
 class FabricGenerator(InfrahubGenerator):
@@ -38,7 +34,7 @@ class FabricGenerator(InfrahubGenerator):
             )
             await device.save(allow_upsert=True)
 
-        #store the checksum for the fabric in the object itself
+        # store the checksum for the fabric in the object itself
         fabric = await self.client.get(kind="NetworkFabric", id=self.fabric_id)
         fabric.checksum.value = self.calculate_checksum()
         self.logger.info(f"Fabric {self.fabric_name} has checksum {fabric.checksum.value}")

@@ -132,7 +132,7 @@ class PodGenerator(InfrahubGenerator):
 
         await connect_interface_maps(client=self.client, logger=self.logger, cabling_plan=created_cabling_plan)
 
-    async def allocate_resource_pools(self):
+    async def allocate_resource_pools(self) -> None:
         """Allocate IP Space for the Pod"""
 
         fabric_prefix_pool = await self.client.get(CoreIPPrefixPool, name__value=f"{self.fabric_name}-prefix-pool")

@@ -75,7 +75,7 @@ def test(ctx: Context) -> None:
 
 
 @task(help={"override": "Redownload the compose file even if it already exists."})
-def download_compose_file(context: Context, override: bool = False) -> Path:  # noqa ARG001
+def download_compose_file(ctx: Context, override: bool = False) -> Path:  # noqa: ARG001
     """
     Download docker-compose.yml from InfraHub if missing or override is True.
     """
@@ -93,46 +93,46 @@ def download_compose_file(context: Context, override: bool = False) -> Path:  # 
     return compose_file
 
 
-@task
-def format(context: Context) -> None:
+@task(name="format")
+def format_python(ctx: Context) -> None:
     """Run RUFF to format all Python files."""
 
     exec_cmds = ["ruff format .", "ruff check . --fix"]
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with ctx.cd(MAIN_DIRECTORY_PATH):
         for cmd in exec_cmds:
-            context.run(cmd)
+            ctx.run(cmd)
 
 
 @task
-def lint_yaml(context: Context) -> None:
+def lint_yaml(ctx: Context) -> None:
     """Run Linter to check all Python files."""
     print(" - Check code with yamllint")
     exec_cmd = "yamllint ."
-    with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd)
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(exec_cmd)
 
 
 @task
-def lint_mypy(context: Context) -> None:
+def lint_mypy(ctx: Context) -> None:
     """Run Linter to check all Python files."""
     print(" - Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk"
-    with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd)
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(exec_cmd)
 
 
 @task
-def lint_ruff(context: Context) -> None:
+def lint_ruff(ctx: Context) -> None:
     """Run Linter to check all Python files."""
     print(" - Check code with ruff")
     exec_cmd = "ruff check ."
-    with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd)
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(exec_cmd)
 
 
 @task(name="lint")
-def lint_all(context: Context) -> None:
+def lint_all(ctx: Context) -> None:
     """Run all linters."""
-    lint_yaml(context)
-    lint_ruff(context)
-    lint_mypy(context)
+    lint_yaml(ctx)
+    lint_ruff(ctx)
+    lint_mypy(ctx)
