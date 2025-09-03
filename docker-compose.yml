@@ -231,6 +231,8 @@ services:
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.4.1}"
     command: gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'
     restart: unless-stopped
+    ports:
+      - 4200:4200
     depends_on:
       task-manager-db:
         condition: service_healthy
