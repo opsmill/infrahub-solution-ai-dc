@@ -377,8 +377,6 @@ services:
       INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
       PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     tty: true
-    volumes:
-      - ./:/upstream
 
 volumes:
   database_data:

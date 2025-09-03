@@ -58,6 +58,11 @@ ignore = [
     "T201",   # use of `print`
     "ISC",    # flake8-implicit-str-concat
     "COM812", # missing-trailing-comma
+
+    "PT",
+    "ERA001", # commented-out code
+    "S101",   # use of assert
+    "PLR6301", 
 ]
 
 

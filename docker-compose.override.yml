@@ -1,0 +1,10 @@
+---
+services:
+  database:
+    ports:
+      - 7474:7474
+      - 7687:7687
+
+  task-worker:
+    volumes:
+      - ./:/upstream

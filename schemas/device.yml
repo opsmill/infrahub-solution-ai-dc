@@ -85,8 +85,7 @@ nodes:
         read_only: true
         optional: true
         computed_attribute:
-          jinja2_template: "{{ name__value | split_interface | last }}"
-          # jinja2_template: "{{ name__value | split_interface | last | int | format('%03d') | str }}"
+          jinja2_template: "{{ \"%03d\"| format(name__value | split_interface | last | int) }}"
           kind: Jinja2
     relationships:
       - name: device
