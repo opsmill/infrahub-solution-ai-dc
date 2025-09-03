@@ -27,7 +27,7 @@ class FabricGenerator(InfrahubGenerator):
 
         fabric_pod = await self.client.get(kind="NetworkPod", parent__ids=[self.fabric_id], role__value="fabric")
 
-        for idx in range(1, 5):
+        for idx in range(1, 7):
             device = await self.client.create(
                 "NetworkDevice",
                 hostname=f"ss-{self.fabric_name}-{idx}",
