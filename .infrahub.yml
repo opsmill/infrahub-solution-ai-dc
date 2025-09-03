@@ -18,6 +18,8 @@ generator_definitions:
     file_path: "./generators/generate_fabric.py"
     query: generate_fabric
     targets: fabrics
+    parameters:
+      fabric_name: name__value
     class_name: FabricGenerator
     convert_query_response: false
 
@@ -25,6 +27,8 @@ generator_definitions:
     file_path: "./generators/generate_pod.py"
     query: generate_pod
     targets: pods
+    parameters:
+      pod_name: name__value
     class_name: PodGenerator
     convert_query_response: false
 
