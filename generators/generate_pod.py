@@ -85,11 +85,11 @@ class PodGenerator(InfrahubGenerator):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.pod_id: str = data["NetworkPod"]["edges"][0]["node"]["id"]
-        self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
-        self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
-        self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
-        self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
+        self.pod_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["id"]
+        self.pod_index: int = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["index"]["value"]
+        self.pod_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["name"]["value"].lower()
+        self.fabric_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"]["node"]["id"]
+        self.fabric_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"]["node"]["name"]["value"].lower()
 
         await self.allocate_resource_pools()
 

@@ -15,6 +15,25 @@ generics:
       - name: checksum
         kind: Text
         optional: true
+  - name: Builder
+    namespace: Network
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: parent_checksum
+        kind: Text
+        optional: true
+    relationships:
+      - name: building_block
+        peer: NetworkBuildingBlock
+        cardinality: one
+        kind: Attribute
+        optional: true
+        identifier: "builder_buildingblock"
 
 nodes:
   - name: Fabric
@@ -23,6 +42,12 @@ nodes:
       - NetworkBuildingBlock
     parent: ""
     children: NetworkPod
+
+  # TODO: hide in menu
+  - name: PodBuilder
+    namespace: Network
+    inherit_from:
+      - NetworkBuilder
 
   - name: Pod
     namespace: Network
@@ -36,6 +61,14 @@ nodes:
         choices:
           - name: fabric
             label: Fabric
+          - name: cpu
+            label: CPU
+          - name: storage
+            label: Storage
+          - name: mor
+            label: MOR
+          - name: eor
+            label: EOR
         optional: true
     relationships:
       - name: racks

@@ -35,13 +35,15 @@ class FabricGenerator(InfrahubGenerator):
             await device.save(allow_upsert=True)
 
         pods = await self.client.filters(kind="NetworkPod", parent__ids=[self.fabric_id])
+        pod_builders = await self.client.filters(kind="NetworkPodBuilder", building_block__ids=[pod.id for pod in pods])
+
         # store the checksum for the fabric in the object itself
         fabric_checksum = self.calculate_checksum()
-        for pod in pods:
-            if pod.checksum.value != fabric_checksum:
-                pod.checksum.value = fabric_checksum
-                await pod.save(allow_upsert=True)
-                self.logger.info(f"Pod {pod.name.value} has been updated to checksum {fabric_checksum}")
+        for pod_builder in pod_builders:
+            if pod_builder.parent_checksum.value != fabric_checksum:
+                pod_builder.parent_checksum.value = fabric_checksum
+                await pod_builder.save(allow_upsert=True)
+                self.logger.info(f"Generator builder {pod_builder.id} has been updated to checksum {fabric_checksum}")
 
     async def allocate_resource_pools(self):
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
