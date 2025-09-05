@@ -94,6 +94,13 @@ nodes:
         optional: false
         cardinality: one
         identifier: device__interface
+      - name: ip_address
+        label: IP Address
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: interface__ip_address
 
   - name: Link
     namespace: Network
