@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from ipaddress import IPv4Address
 
 from netutils.interface import sort_interface_list
 
@@ -72,6 +73,41 @@ async def connect_interface_maps(
         logger.info(f"Connected {name}")
 
 
+async def assign_ip_address_to_interface(
+    client: InfrahubClient,
+    interface: InfrahubNode,
+    logger: logging.Logger,
+    host_addresses: Generator[IPv4Address],
+    prefix_len: int
+):
+    ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
+    await ip_address.save(allow_upsert=True)
+    interface.ip_address = ip_address
+    await interface.save(allow_upsert=True)
+    logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")
+
+async def assign_ip_addresses_to_p2p_connections(
+    client: InfrahubClient, logger: logging.Logger, connections: list[tuple[InfrahubNode, InfrahubNode]], prefix_len: int, prefix_role: str, pool: CoreIPPrefixPool
+):
+        for src_interface, dst_interface in connections:
+
+            # allocate a new prefix for the p2p connection
+            prefix = await client.allocate_next_ip_prefix(
+                resource_pool=pool,
+                identifier=src_interface.id + dst_interface.id,
+                member_type="address",
+                prefix_length=prefix_len,
+                data={"role": prefix_role},
+            )
+
+            logger.info(f"Allocated prefix {prefix.prefix.value} for connection between {src_interface.display_label}-{dst_interface.display_label}")
+
+            host_addresses = prefix.prefix.value.hosts()
+
+            for interface in [src_interface, dst_interface]:
+                await assign_ip_address_to_interface(client, interface, logger, host_addresses, prefix_len)
+
+
 class PodGenerator(InfrahubGenerator):
     pod_id: str
     pod_index: int
@@ -81,6 +117,8 @@ class PodGenerator(InfrahubGenerator):
     fabric_name: str
 
     loopback_pool: CoreIPAddressPool
+
+    pod_prefix_pool: CoreIPPrefixPool
 
     logger = logging.getLogger("infrahub.tasks")
 
@@ -123,7 +161,7 @@ class PodGenerator(InfrahubGenerator):
         )
         super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
-        created_cabling_plan = build_cabling_plan(
+        created_cabling_plan: list[tuple[InfrahubNode, InfrahubNode]] = build_cabling_plan(
             logger=self.logger,
             pod_index=self.pod_index,
             src_interface_map=spine_interface_map,
@@ -131,6 +169,16 @@ class PodGenerator(InfrahubGenerator):
         )
 
         await connect_interface_maps(client=self.client, logger=self.logger, cabling_plan=created_cabling_plan)
+
+        await assign_ip_addresses_to_p2p_connections(
+            client=self.client,
+            logger=self.logger,
+            connections=created_cabling_plan,
+            prefix_len=31,
+            prefix_role="pod_super_spine_spine",
+            pool=self.pod_prefix_pool,
+        )
+
 
     async def allocate_resource_pools(self) -> None:
         """Allocate IP Space for the Pod"""
@@ -145,7 +193,7 @@ class PodGenerator(InfrahubGenerator):
             data={"role": "pod_supernet"},
         )
 
-        pod_prefix_pool = await self.client.create(
+        self.pod_prefix_pool = await self.client.create(
             kind=CoreIPPrefixPool,
             name=f"{self.fabric_name}-{self.pod_name}-prefix-pool",
             default_prefix_type="IpamIPPrefix",
@@ -153,10 +201,10 @@ class PodGenerator(InfrahubGenerator):
             ip_namespace={"hfid": ["default"]},
             resources=[pod_supernet],
         )
-        await pod_prefix_pool.save(allow_upsert=True)
+        await self.pod_prefix_pool.save(allow_upsert=True)
 
         pod_loopback_prefix = await self.client.allocate_next_ip_prefix(
-            resource_pool=pod_prefix_pool,
+            resource_pool=self.pod_prefix_pool,
             identifier=str(self.pod_id),
             member_type="address",
             prefix_length=27,
