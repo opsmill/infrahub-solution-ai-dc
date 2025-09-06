@@ -12,50 +12,61 @@ MAIN_DIRECTORY_PATH = Path(__file__).parent
 
 
 @task
-def start(context: Context) -> None:
+def build(ctx: Context, cache: bool = True) -> None:
+    """
+    Build the docker image.
+    """
+    compose_cmd ="docker compose build"
+    if not cache:
+        compose_cmd += " --no-cache"
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(compose_cmd, pty=True)
+
+
+@task
+def start(ctx: Context) -> None:
     """
     Start the services using docker-compose in detached mode.
     """
-    download_compose_file(context, override=False)
-    context.run("docker compose up -d")
+    download_compose_file(ctx, override=False)
+    ctx.run("docker compose up -d", pty=True)
 
 
 @task
-def destroy(context: Context) -> None:
+def destroy(ctx: Context) -> None:
     """
     Stop and remove containers, networks, and volumes.
     """
-    download_compose_file(context, override=False)
-    context.run("docker compose down -v")
+    download_compose_file(ctx, override=False)
+    ctx.run("docker compose down -v", pty=True)
 
 
 @task
-def load(context: Context) -> None:
-    context.run("infrahubctl schema load schemas/")
+def load(ctx: Context) -> None:
+    load_schema(ctx)
     sleep(5)
-    context.run("infrahubctl object load objects/")
-
-
+    ctx.run("infrahubctl object load objects/")
+    ctx.run("infrahubctl object load repository.yml")
 @task
-def stop(context: Context) -> None:
+def stop(ctx: Context) -> None:
     """
     Stop containers and remove networks.
     """
-    download_compose_file(context, override=False)
-    context.run("docker compose down")
+    download_compose_file(ctx, override=False)
+    ctx.run("docker compose down", pty=True)
 
 
 @task(help={"component": "Optional name of a specific service to restart."})
-def restart(context: Context, component: str = "") -> None:
+def restart(ctx: Context, component: str = "") -> None:
     """
     Restart all services or a specific one using docker-compose.
     """
-    download_compose_file(context, override=False)
+    download_compose_file(ctx, override=False)
     if component:
-        context.run(f"docker compose restart {component}")
+        ctx.run(f"docker compose restart {component}", pty=True)
         return
 
-    context.run("docker compose restart")
+    ctx.run("docker compose restart", pty=True)
 
 
 @task
@@ -63,7 +74,7 @@ def load_schema(ctx: Context) -> None:
     """
     Load schemas into InfraHub using infrahubctl.
     """
-    ctx.run("infrahubctl schema load schemas")
+    ctx.run("infrahubctl schema load schemas", pty=True)
 
 
 @task
@@ -71,7 +82,7 @@ def test(ctx: Context) -> None:
     """
     Run tests using pytest.
     """
-    ctx.run("pytest tests")
+    ctx.run("pytest tests", pty=True)
 
 
 @task(help={"override": "Redownload the compose file even if it already exists."})
@@ -84,7 +95,7 @@ def download_compose_file(ctx: Context, override: bool = False) -> Path:  # noqa
     if compose_file.exists() and not override:
         return compose_file
 
-    response = httpx.get("https://infrahub.opsmill.io/enterprise")
+    response = httpx.get("https://infrahub.opsmill.io")
     response.raise_for_status()
 
     with compose_file.open("w", encoding="utf-8") as f:
@@ -100,7 +111,7 @@ def format_python(ctx: Context) -> None:
     exec_cmds = ["ruff format .", "ruff check . --fix"]
     with ctx.cd(MAIN_DIRECTORY_PATH):
         for cmd in exec_cmds:
-            ctx.run(cmd)
+            ctx.run(cmd, pty=True)
 
 
 @task
@@ -109,7 +120,7 @@ def lint_yaml(ctx: Context) -> None:
     print(" - Check code with yamllint")
     exec_cmd = "yamllint ."
     with ctx.cd(MAIN_DIRECTORY_PATH):
-        ctx.run(exec_cmd)
+        ctx.run(exec_cmd, pty=True)
 
 
 @task
@@ -118,7 +129,7 @@ def lint_mypy(ctx: Context) -> None:
     print(" - Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk"
     with ctx.cd(MAIN_DIRECTORY_PATH):
-        ctx.run(exec_cmd)
+        ctx.run(exec_cmd, pty=True)
 
 
 @task
@@ -127,7 +138,7 @@ def lint_ruff(ctx: Context) -> None:
     print(" - Check code with ruff")
     exec_cmd = "ruff check ."
     with ctx.cd(MAIN_DIRECTORY_PATH):
-        ctx.run(exec_cmd)
+        ctx.run(exec_cmd, pty=True)
 
 
 @task(name="lint")
