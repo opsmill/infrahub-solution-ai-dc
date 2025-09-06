@@ -23,6 +23,8 @@ nodes:
             label: Pod Supernet
           - name: pod_loopback
             label: Pod Loopback
+          - name: pod_super_spine_spine
+            label: Pod Super Spine Spine
   - name: IPAddress
     namespace: Ipam
     inherit_from:
