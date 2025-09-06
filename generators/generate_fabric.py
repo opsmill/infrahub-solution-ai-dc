@@ -45,7 +45,7 @@ class FabricGenerator(InfrahubGenerator):
                 await pod_builder.save(allow_upsert=True)
                 self.logger.info(f"Generator builder {pod_builder.id} has been updated to checksum {fabric_checksum}")
 
-    async def allocate_resource_pools(self):
+    async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
         fabric_supernet = await self.client.allocate_next_ip_prefix(
             resource_pool=fabric_supernet_pool, identifier=self.fabric_id, data={"role": "fabric_supernet"}
