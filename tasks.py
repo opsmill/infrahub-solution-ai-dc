@@ -87,7 +87,7 @@ def download_compose_file(ctx: Context, override: bool = False) -> Path:  # noqa
     response = httpx.get("https://infrahub.opsmill.io/enterprise")
     response.raise_for_status()
 
-    with compose_file.open("w") as f:
+    with compose_file.open("w", encoding="utf-8") as f:
         f.write(response.content.decode())
 
     return compose_file
