@@ -1,6 +1,3 @@
-# This Dockerfile serves two purposes:
-# 1. It builds a custom Infrahub image with the `solution_ai_dc` python module included. It can now be imported and used within the Infrahub environment (in generators for example).
-
 ARG INFRAHUB_BASE_VERSION=1.4.2
 FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_BASE_VERSION}
 
