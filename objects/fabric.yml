@@ -15,10 +15,8 @@ spec:
             role: "fabric"
           - name: "Pod-A2"
             index: 2
-            member_of_groups: ["pods"]
           - name: "Pod-A3"
             index: 3
-            member_of_groups: ["pods"]
 
     - name: "Fabric-B"
       index: 2
@@ -31,7 +29,17 @@ spec:
             role: "fabric"
           - name: "Pod-B2"
             index: 2
-            member_of_groups: ["pods"]
           - name: "Pod-B3"
             index: 3
-            member_of_groups: ["pods"]
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkPodBuilder
+  data:
+    - name: "Pod-A2"
+      building_block: "Pod-A2"
+      member_of_groups: ["pods"]
+    - name: "Pod-A3"
+      building_block: "Pod-A3"
+      member_of_groups: ["pods"]
