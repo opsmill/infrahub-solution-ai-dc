@@ -23,6 +23,11 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
 
         await self.allocate_resource_pools()
 
+        await self.create_super_spine_switches()
+
+        await self.update_checksum()
+
+    async def create_super_spine_switches(self) -> None:
         fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
 
         for idx in range(1, 7):
@@ -35,17 +40,6 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 pod=fabric_pod,
             )
             await device.save(allow_upsert=True)
-
-        pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
-        pod_builders = await self.client.filters(kind=NetworkPodBuilder, target__ids=[pod.id for pod in pods])
-
-        # store the checksum for the fabric in the object itself
-        fabric_checksum = self.calculate_checksum()
-        for pod_builder in pod_builders:
-            if pod_builder.checksum.value != fabric_checksum:
-                pod_builder.checksum.value = fabric_checksum
-                await pod_builder.save(allow_upsert=True)
-                self.logger.info(f"Generator builder {pod_builder.id} has been updated to checksum {fabric_checksum}")
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
@@ -80,3 +74,15 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
             resources=[ss_loopback_prefix],
         )
         await self.loopback_pool.save(allow_upsert=True)
+
+    async def update_checksum(self) -> None:
+        pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
+        pod_builders = await self.client.filters(kind=NetworkPodBuilder, target__ids=[pod.id for pod in pods])
+
+        # store the checksum for the fabric in the object itself
+        fabric_checksum = self.calculate_checksum()
+        for pod_builder in pod_builders:
+            if pod_builder.checksum.value != fabric_checksum:
+                pod_builder.checksum.value = fabric_checksum
+                await pod_builder.save(allow_upsert=True)
+                self.logger.info(f"Generator builder {pod_builder.id} has been updated to checksum {fabric_checksum}")

@@ -60,6 +60,11 @@ class RackGenerator(InfrahubGenerator):
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
 
+        await self.create_leaf_switch()
+
+        await self.connect_leaf_to_spine()
+
+    async def create_leaf_switch(self) -> None:
         self.leaf_switch = await self.client.create(
             NetworkDevice,
             hostname=f"leaf-{self.pod_name}-{self.rack_index}",
@@ -69,8 +74,6 @@ class RackGenerator(InfrahubGenerator):
             role="leaf",
         )
         await self.leaf_switch.save(allow_upsert=True)
-
-        await self.connect_leaf_to_spine()
 
     async def connect_leaf_to_spine(self) -> None:
         spine_switches = await self.client.filters(kind=NetworkDevice, pod__ids=[self.pod_id], role__value="spine")
