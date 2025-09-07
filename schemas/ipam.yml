@@ -25,6 +25,8 @@ nodes:
             label: Pod Loopback
           - name: pod_super_spine_spine
             label: Pod Super Spine Spine
+          - name: pod_leaf_spine
+            label: Pod Leaf Spine
   - name: IPAddress
     namespace: Ipam
     inherit_from:

@@ -33,6 +33,7 @@ spec:
         kind: NetworkPod
         data:
           name: "Pod-A1"
+          role: "fabric"
           index: 1
           parent: "Fabric-A"
 

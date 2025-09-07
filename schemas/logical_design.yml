@@ -60,3 +60,15 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "pod__device"
+      - name: loopback_pool
+        peer: CoreIPAddressPool
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__loopback_pool"
+      - name: prefix_pool
+        peer: CoreIPPrefixPool
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__prefix_pool"

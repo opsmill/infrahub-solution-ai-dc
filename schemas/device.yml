@@ -82,7 +82,8 @@ nodes:
             label: Leaf
           - name: server
             label: Server
-
+          - name: storage
+            label: Storage
       - name: index
         kind: Text
         read_only: true

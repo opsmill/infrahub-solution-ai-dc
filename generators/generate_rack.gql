@@ -19,11 +19,35 @@ query($rack_name: String!) {
               index {
                 value
               }
+              rack_type {
+                value
+              }
               parent {
                 node {
                   id
                   name {
                     value
+                  }
+                }
+              }
+              pod {
+                node {
+                  id
+                  name {
+                    value
+                  }
+                  index {
+                    value
+                  }
+                  prefix_pool {
+                    node {
+                      id
+                    }
+                  }
+                  loopback_pool {
+                    node {
+                      id
+                    }
                   }
                 }
               }
