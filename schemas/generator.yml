@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+generics:
+  - name: Tracker
+    namespace: Generator
+    display_labels: [ name__value ]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: checksum
+        kind: Text
+        optional: true
+    relationships:
+      - name: target
+        peer: GeneratorTarget
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "target__tracker"
+
+
+  - name: Target
+    namespace: Generator
+    relationships:
+      - name: tracker
+        peer: GeneratorTracker
+        cardinality: one
+        optional: true
+        identifier: "target__tracker"

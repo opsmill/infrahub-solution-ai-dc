@@ -16,15 +16,36 @@ nodes:
     namespace: Location
     inherit_from:
       - LocationPhysical
+    human_friendly_id:
+      - name__value
     children: LocationRack
     parent: ""
+
+  # TODO: hide in menu
+  - name: RackBuilder
+    namespace: Location
+    inherit_from:
+      - GeneratorTracker
 
   - name: Rack
     namespace: Location
     inherit_from:
       - LocationPhysical
+      - GeneratorTarget
     parent: LocationHall
     children: ""
+    human_friendly_id:
+      - name__value
+    uniqueness_constraints: [ [ pod, index__value ] ]
+    attributes:
+      - name: rack_type
+        kind: Dropdown
+        choices:
+          - name: compute
+            label: Compute
+          - name: storage
+            label: Storage
+        default_value: compute
     relationships:
       - name: pod
         peer: NetworkPod
@@ -37,12 +58,4 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "rack__device"
-    # attributes:
-    #   - name: rack_id
-    #     kind: Number
-    # relationships:
-    #   - name: pod
-    #     peer: NetworkPod
-    #     cardinality: one
-    #     kind: Attribute
-    #     identifier: "pod__rack"
+

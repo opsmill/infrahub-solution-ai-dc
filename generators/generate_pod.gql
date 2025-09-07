@@ -6,10 +6,10 @@ query ($pod_name: String!) {
         name {
           value
         }
-        parent_checksum {
+        checksum {
           value
         }
-        building_block {
+        target {
           node {
             ... on NetworkPod {
               name {

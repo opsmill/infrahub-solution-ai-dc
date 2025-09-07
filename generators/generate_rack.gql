@@ -1,12 +1,36 @@
 query($rack_name: String!) {
-    LocationRack(name__value: $rack_name) {
-        edges {
-            node {
-                id
-                name {
-                    value
-                }
-            }
+  LocationRackBuilder(name__value: $rack_name) {
+    edges {
+      node {
+        id
+        name {
+          value
         }
+        checksum {
+          value
+        }
+        target {
+          node {
+            ... on LocationRack {
+              id
+              name {
+                value
+              }
+              index {
+                value
+              }
+              parent {
+                node {
+                  id
+                  name {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
+  }
 }

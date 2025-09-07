@@ -10,3 +10,7 @@ class RackGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         pass
+
+        # Generate the leaf device
+        # Connect it to the spines
+
