@@ -1,0 +1,80 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationHall
+  data:
+    - name: "Hall-A1"
+      index: 1
+
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationRackBuilder
+  data:
+    - name: "Rack-A1-01"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A1-01"
+          parent: "Hall-A1"
+          index: 1
+          rack_type: "compute"
+          pod: "Pod-A1"
+
+    - name: "Rack-A1-02"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A1-02"
+          parent: "Hall-A1"
+          index: 2
+          rack_type: "compute"
+          pod: "Pod-A1"
+
+    - name: "Rack-A1-05"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A1-05"
+          parent: "Hall-A1"
+          index: 5
+          rack_type: "storage"
+          pod: "Pod-A1"
+
+    - name: "Rack-A2-01"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A2-01"
+          parent: "Hall-A1"
+          index: 1
+          rack_type: "storage"
+          pod: "Pod-A2"
+
+    - name: "Rack-A2-03"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A2-03"
+          parent: "Hall-A1"
+          index: 3
+          rack_type: "storage"
+          pod: "Pod-A2"
+
+    - name: "Rack-A2-04"
+      member_of_groups: ["racks"]
+      target:
+        kind: LocationRack
+        data:
+          name: "Rack-A2-04"
+          parent: "Hall-A1"
+          index: 4
+          rack_type: "storage"
+          pod: "Pod-A2"

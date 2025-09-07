@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreGenericRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient

@@ -62,7 +62,7 @@ nodes:
       - NetworkEndpoint
     uniqueness_constraints:
       - [device, name__value]
-    order_by: [ index__value ]
+    order_by: ["index__value"]
     attributes:
       - name: name
         kind: Text
@@ -80,6 +80,10 @@ nodes:
             label: Super Spine
           - name: leaf
             label: Leaf
+          - name: server
+            label: Server
+          - name: storage
+            label: Storage
       - name: index
         kind: Text
         read_only: true

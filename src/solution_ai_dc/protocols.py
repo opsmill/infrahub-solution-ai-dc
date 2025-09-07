@@ -23,14 +23,7 @@ if TYPE_CHECKING:
     )
 
 
-class NetworkBuilder(CoreNode):
-    name: String
-    parent_checksum: StringOptional
-    building_block: RelatedNode
-
-
 class NetworkBuildingBlock(CoreNode):
-    checksum: StringOptional
     index: Integer
     name: String
 
@@ -42,6 +35,16 @@ class NetworkEndpoint(CoreNode):
 class LocationPhysical(CoreNode):
     index: Integer
     name: String
+
+
+class GeneratorTarget(CoreNode):
+    tracker: RelatedNode
+
+
+class GeneratorTracker(CoreNode):
+    checksum: StringOptional
+    name: String
+    target: RelatedNode
 
 
 class NetworkDevice(CoreNode):
@@ -83,16 +86,21 @@ class NetworkLink(CoreNode):
     endpoints: RelationshipManager
 
 
-class NetworkPod(NetworkBuildingBlock):
+class NetworkPod(NetworkBuildingBlock, GeneratorTarget):
     role: DropdownOptional
     devices: RelationshipManager
     racks: RelationshipManager
 
 
-class NetworkPodBuilder(NetworkBuilder):
+class NetworkPodBuilder(GeneratorTracker):
     pass
 
 
-class LocationRack(LocationPhysical):
+class LocationRack(LocationPhysical, GeneratorTarget):
+    rack_type: Dropdown
     devices: RelationshipManager
     pod: RelatedNode
+
+
+class LocationRackBuilder(GeneratorTracker):
+    pass

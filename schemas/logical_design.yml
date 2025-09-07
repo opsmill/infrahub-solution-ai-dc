@@ -5,35 +5,13 @@ generics:
   - name: BuildingBlock
     namespace: Network
     hierarchical: true
-    display_labels: [ name__value ]
+    display_labels: ["name__value"]
     attributes:
       - name: name
         kind: Text
         unique: true
       - name: index
         kind: Number
-      - name: checksum
-        kind: Text
-        optional: true
-  - name: Builder
-    namespace: Network
-    display_labels:
-      - name__value
-    attributes:
-      - name: name
-        kind: Text
-        optional: false
-        unique: true
-      - name: parent_checksum
-        kind: Text
-        optional: true
-    relationships:
-      - name: building_block
-        peer: NetworkBuildingBlock
-        cardinality: one
-        kind: Attribute
-        optional: true
-        identifier: "builder_buildingblock"
 
 nodes:
   - name: Fabric
@@ -47,12 +25,13 @@ nodes:
   - name: PodBuilder
     namespace: Network
     inherit_from:
-      - NetworkBuilder
+      - GeneratorTracker
 
   - name: Pod
     namespace: Network
     inherit_from:
       - NetworkBuildingBlock
+      - GeneratorTarget
     parent: NetworkFabric
     children: ""
     attributes:
@@ -81,3 +60,15 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "pod__device"
+      - name: loopback_pool
+        peer: CoreIPAddressPool
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__loopback_pool"
+      - name: prefix_pool
+        peer: CoreIPPrefixPool
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__prefix_pool"
