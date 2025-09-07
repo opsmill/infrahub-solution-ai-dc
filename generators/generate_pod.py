@@ -1,111 +1,17 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
-from ipaddress import IPv4Address
+from typing import TYPE_CHECKING
 
-from netutils.interface import sort_interface_list
-
-from infrahub_sdk import InfrahubClient
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
+from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
+from solution_ai_dc.sorting import create_sorted_device_interface_map
 
-
-def create_sorted_device_interface_map(interfaces: list[InfrahubNode]) -> dict[str, list[InfrahubNode]]:
-    """
-    Creates a dictionary that maps a device hostname to a sorted list of interfaces from a list of interfaces
-    """
-
-    device_interface_map = defaultdict(list)
-
-    for interface in interfaces:
-        device_interface_map[interface.device.display_label].append(interface)
-
-    for device, interfaces in device_interface_map.items():
-        interface_map = {interface.name.value: interface for interface in interfaces}
-        sorted_interface_names = sort_interface_list(list(interface_map.keys()))
-        device_interface_map[device] = [interface_map[interface] for interface in sorted_interface_names]
-
-    return device_interface_map
-
-
-def build_cabling_plan(
-    logger,
-    pod_index: int,
-    src_interface_map: dict[str, list[InfrahubNode]],
-    dst_interface_map: dict[str, list[InfrahubNode]],
-) -> list[tuple[InfrahubNode, InfrahubNode]]:
-    """Builds a cabling plan between source and destination interfaces based in Indexes
-
-    TODO Write unit test to validate that the algorithm works as expected
-    """
-    dst_device_names = list(dst_interface_map.keys())
-    dst_device_count = len(dst_device_names)
-    dst_interface_base_index = (pod_index - 2) * len(dst_interface_map)
-    src_index = 0
-
-    cabling_plan: list[tuple[InfrahubNode, InfrahubNode]] = []
-
-    for src_device, src_interfaces in src_interface_map.items():
-        dst_interface_index = dst_interface_base_index + src_index
-
-        for dst_index, src_interface in enumerate(src_interfaces[:dst_device_count]):
-            dst_interface = dst_interface_map[dst_device_names[dst_index]][dst_interface_index]
-
-            cabling_plan.append((src_interface, dst_interface))
-
-        src_index += 1
-        dst_interface_index = dst_interface_base_index + src_index
-
-    return cabling_plan
-
-
-async def connect_interface_maps(
-    client: InfrahubClient, logger: logging.Logger, cabling_plan: list[tuple[InfrahubNode, InfrahubNode]]
-):
-    for src_interface, dst_interface in cabling_plan:
-        name = f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}"
-        network_link = await client.create(
-            kind="NetworkLink", name=name, medium="copper", endpoints=[src_interface, dst_interface]
-        )
-        await network_link.save(allow_upsert=True)
-        logger.info(f"Connected {name}")
-
-
-async def assign_ip_address_to_interface(
-    client: InfrahubClient,
-    interface: InfrahubNode,
-    logger: logging.Logger,
-    host_addresses: Generator[IPv4Address],
-    prefix_len: int
-):
-    ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
-    await ip_address.save(allow_upsert=True)
-    interface.ip_address = ip_address
-    await interface.save(allow_upsert=True)
-    logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")
-
-async def assign_ip_addresses_to_p2p_connections(
-    client: InfrahubClient, logger: logging.Logger, connections: list[tuple[InfrahubNode, InfrahubNode]], prefix_len: int, prefix_role: str, pool: CoreIPPrefixPool
-):
-        for src_interface, dst_interface in connections:
-
-            # allocate a new prefix for the p2p connection
-            prefix = await client.allocate_next_ip_prefix(
-                resource_pool=pool,
-                identifier=src_interface.id + dst_interface.id,
-                member_type="address",
-                prefix_length=prefix_len,
-                data={"role": prefix_role},
-            )
-
-            logger.info(f"Allocated prefix {prefix.prefix.value} for connection between {src_interface.display_label}-{dst_interface.display_label}")
-
-            host_addresses = prefix.prefix.value.hosts()
-
-            for interface in [src_interface, dst_interface]:
-                await assign_ip_address_to_interface(client, interface, logger, host_addresses, prefix_len)
+if TYPE_CHECKING:
+    from infrahub_sdk.node import InfrahubNode
 
 
 class PodGenerator(InfrahubGenerator):
@@ -125,9 +31,15 @@ class PodGenerator(InfrahubGenerator):
     async def generate(self, data: dict) -> None:
         self.pod_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["id"]
         self.pod_index: int = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["index"]["value"]
-        self.pod_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["name"]["value"].lower()
-        self.fabric_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"]["node"]["id"]
-        self.fabric_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"]["node"]["name"]["value"].lower()
+        self.pod_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["name"][
+            "value"
+        ].lower()
+        self.fabric_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"]["node"][
+            "id"
+        ]
+        self.fabric_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["building_block"]["node"]["parent"][
+            "node"
+        ]["name"]["value"].lower()
 
         await self.allocate_resource_pools()
 
@@ -178,7 +90,6 @@ class PodGenerator(InfrahubGenerator):
             prefix_role="pod_super_spine_spine",
             pool=self.pod_prefix_pool,
         )
-
 
     async def allocate_resource_pools(self) -> None:
         """Allocate IP Space for the Pod"""
