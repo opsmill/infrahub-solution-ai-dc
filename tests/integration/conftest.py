@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from infrahub_sdk.yaml import SchemaFile
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()

@@ -13,4 +13,3 @@ class RackGenerator(InfrahubGenerator):
 
         # Generate the leaf device
         # Connect it to the spines
-

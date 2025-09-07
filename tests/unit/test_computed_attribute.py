@@ -1,5 +1,4 @@
 import pytest
-
 from infrahub_sdk.template import Jinja2Template
 
 INTF_INDEX_JINJA2 = '{{ "%03d"| format(name__value | split_interface | last | int) }}'

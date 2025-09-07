@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
 from solution_ai_dc.sorting import create_sorted_device_interface_map

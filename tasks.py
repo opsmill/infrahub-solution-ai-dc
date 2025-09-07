@@ -16,7 +16,7 @@ def build(ctx: Context, cache: bool = True) -> None:
     """
     Build the docker image.
     """
-    compose_cmd ="docker compose build"
+    compose_cmd = "docker compose build"
     if not cache:
         compose_cmd += " --no-cache"
     with ctx.cd(MAIN_DIRECTORY_PATH):
@@ -47,6 +47,8 @@ def load(ctx: Context) -> None:
     sleep(5)
     ctx.run("infrahubctl object load objects/")
     ctx.run("infrahubctl object load repository.yml")
+
+
 @task
 def stop(ctx: Context) -> None:
     """
