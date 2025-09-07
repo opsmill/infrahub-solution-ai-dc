@@ -1,6 +1,6 @@
 ---
-# schemas:
-#   - schemas
+schemas:
+  - schemas
 
 queries:
   - name: generate_fabric

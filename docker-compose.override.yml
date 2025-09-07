@@ -24,3 +24,4 @@ services:
     <<: *infrahub_custom_build
     volumes:
       - ./:/upstream
+      - ./src:/opt/local/src
