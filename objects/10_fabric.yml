@@ -10,16 +10,15 @@ spec:
     - name: "Fabric-B"
       index: 2
       member_of_groups: ["fabrics"]
-
       children:
         kind: NetworkPod
         data:
-          - name: "Pod-A1"
+          - name: "Pod-B1"
             index: 1
             role: "fabric"
-          - name: "Pod-A2"
+          - name: "Pod-B2"
             index: 2
-          - name: "Pod-A3"
+          - name: "Pod-B3"
             index: 3
 
 ---
@@ -54,4 +53,3 @@ spec:
           name: "Pod-A3"
           index: 3
           parent: "Fabric-A"
-

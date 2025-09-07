@@ -18,7 +18,7 @@ services:
   task-manager:
     <<: *infrahub_custom_build
     ports:
-    - 4200:4200
+      - 4200:4200
 
   task-worker:
     <<: *infrahub_custom_build

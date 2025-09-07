@@ -4,7 +4,7 @@ version: "1.0"
 generics:
   - name: Tracker
     namespace: Generator
-    display_labels: [ name__value ]
+    display_labels: [name__value]
     attributes:
       - name: name
         kind: Text

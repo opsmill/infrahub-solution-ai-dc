@@ -62,7 +62,7 @@ nodes:
       - NetworkEndpoint
     uniqueness_constraints:
       - [device, name__value]
-    order_by: [ index__value ]
+    order_by: ["index__value"]
     attributes:
       - name: name
         kind: Text

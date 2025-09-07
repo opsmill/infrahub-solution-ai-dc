@@ -5,7 +5,7 @@ generics:
   - name: Physical
     namespace: Location
     hierarchical: true
-    display_labels: [ name__value ]
+    display_labels: ["name__value"]
     attributes:
       - name: name
         kind: Text
@@ -36,7 +36,7 @@ nodes:
     children: ""
     human_friendly_id:
       - name__value
-    uniqueness_constraints: [ [ pod, index__value ] ]
+    uniqueness_constraints: [["pod", "index__value"]]
     attributes:
       - name: rack_type
         kind: Dropdown
@@ -58,4 +58,3 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "rack__device"
-
