@@ -12,10 +12,12 @@ if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
     from infrahub_sdk.protocols import CoreIPPrefixPool
 
+    from solution_ai_dc.protocols import NetworkInterface
+
 
 async def assign_ip_address_to_interface(
     client: InfrahubClient,
-    interface: InfrahubNode,
+    interface: NetworkInterface,
     logger: logging.Logger,
     host_addresses: Generator[IPv4Address],
     prefix_len: int,
@@ -30,7 +32,7 @@ async def assign_ip_address_to_interface(
 async def assign_ip_addresses_to_p2p_connections(
     client: InfrahubClient,
     logger: logging.Logger,
-    connections: list[tuple[InfrahubNode, InfrahubNode]],
+    connections: list[tuple[NetworkInterface, NetworkInterface]],
     prefix_len: int,
     prefix_role: str,
     pool: CoreIPPrefixPool,

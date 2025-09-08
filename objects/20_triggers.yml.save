@@ -1,4 +1,3 @@
-
 ---
 apiVersion: infrahub.app/v1
 kind: Object

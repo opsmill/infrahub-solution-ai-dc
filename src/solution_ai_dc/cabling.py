@@ -8,13 +8,15 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import InfrahubNode
 
+    from solution_ai_dc.protocols import NetworkInterface
+
 
 def build_cabling_plan(
     logger: logging.Logger,  # noqa: ARG001
     pod_index: int,
-    src_interface_map: dict[str, list[InfrahubNode]],
-    dst_interface_map: dict[str, list[InfrahubNode]],
-) -> list[tuple[InfrahubNode, InfrahubNode]]:
+    src_interface_map: dict[str, list[NetworkInterface]],
+    dst_interface_map: dict[str, list[NetworkInterface]],
+) -> list[tuple[NetworkInterface, NetworkInterface]]:
     """Builds a cabling plan between source and destination interfaces based in Indexes
 
     TODO Write unit test to validate that the algorithm works as expected
@@ -24,7 +26,7 @@ def build_cabling_plan(
     dst_interface_base_index = (pod_index - 2) * len(dst_interface_map)
     src_index = 0
 
-    cabling_plan: list[tuple[InfrahubNode, InfrahubNode]] = []
+    cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = []
 
     for src_interfaces in src_interface_map.values():
         dst_interface_index = dst_interface_base_index + src_index
@@ -41,7 +43,7 @@ def build_cabling_plan(
 
 
 async def connect_interface_maps(
-    client: InfrahubClient, logger: logging.Logger, cabling_plan: list[tuple[InfrahubNode, InfrahubNode]]
+    client: InfrahubClient, logger: logging.Logger, cabling_plan: list[tuple[NetworkInterface, NetworkInterface]]
 ) -> None:
     for src_interface, dst_interface in cabling_plan:
         name = f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}"

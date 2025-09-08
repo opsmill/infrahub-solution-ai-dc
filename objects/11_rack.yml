@@ -11,70 +11,53 @@ spec:
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
-  kind: LocationRackBuilder
+  kind: LocationRack
   data:
-    - name: "Rack-A1-01"
+    - name: "Rack-A2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-A2
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A1-01"
-          parent: "Hall-A1"
-          index: 1
-          rack_type: "compute"
-          pod: "Pod-A1"
-
-    - name: "Rack-A1-02"
+    - name: "Rack-A2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-A2
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A1-02"
-          parent: "Hall-A1"
-          index: 2
-          rack_type: "compute"
-          pod: "Pod-A1"
-
-    - name: "Rack-A1-05"
+    - name: "Rack-A2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-A2
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A1-05"
-          parent: "Hall-A1"
-          index: 5
-          rack_type: "storage"
-          pod: "Pod-A1"
-
-    - name: "Rack-A2-01"
+    - name: "Rack-A2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-A2
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A2-01"
-          parent: "Hall-A1"
-          index: 1
-          rack_type: "storage"
-          pod: "Pod-A2"
-
-    - name: "Rack-A2-03"
+    - name: "Rack-A3-1"
+      index: 5
+      rack_type: compute
+      pod: Pod-A3
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A2-03"
-          parent: "Hall-A1"
-          index: 3
-          rack_type: "storage"
-          pod: "Pod-A2"
-
-    - name: "Rack-A2-04"
+    - name: "Rack-A3-2"
+      index: 6
+      rack_type: compute
+      pod: Pod-A3
+      parent: "Hall-A1"
       member_of_groups: ["racks"]
-      target:
-        kind: LocationRack
-        data:
-          name: "Rack-A2-04"
-          parent: "Hall-A1"
-          index: 4
-          rack_type: "storage"
-          pod: "Pod-A2"
+    - name: "Rack-A3-3"
+      index: 7
+      rack_type: storage
+      pod: Pod-A3
+      parent: "Hall-A1"
+      member_of_groups: ["racks"]
+    - name: "Rack-A3-4"
+      index: 8
+      rack_type: compute
+      pod: Pod-A3
+      parent: "Hall-A1"
+      member_of_groups: ["racks"]

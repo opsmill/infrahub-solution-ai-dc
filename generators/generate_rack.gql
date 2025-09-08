@@ -1,5 +1,5 @@
 query($rack_name: String!) {
-  LocationRackBuilder(name__value: $rack_name) {
+  LocationRack(name__value: $rack_name) {
     edges {
       node {
         id
@@ -9,51 +9,41 @@ query($rack_name: String!) {
         checksum {
           value
         }
-        target {
-          node {
-            ... on LocationRack {
-              id
-              name {
-                value
-              }
-              index {
-                value
-              }
-              rack_type {
-                value
-              }
-              parent {
-                node {
-                  id
-                  name {
-                    value
-                  }
-                }
-              }
-              pod {
-                node {
-                  id
-                  name {
-                    value
-                  }
-                  index {
-                    value
-                  }
-                  prefix_pool {
-                    node {
-                      id
-                    }
-                  }
-                  loopback_pool {
-                    node {
-                      id
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+	index {
+	  value
+	}
+	rack_type {
+	  value
+	}
+	parent {
+	  node {
+	    id
+	    name {
+	      value
+	    }
+	  }
+	}
+	pod {
+	  node {
+	    id
+	    name {
+	      value
+	    }
+	    index {
+	      value
+	    }
+	    prefix_pool {
+	      node {
+		id
+	      }
+	    }
+	    loopback_pool {
+	      node {
+		id
+	      }
+	    }
+	  }
+	}
       }
     }
   }

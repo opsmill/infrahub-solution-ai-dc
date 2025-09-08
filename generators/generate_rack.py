@@ -11,9 +11,6 @@ from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 from solution_ai_dc.sorting import create_sorted_device_interface_map
 
-if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-
 LEAF_TEMPLATE_MAP = {
     "compute": "leaf-switch-compute",
     "storage": "leaf-switch-storage",
@@ -37,23 +34,23 @@ class RackGenerator(InfrahubGenerator):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.rack_id: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["id"]
-        self.rack_index: int = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["index"]["value"]
-        self.rack_name: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["name"]["value"]
-        self.rack_type: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["rack_type"]["value"]
+        self.rack_id: str = data["LocationRack"]["edges"][0]["node"]["id"]
+        self.rack_index: int = data["LocationRack"]["edges"][0]["node"]["index"]["value"]
+        self.rack_name: str = data["LocationRack"]["edges"][0]["node"]["name"]["value"]
+        self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
 
-        self.pod_id: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["pod"]["node"]["id"]
-        self.pod_index: int = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["pod"]["node"]["index"][
+        self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
+        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"][
             "value"
         ]
-        self.pod_name: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["pod"]["node"]["name"][
+        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"][
             "value"
-        ]
+        ].lower()
 
-        self.loopback_pool_id: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["pod"]["node"][
+        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
             "loopback_pool"
         ]["node"]["id"]
-        self.prefix_pool_id: str = data["LocationRackBuilder"]["edges"][0]["node"]["target"]["node"]["pod"]["node"][
+        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
             "prefix_pool"
         ]["node"]["id"]
 
@@ -87,7 +84,7 @@ class RackGenerator(InfrahubGenerator):
         )
         leaf_interface_map = create_sorted_device_interface_map(leaf_interfaces)
 
-        created_cabling_plan: list[tuple[InfrahubNode, InfrahubNode]] = build_cabling_plan(
+        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_cabling_plan(
             logger=self.logger,
             pod_index=self.rack_index,
             src_interface_map=leaf_interface_map,

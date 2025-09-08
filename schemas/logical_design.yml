@@ -21,12 +21,6 @@ nodes:
     parent: ""
     children: NetworkPod
 
-  # TODO: hide in menu
-  - name: PodBuilder
-    namespace: Network
-    inherit_from:
-      - GeneratorTracker
-
   - name: Pod
     namespace: Network
     inherit_from:
