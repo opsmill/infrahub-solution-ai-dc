@@ -1,0 +1,54 @@
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Network
+      name: MainMenu
+      label: Network
+      icon: "mdi:domain"
+      kind: OrganizationGeneric
+      children:
+        data:
+          - namespace: Network
+            name: Fabric
+            label: Fabrics
+            kind: NetworkFabric
+            icon: "lucide:network"
+
+          - namespace: Network
+            name: Pod
+            label: Pods
+            kind: NetworkPod
+            icon: "clarity:pod-line"
+
+          - namespace: Network
+            name: Device
+            label: Devices
+            kind: NetworkDevice
+            icon: "mdi:server"
+
+          - namespace: Network
+            name: Link
+            label: Connections
+            kind: NetworkLink
+            icon: "material-symbols:cable"
+
+    - namespace: Location
+      name: Menu
+      label: Location
+      kind: LocationGeneric
+      icon: "mingcute:location-line"
+      children:
+        data:
+          - namespace: Location
+            name: Hall
+            label: Hall
+            kind: LocationHall
+            icon: "mdi:building"
+
+          - namespace: Location
+            name: Rack
+            label: Rack
+            kind: LocationRack
+            icon: "clarity:rack-server-solid"
