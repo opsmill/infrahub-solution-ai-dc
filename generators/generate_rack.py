@@ -67,6 +67,7 @@ class RackGenerator(InfrahubGenerator):
             hostname=f"leaf-{self.pod_name}-{self.rack_index}",
             object_template={"hfid": [LEAF_TEMPLATE_MAP[self.rack_type]]},
             pod={"id": self.pod_id},
+            rack={"id": self.rack_id},
             loopback_ip=self.loopback_pool,
             role="leaf",
         )
