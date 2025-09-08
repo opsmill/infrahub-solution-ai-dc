@@ -6,6 +6,7 @@ generics:
     namespace: Network
     hierarchical: true
     display_labels: ["name__value"]
+    include_in_menu: false
     attributes:
       - name: name
         kind: Text
@@ -20,6 +21,7 @@ nodes:
       - NetworkBuildingBlock
     parent: ""
     children: NetworkPod
+    include_in_menu: false
 
   - name: Pod
     namespace: Network
@@ -28,6 +30,7 @@ nodes:
       - GeneratorTarget
     parent: NetworkFabric
     children: ""
+    include_in_menu: false
     attributes:
       - name: role
         kind: Dropdown

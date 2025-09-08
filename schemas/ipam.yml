@@ -8,6 +8,7 @@ nodes:
       - prefix__value
     inherit_from:
       - BuiltinIPPrefix
+    include_in_menu: false
     attributes:
       - name: role
         kind: Dropdown
@@ -31,3 +32,4 @@ nodes:
     namespace: Ipam
     inherit_from:
       - BuiltinIPAddress
+    include_in_menu: false
