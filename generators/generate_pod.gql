@@ -1,5 +1,5 @@
 query ($pod_name: String!) {
-  NetworkPodBuilder(name__value: $pod_name) {
+  NetworkPod(name__value: $pod_name) {
     edges {
       node {
         id
@@ -9,24 +9,14 @@ query ($pod_name: String!) {
         checksum {
           value
         }
-        target {
+        index {
+          value
+        }
+        parent {
           node {
-            ... on NetworkPod {
-              name {
-                value
-              }
-              id
-              index {
-                value
-              }
-              parent {
-                node {
-                  id
-                  name {
-                    value
-                  }
-                }
-              }
+            id
+            name {
+              value
             }
           }
         }

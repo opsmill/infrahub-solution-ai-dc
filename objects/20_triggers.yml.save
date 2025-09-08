@@ -1,4 +1,3 @@
-
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -16,26 +15,16 @@ kind: Object
 spec:
   kind: CoreNodeTriggerRule
   data:
-    - name: trigger-pod-generator-create
-      branch_scope: "all_branches"
-      node_kind: NetworkPodBuilder
-      mutation_action: "created"
-      action: run-pod-generator
 
     - name: trigger-pod-generator-update
       branch_scope: "all_branches"
-      node_kind: NetworkPodBuilder
+      node_kind: NetworkPod
       mutation_action: "updated"
       action: run-pod-generator
 
-    - name: trigger-rack-generator-create
-      branch_scope: "all_branches"
-      node_kind: LocationRackBuilder
-      mutation_action: "created"
-      action: run-rack-generator
 
     - name: trigger-rack-generator-update
       branch_scope: "all_branches"
-      node_kind: LocationRackBuilder
+      node_kind: LocationRack
       mutation_action: "updated"
       action: run-rack-generator

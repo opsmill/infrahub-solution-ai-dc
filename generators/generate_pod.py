@@ -33,13 +33,14 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.pod_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["target"]["node"]["id"]
-        self.pod_index: int = data["NetworkPodBuilder"]["edges"][0]["node"]["target"]["node"]["index"]["value"]
-        self.pod_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["target"]["node"]["name"]["value"].lower()
-        self.fabric_id: str = data["NetworkPodBuilder"]["edges"][0]["node"]["target"]["node"]["parent"]["node"]["id"]
-        self.fabric_name: str = data["NetworkPodBuilder"]["edges"][0]["node"]["target"]["node"]["parent"]["node"][
+        self.pod_id: str = data["NetworkPod"]["edges"][0]["node"]["id"]
+        self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
+        self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
+        self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
+        self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
             "name"
         ]["value"].lower()
+
         self.spine_switches = []
 
         await self.allocate_resource_pools()
@@ -127,7 +128,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
         super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
-        created_cabling_plan: list[tuple[InfrahubNode, InfrahubNode]] = build_cabling_plan(
+        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_cabling_plan(
             logger=self.logger,
             pod_index=self.pod_index,
             src_interface_map=spine_interface_map,
@@ -147,12 +148,11 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
 
     async def update_checksum(self) -> None:
         racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
-        rack_trackers = await self.client.filters(kind=LocationRackBuilder, target__ids=[rack.id for rack in racks])
 
         # store the checksum for the fabric in the object itself
         checksum = self.calculate_checksum()
-        for rack_tracker in rack_trackers:
-            if rack_tracker.checksum.value != checksum:
-                rack_tracker.checksum.value = checksum
-                await rack_tracker.save(allow_upsert=True)
-                self.logger.info(f"Rack Tracker {rack_tracker.name.value} has been updated to checksum {checksum}")
+        for rack in racks:
+            if rack.checksum.value != checksum:
+                rack.checksum.value = checksum
+                await rack.save(allow_upsert=True)
+                self.logger.info(f"Rack {rack.name.value} has been updated to checksum {checksum}")

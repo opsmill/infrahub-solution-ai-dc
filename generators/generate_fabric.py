@@ -6,7 +6,7 @@ from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import NetworkDevice, NetworkPod, NetworkPodBuilder
+from solution_ai_dc.protocols import NetworkDevice, NetworkPod
 
 
 class FabricGenerator(InfrahubGenerator, GeneratorMixin):
@@ -77,12 +77,11 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
 
     async def update_checksum(self) -> None:
         pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
-        pod_builders = await self.client.filters(kind=NetworkPodBuilder, target__ids=[pod.id for pod in pods])
 
         # store the checksum for the fabric in the object itself
         fabric_checksum = self.calculate_checksum()
-        for pod_builder in pod_builders:
-            if pod_builder.checksum.value != fabric_checksum:
-                pod_builder.checksum.value = fabric_checksum
-                await pod_builder.save(allow_upsert=True)
-                self.logger.info(f"Generator builder {pod_builder.id} has been updated to checksum {fabric_checksum}")
+        for pod in pods:
+            if pod.checksum.value != fabric_checksum:
+                pod.checksum.value = fabric_checksum
+                await pod.save(allow_upsert=True)
+                self.logger.info(f"Pod {pod.name.value} has been updated to checksum {fabric_checksum}")
