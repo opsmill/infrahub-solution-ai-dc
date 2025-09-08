@@ -17,14 +17,14 @@ spec:
   data:
 
     - name: trigger-pod-generator-update
-      branch_scope: "all_branches"
+      branch_scope: "other_branches"
       node_kind: NetworkPod
       mutation_action: "updated"
       action: run-pod-generator
 
 
     - name: trigger-rack-generator-update
-      branch_scope: "all_branches"
+      branch_scope: "other_branches"
       node_kind: LocationRack
       mutation_action: "updated"
       action: run-rack-generator
