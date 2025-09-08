@@ -2,6 +2,9 @@
 schemas:
   - schemas
 
+menus:
+  - menus/menu.yml
+
 queries:
   - name: generate_fabric
     file_path: "./generators/generate_fabric.gql"
