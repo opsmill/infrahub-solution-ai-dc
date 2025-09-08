@@ -44,6 +44,7 @@ def destroy(ctx: Context) -> None:
 @task
 def load(ctx: Context) -> None:
     load_schema(ctx)
+    load_menu(ctx)
     sleep(5)
     ctx.run("infrahubctl object load objects/")
     ctx.run("infrahubctl object load repository.yml")
@@ -70,6 +71,12 @@ def restart(ctx: Context, component: str = "") -> None:
 
     ctx.run("docker compose restart", pty=True)
 
+@task
+def load_menu(ctx: Context) -> None:
+    """
+    Load schemas into InfraHub using infrahubctl.
+    """
+    ctx.run("infrahubctl menu load menus/", pty=True)
 
 @task
 def load_schema(ctx: Context) -> None:
