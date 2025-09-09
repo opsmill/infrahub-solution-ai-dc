@@ -21,10 +21,19 @@ spec:
       node_kind: NetworkPod
       mutation_action: "updated"
       action: run-pod-generator
-
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
 
     - name: trigger-rack-generator-update
       branch_scope: "other_branches"
       node_kind: LocationRack
       mutation_action: "updated"
       action: run-rack-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
