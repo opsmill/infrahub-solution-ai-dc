@@ -18,6 +18,9 @@ queries:
   - name: network_device_startup_config
     file_path: "./transforms/startup_config.gql"
 
+  - name: computed_interface_description
+    file_path: "./transforms/computed_interface_description.gql"
+
 
 generator_definitions:
   - name: generate-fabric
@@ -58,3 +61,8 @@ jinja2_transforms:
     description: "device config transform"
     query: "network_device_startup_config"
     template_path: "./transforms/templates/startup_config.j2"
+
+python_transforms:
+  - name: computed_interface_description
+    class_name: ComputedInterfaceDescription
+    file_path: "./transforms/computed_interface_description.py"

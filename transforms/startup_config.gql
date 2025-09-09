@@ -11,6 +11,9 @@ query StartupConfig($name: String!){
 	      name {
 		value
 	      }
+	      description {
+		value
+	      }
 	      status {
 		value
 	      }
