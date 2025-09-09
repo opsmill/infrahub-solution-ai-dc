@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     import logging
 
     from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.node import InfrahubNode
 
     from solution_ai_dc.protocols import NetworkInterface
 

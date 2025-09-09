@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from ipaddress import IPv4Address
 
     from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.node import InfrahubNode
     from infrahub_sdk.protocols import CoreIPPrefixPool
 
     from solution_ai_dc.protocols import NetworkInterface

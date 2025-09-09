@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
@@ -40,19 +39,13 @@ class RackGenerator(InfrahubGenerator):
         self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
 
         self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
-        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"][
-            "value"
-        ]
-        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"][
-            "value"
-        ].lower()
+        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]
+        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"]["value"].lower()
 
-        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
-            "loopback_pool"
-        ]["node"]["id"]
-        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
-            "prefix_pool"
-        ]["node"]["id"]
+        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["loopback_pool"]["node"][
+            "id"
+        ]
+        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["prefix_pool"]["node"]["id"]
 
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
