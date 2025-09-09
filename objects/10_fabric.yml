@@ -6,6 +6,7 @@ spec:
   data:
     - name: "Fabric-A"
       index: 1
+      amount_of_super_spines: 6
       member_of_groups: ["fabrics"]
       children:
         kind: NetworkPod
@@ -23,6 +24,7 @@ spec:
     - name: "Fabric-B"
       index: 2
       member_of_groups: ["fabrics"]
+      amount_of_super_spines: 4
       children:
         kind: NetworkPod
         data:
