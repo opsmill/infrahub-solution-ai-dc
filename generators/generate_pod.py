@@ -37,6 +37,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"].lower()
         self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
         self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
+        self.amount_of_spines: int = data["NetworkPod"]["edges"][0]["node"]["amount_of_spines"]["value"]
         self.fabric_amount_of_super_spines: int = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
             "amount_of_super_spines"
         ]["value"]
@@ -64,7 +65,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     async def create_spine_switches(self) -> None:
         """Create the spine switches"""
 
-        for idx in range(1, 5):
+        for idx in range(1, self.amount_of_spine_switches):
             device = await self.client.create(
                 NetworkDevice,
                 hostname=f"spine-{self.pod_name}-{idx}",

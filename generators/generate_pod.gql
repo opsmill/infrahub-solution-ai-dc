@@ -3,6 +3,9 @@ query ($pod_name: String!) {
     edges {
       node {
         id
+        amount_of_spines {
+          value
+        }
         name {
           value
         }

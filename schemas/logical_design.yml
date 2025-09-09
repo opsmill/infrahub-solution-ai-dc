@@ -38,6 +38,11 @@ nodes:
     children: ""
     include_in_menu: false
     attributes:
+      - name: amount_of_spines
+        label: Amount of Spine switches
+        kind: Number
+        optional: false
+        default_value: 4
       - name: role
         kind: Dropdown
         choices:
