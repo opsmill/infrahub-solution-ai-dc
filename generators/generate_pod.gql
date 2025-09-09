@@ -12,10 +12,16 @@ query ($pod_name: String!) {
         index {
           value
         }
+        role {
+          value
+        }
         parent {
           node {
             id
             name {
+              value
+            }
+            amount_of_super_spines {
               value
             }
           }

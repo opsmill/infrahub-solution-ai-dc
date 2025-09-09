@@ -16,6 +16,8 @@ from solution_ai_dc.sorting import create_sorted_device_interface_map
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
+EXCLUDED_POD_ROLES = ["fabric"]
+
 
 class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_id: str
@@ -36,12 +38,16 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_id: str = data["NetworkPod"]["edges"][0]["node"]["id"]
         self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
         self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
+        self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"].lower()
         self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
         self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
             "name"
         ]["value"].lower()
 
         self.spine_switches = []
+
+        if self.pod_role in EXCLUDED_POD_ROLES:
+            raise ValueError(f"Cannot run pod generator on {self.pod_name}-{self.pod_id}: {self.pod_role} is not supported by the generator!")
 
         await self.allocate_resource_pools()
 
