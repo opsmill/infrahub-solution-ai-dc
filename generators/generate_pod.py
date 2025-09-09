@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
 from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import LocationRack, LocationRackBuilder, NetworkDevice, NetworkInterface, NetworkPod
+from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
 from solution_ai_dc.sorting import create_sorted_device_interface_map
-
-if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
 
 EXCLUDED_POD_ROLES = ["fabric"]
 
@@ -31,6 +26,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
 
     pod_prefix_pool: CoreIPPrefixPool
     spine_switches: list[NetworkDevice]
+    super_spine_switches: list[NetworkDevice]
 
     logger = logging.getLogger("infrahub.tasks")
 
@@ -40,14 +36,22 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
         self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"].lower()
         self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
-        self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
-            "name"
-        ]["value"].lower()
+        self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
+        self.fabric_amount_of_super_spines: int = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
+            "amount_of_super_spines"
+        ]["value"]
 
         self.spine_switches = []
 
         if self.pod_role in EXCLUDED_POD_ROLES:
-            raise ValueError(f"Cannot run pod generator on {self.pod_name}-{self.pod_id}: {self.pod_role} is not supported by the generator!")
+            msg = f"Cannot run pod generator on {self.pod_name}-{self.pod_id}: {self.pod_role} is not supported by the generator!"
+            raise ValueError(msg)
+
+        await self.get_super_spine_switches_for_fabric()
+
+        if self.fabric_amount_of_super_spines != len(self.super_spine_switches):
+            msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: the fabric doesn't seem to be fully generated yet!"
+            raise RuntimeError(msg)
 
         await self.allocate_resource_pools()
 
@@ -118,19 +122,21 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         pod.prefix_pool = self.pod_prefix_pool
         await pod.save(allow_upsert=True)
 
-    async def connect_spine_to_super_spine(self) -> None:
-        fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
-        super_spine_switches = await self.client.filters(
-            kind=NetworkDevice, pod__ids=[fabric_pod.id], role__value="super_spine"
+    async def get_super_spine_switches_for_fabric(self) -> tuple[NetworkPod, list[NetworkDevice]]:
+        self.fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
+        self.super_spine_switches = await self.client.filters(
+            kind=NetworkDevice, pod__ids=[self.fabric_pod.id], role__value="super_spine"
         )
+        return self.fabric_pod, self.super_spine_switches
 
+    async def connect_spine_to_super_spine(self) -> None:
         spine_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[spine.id for spine in self.spine_switches], role__value="super_spine"
         )
         spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
 
         super_spine_interfaces = await self.client.filters(
-            kind=NetworkInterface, device__ids=[ss.id for ss in super_spine_switches], role__value="spine"
+            kind=NetworkInterface, device__ids=[ss.id for ss in self.super_spine_switches], role__value="spine"
         )
         super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
