@@ -68,6 +68,13 @@ nodes:
     attributes:
       - name: name
         kind: Text
+      - name: status
+        kind: Dropdown
+        default_value: inactive
+        choices:
+          - name: active
+          - name: inactive
+          - name: maintenance
       - name: role
         kind: Dropdown
         optional: true
