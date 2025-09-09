@@ -130,5 +130,4 @@ nodes:
         cardinality: many
         kind: Attribute
         optional: true
-        min_count: 2
         max_count: 2
