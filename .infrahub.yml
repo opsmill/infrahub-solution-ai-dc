@@ -15,6 +15,9 @@ queries:
   - name: generate_rack
     file_path: "./generators/generate_rack.gql"
 
+  - name: network_device_startup_config
+    file_path: "./transforms/startup_config.gql"
+
 
 generator_definitions:
   - name: generate-fabric
@@ -49,3 +52,9 @@ generator_definitions:
     convert_query_response: false
     # execute_in_proposed_change: false
     # execute_after_merge: false
+
+jinja2_transforms:
+  - name: device_startup_config
+    description: "device config transform"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config.j2"

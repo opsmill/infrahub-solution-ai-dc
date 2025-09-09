@@ -1,0 +1,16 @@
+{% set device = data.NetworkDevice.edges[0].node %}
+hostname {{ device.hostname.value }}
+
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+interface {{ interface.name.value }}
+{% if interface.status.value == "inactive" %}
+  shutdown
+{% else %}
+  no shutdown
+{% endif %}
+{% if interface.ip_address.node %}
+  ip address {{ interface.ip_address.node.address.value }}
+{%- endif %}
+
+{% endfor %}
