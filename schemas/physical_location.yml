@@ -6,6 +6,7 @@ generics:
     namespace: Location
     hierarchical: true
     display_labels: ["name__value"]
+    include_in_menu: false
     attributes:
       - name: name
         kind: Text
@@ -20,6 +21,7 @@ nodes:
       - name__value
     children: LocationRack
     parent: ""
+    include_in_menu: false
 
   - name: Rack
     namespace: Location
@@ -31,6 +33,7 @@ nodes:
     human_friendly_id:
       - name__value
     uniqueness_constraints: [["pod", "index__value"]]
+    include_in_menu: false
     attributes:
       - name: rack_type
         kind: Dropdown

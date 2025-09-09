@@ -17,6 +17,7 @@ nodes:
     generate_template: true
     display_labels:
       - hostname__value
+    include_in_menu: false
     attributes:
       - name: hostname
         kind: Text
@@ -63,6 +64,7 @@ nodes:
     uniqueness_constraints:
       - [device, name__value]
     order_by: ["index__value"]
+    include_in_menu: false
     attributes:
       - name: name
         kind: Text
@@ -108,6 +110,7 @@ nodes:
 
   - name: Link
     namespace: Network
+    include_in_menu: false
     attributes:
       - name: name
         kind: Text
