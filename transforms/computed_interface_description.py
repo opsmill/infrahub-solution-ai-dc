@@ -6,7 +6,11 @@ class ComputedInterfaceDescription(InfrahubTransform):
 
     async def transform(self, data):
         src_interface: str = data["NetworkInterface"]["edges"][0]["node"]["id"]
-        network_link: dict = data["NetworkLink"]["edges"][0]["node"]
+        network_link: dict = data["NetworkInterface"]["edges"][0]["node"]["link"]["node"]
+
+        if not network_link:
+            return ""
+
         endpoint_edges = network_link["endpoints"]["edges"]
 
         for endpoint_node in endpoint_edges:

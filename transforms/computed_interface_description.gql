@@ -1,33 +1,32 @@
 query ComputedInterfaceDescription($id: ID!) {
-  NetworkLink(endpoints__ids: [$id]) {
-    edges {
-      node {
-        endpoints {
-          edges {
-            node {
-              id
-              ... on NetworkInterface {
-                name {
-                  value
-                }
-                device {
-                  node {
-                    hostname {
-                      value
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
   NetworkInterface(ids: [$id]) {
     edges {
       node {
 	id
+	link {
+	  node {
+	    id
+	    endpoints {
+	      edges {
+		node {
+		  id
+		  ... on NetworkInterface {
+		    name {
+		      value
+		    }
+		    device {
+		      node {
+			hostname {
+			  value
+			}
+		      }
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+	}
       }
     }
   }
