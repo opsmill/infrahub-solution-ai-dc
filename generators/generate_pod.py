@@ -34,7 +34,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_id: str = data["NetworkPod"]["edges"][0]["node"]["id"]
         self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
         self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
-        self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"].lower()
+        self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"]
         self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
         self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
         self.amount_of_spines: int = data["NetworkPod"]["edges"][0]["node"]["amount_of_spines"]["value"]
@@ -42,6 +42,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             "amount_of_super_spines"
         ]["value"]
 
+        self.pod_role = self.pod_role.lower() if self.pod_role else None
         self.spine_switches = []
 
         if self.pod_role in EXCLUDED_POD_ROLES:
