@@ -71,12 +71,14 @@ def restart(ctx: Context, component: str = "") -> None:
 
     ctx.run("docker compose restart", pty=True)
 
+
 @task
 def load_menu(ctx: Context) -> None:
     """
     Load schemas into InfraHub using infrahubctl.
     """
     ctx.run("infrahubctl menu load menus/", pty=True)
+
 
 @task
 def load_schema(ctx: Context) -> None:

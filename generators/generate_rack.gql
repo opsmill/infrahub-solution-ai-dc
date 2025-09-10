@@ -42,6 +42,9 @@ query($rack_name: String!) {
 		id
 	      }
 	    }
+	    amount_of_spines {
+	      value
+	    }
 	  }
 	}
       }

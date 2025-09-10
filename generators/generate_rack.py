@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
@@ -10,6 +9,8 @@ from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 from solution_ai_dc.sorting import create_sorted_device_interface_map
+
+EXCLUDED_RACK_TYPES = []
 
 LEAF_TEMPLATE_MAP = {
     "compute": "leaf-switch-compute",
@@ -26,6 +27,8 @@ class RackGenerator(InfrahubGenerator):
     pod_index: int
     pod_name: str
 
+    spine_switches: list[NetworkDevice]
+
     leaf_switch: NetworkDevice
 
     loopback_pool: CoreIPAddressPool
@@ -40,22 +43,29 @@ class RackGenerator(InfrahubGenerator):
         self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
 
         self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
-        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"][
+        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]
+        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"]["value"].lower()
+        self.pod_amount_of_spines: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["amount_of_spines"][
             "value"
         ]
-        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"][
-            "value"
-        ].lower()
 
-        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
-            "loopback_pool"
-        ]["node"]["id"]
-        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"][
-            "prefix_pool"
-        ]["node"]["id"]
+        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["loopback_pool"]["node"][
+            "id"
+        ]
+        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["prefix_pool"]["node"]["id"]
 
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
+
+        self.spine_switches = await self.client.filters(kind=NetworkDevice, pod__ids=[self.pod_id], role__value="spine")
+
+        if self.rack_type in EXCLUDED_RACK_TYPES:
+            msg = f"Cannot run rack generator on {self.rack_name}-{self.rack_id}: {self.rack_type} is not supported by the generator!"
+            raise ValueError(msg)
+
+        if self.pod_amount_of_spines != len(self.spine_switches):
+            msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
+            raise RuntimeError(msg)
 
         await self.create_leaf_switch()
 
@@ -74,9 +84,8 @@ class RackGenerator(InfrahubGenerator):
         await self.leaf_switch.save(allow_upsert=True)
 
     async def connect_leaf_to_spine(self) -> None:
-        spine_switches = await self.client.filters(kind=NetworkDevice, pod__ids=[self.pod_id], role__value="spine")
         spine_interfaces = await self.client.filters(
-            kind=NetworkInterface, device__ids=[spine.id for spine in spine_switches], role__value="leaf"
+            kind=NetworkInterface, device__ids=[spine.id for spine in self.spine_switches], role__value="leaf"
         )
         spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
 

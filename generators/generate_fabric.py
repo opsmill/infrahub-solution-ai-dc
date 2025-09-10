@@ -20,6 +20,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     async def generate(self, data: dict) -> None:
         self.fabric_name = data["NetworkFabric"]["edges"][0]["node"]["name"]["value"].lower()
         self.fabric_id = data["NetworkFabric"]["edges"][0]["node"]["id"]
+        self.amount_of_super_spines = data["NetworkFabric"]["edges"][0]["node"]["amount_of_super_spines"]["value"]
 
         await self.allocate_resource_pools()
 
@@ -30,7 +31,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     async def create_super_spine_switches(self) -> None:
         fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
 
-        for idx in range(1, 7):
+        for idx in range(1, self.amount_of_super_spines + 1):
             device = await self.client.create(
                 NetworkDevice,
                 hostname=f"ss-{self.fabric_name}-{idx}",
