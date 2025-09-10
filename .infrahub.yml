@@ -66,3 +66,12 @@ python_transforms:
   - name: computed_interface_description
     class_name: ComputedInterfaceDescription
     file_path: "./transforms/computed_interface_description.py"
+
+artifact_definitions:
+  - name: "startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "name__value"
+    content_type: "text/plain"
+    targets: "devices"
+    transformation: "device_startup_config"
