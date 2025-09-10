@@ -5,6 +5,13 @@ query StartupConfig($name: String!){
         hostname {
           value
         }
+        loopback_ip {
+          node {
+            address {
+              ip
+            }
+          }
+        }
         interfaces {
           edges {
             node {
@@ -12,6 +19,9 @@ query StartupConfig($name: String!){
                 value
               }
               description {
+                value
+              }
+              role {
                 value
               }
               status {

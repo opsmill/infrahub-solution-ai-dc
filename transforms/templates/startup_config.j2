@@ -1,3 +1,4 @@
+feature ospf
 {% set device = data.NetworkDevice.edges[0].node %}
 hostname {{ device.hostname.value }}
 
@@ -14,6 +15,14 @@ interface {{ interface.name.value }}
 {% endif %}
 {% if interface.ip_address.node %}
   ip address {{ interface.ip_address.node.address.value }}
-{%- endif %}
+{% endif %}
+{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.status.value != "inactive" %}
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+{% elif interface.role.value in ["loopback"] %}
+  ip router ospf UNDERLAY area 0.0.0.0
+{% endif %}
 
 {% endfor %}
+router ospf UNDERLAY
+  router-id {{ device.loopback_ip.node.address.ip }}
