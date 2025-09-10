@@ -50,4 +50,8 @@ async def connect_interface_maps(
             kind="NetworkLink", name=name, medium="copper", endpoints=[src_interface, dst_interface]
         )
         await network_link.save(allow_upsert=True)
+        src_interface.status.value = "active"
+        await src_interface.save(allow_upsert=True)
+        dst_interface.status.value = "active"
+        await dst_interface.save(allow_upsert=True)
         logger.info(f"Connected {name}")

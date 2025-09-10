@@ -1,0 +1,43 @@
+query StartupConfig($name: String!){
+  NetworkDevice(hostname__value: $name) {
+    edges {
+      node {
+        hostname {
+          value
+        }
+        loopback_ip {
+          node {
+            address {
+              ip
+            }
+          }
+        }
+        interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+              description {
+                value
+              }
+              role {
+                value
+              }
+              status {
+                value
+              }
+              ip_address {
+                node {
+                  address {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

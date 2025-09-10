@@ -6,7 +6,7 @@ from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import NetworkDevice, NetworkPod
+from solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
 
 
 class FabricGenerator(InfrahubGenerator, GeneratorMixin):
@@ -41,6 +41,20 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 pod=fabric_pod,
             )
             await device.save(allow_upsert=True)
+
+            # FIX: seems the id of a related node assigned from a pool is not immediately accessible
+            device = await self.client.get(
+                NetworkDevice,
+                id=device.id,
+                include=["ip_address"],
+                exclude=["rack", "pod", "role", "hostname", "object_template", "member_of_groups"],
+            )
+            loopback_interface = await self.client.get(
+                NetworkInterface, device__ids=[device.id], role__value="loopback"
+            )
+            loopback_interface.status.value = "active"
+            loopback_interface.ip_address = device.loopback_ip.id
+            await loopback_interface.save(allow_upsert=True)
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")

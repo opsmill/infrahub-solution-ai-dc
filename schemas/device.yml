@@ -68,6 +68,20 @@ nodes:
     attributes:
       - name: name
         kind: Text
+      - name: description
+        kind: Text
+        computed_attribute:
+          kind: TransformPython
+          transform: computed_interface_description
+        read_only: true
+        optional: true
+      - name: status
+        kind: Dropdown
+        default_value: inactive
+        choices:
+          - name: active
+          - name: inactive
+          - name: maintenance
       - name: role
         kind: Dropdown
         optional: true
@@ -82,6 +96,8 @@ nodes:
             label: Super Spine
           - name: leaf
             label: Leaf
+          - name: loopback
+            label: Loopback
           - name: server
             label: Server
           - name: storage

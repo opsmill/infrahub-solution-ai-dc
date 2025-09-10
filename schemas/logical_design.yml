@@ -45,6 +45,7 @@ nodes:
         default_value: 4
       - name: role
         kind: Dropdown
+        default_value: cpu
         choices:
           - name: fabric
             label: Fabric
@@ -52,10 +53,6 @@ nodes:
             label: CPU
           - name: storage
             label: Storage
-          - name: mor
-            label: MOR
-          - name: eor
-            label: EOR
         optional: true
     relationships:
       - name: racks
