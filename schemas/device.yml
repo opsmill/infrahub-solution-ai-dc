@@ -96,6 +96,8 @@ nodes:
             label: Super Spine
           - name: leaf
             label: Leaf
+          - name: loopback
+            label: Loopback
           - name: server
             label: Server
           - name: storage
