@@ -52,8 +52,9 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
             loopback_interface = await self.client.get(
                 NetworkInterface, device__ids=[device.id], role__value="loopback"
             )
+            loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id
-            await loopback_interface.save()
+            await loopback_interface.save(allow_upsert=True)
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
