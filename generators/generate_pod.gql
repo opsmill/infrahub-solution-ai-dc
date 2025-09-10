@@ -24,8 +24,10 @@ query ($pod_name: String!) {
             name {
               value
             }
-            amount_of_super_spines {
-              value
+            ... on NetworkFabric {
+              amount_of_super_spines {
+                value
+              }
             }
           }
         }
