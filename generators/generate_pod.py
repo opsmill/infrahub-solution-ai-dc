@@ -66,7 +66,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     async def create_spine_switches(self) -> None:
         """Create the spine switches"""
 
-        for idx in range(1, self.amount_of_spine_switches):
+        for idx in range(1, self.amount_of_spines + 1):
             device = await self.client.create(
                 NetworkDevice,
                 hostname=f"spine-{self.pod_name}-{idx}",
