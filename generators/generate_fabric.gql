@@ -2,13 +2,13 @@ query($fabric_name: String!) {
   NetworkFabric(name__value: $fabric_name) {
     edges {
       node {
-	id
-	name {
-	  value
-	}
-	amount_of_super_spines {
-	  value
-	}
+        id
+        name {
+          value
+        }
+        amount_of_super_spines {
+          value
+        }
       }
     }
   }
