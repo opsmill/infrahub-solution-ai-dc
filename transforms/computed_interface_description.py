@@ -1,10 +1,12 @@
+from typing import Any
+
 from infrahub_sdk.transforms import InfrahubTransform
 
 
 class ComputedInterfaceDescription(InfrahubTransform):
     query = "computed_interface_description"
 
-    async def transform(self, data):
+    async def transform(self, data: dict[str, Any]) -> str:
         src_interface: str = data["NetworkInterface"]["edges"][0]["node"]["id"]
         network_link: dict = data["NetworkInterface"]["edges"][0]["node"]["link"]["node"]
 
