@@ -4,7 +4,9 @@ hostname {{ device.hostname.value }}
 {% for interface_edge in device.interfaces.edges %}
   {% set interface = interface_edge.node %}
 interface {{ interface.name.value }}
+{% if interface.description.value %}
   description {{ interface.description.value }}
+{% endif %}
 {% if interface.status.value == "inactive" %}
   shutdown
 {% else %}
