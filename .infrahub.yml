@@ -25,6 +25,8 @@ generator_definitions:
       fabric_name: name__value
     class_name: FabricGenerator
     convert_query_response: false
+    # execute_in_proposed_change: false
+    # execute_after_merge: false
 
   - name: generate-pod
     file_path: "./generators/generate_pod.py"
@@ -34,10 +36,16 @@ generator_definitions:
       pod_name: name__value
     class_name: PodGenerator
     convert_query_response: false
+    # execute_in_proposed_change: false
+    # execute_after_merge: false
 
   - name: generate-rack
     file_path: "./generators/generate_rack.py"
     query: generate_rack
     targets: racks
+    parameters:
+      rack_name: name__value
     class_name: RackGenerator
     convert_query_response: false
+    # execute_in_proposed_change: false
+    # execute_after_merge: false
