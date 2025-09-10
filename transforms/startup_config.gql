@@ -2,31 +2,31 @@ query StartupConfig($name: String!){
   NetworkDevice(hostname__value: $name) {
     edges {
       node {
-	hostname {
-	  value
-	}
-	interfaces {
-	  edges {
-	    node {
-	      name {
-		value
-	      }
-	      description {
-		value
-	      }
-	      status {
-		value
-	      }
-	      ip_address {
-		node {
-		  address {
-		    value
-		  }
-		}
-	      }
-	    }
-	  }
-	}
+        hostname {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+              description {
+                value
+              }
+              status {
+                value
+              }
+              ip_address {
+                node {
+                  address {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
