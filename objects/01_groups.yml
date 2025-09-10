@@ -8,3 +8,4 @@ spec:
     - name: racks
     - name: fabrics
     - name: pods
+    - name: devices
