@@ -16,7 +16,7 @@ spec:
   kind: CoreNodeTriggerRule
   data:
 
-    - name: trigger-pod-generator-update
+    - name: trigger-pod-generator-update-checksum
       branch_scope: "other_branches"
       node_kind: NetworkPod
       mutation_action: "updated"
@@ -27,7 +27,40 @@ spec:
           - attribute_name: checksum
             value_match: any
 
-    - name: trigger-rack-generator-update
+    - name: trigger-pod-generator-update-index
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: index
+            value_match: any
+
+    - name: trigger-pod-generator-update-amount-of-spines
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: amount_of_spines
+            value_match: any
+
+    - name: trigger-pod-generator-update-role
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: role
+            value_match: any
+
+    - name: trigger-rack-generator-update-checksum
       branch_scope: "other_branches"
       node_kind: LocationRack
       mutation_action: "updated"
@@ -36,4 +69,26 @@ spec:
         kind: CoreNodeTriggerAttributeMatch
         data:
           - attribute_name: checksum
+            value_match: any
+
+    - name: trigger-rack-generator-update-index
+      branch_scope: "other_branches"
+      node_kind: LocationRack
+      mutation_action: "updated"
+      action: run-rack-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: index
+            value_match: any
+
+    - name: trigger-rack-generator-update-rack-type
+      branch_scope: "other_branches"
+      node_kind: LocationRack
+      mutation_action: "updated"
+      action: run-rack-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: rack_type
             value_match: any
