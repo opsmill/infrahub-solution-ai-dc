@@ -4,7 +4,7 @@ kind: Object
 spec:
   kind: TemplateNetworkDevice
   data:
-    - template_name: "Spine Switch"
+    - template_name: "spine-switch"
       interfaces:
         kind: TemplateNetworkInterface
         data:
@@ -107,7 +107,7 @@ spec:
           - template_name: "SpineSwitchEthernet32"
             name: "Ethernet32"
             role: "super_spine"
-    - template_name: "Super Spine Switch"
+    - template_name: "super-spine-switch"
       interfaces:
         kind: TemplateNetworkInterface
         data:

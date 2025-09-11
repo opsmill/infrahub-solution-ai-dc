@@ -17,9 +17,11 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-A2"
             index: 2
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-A3"
             index: 3
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
     - name: "Fabric-B"
       index: 2
@@ -34,7 +36,9 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-B2"
             index: 2
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-B3"
             index: 3
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]

@@ -44,6 +44,11 @@ nodes:
             label: Storage
         default_value: compute
     relationships:
+      - name: leaf_switch_template
+        kind: Attribute
+        peer: CoreObjectTemplate
+        cardinality: one
+        identifier: "rack__leaf_template"
       - name: pod
         peer: NetworkPod
         kind: Attribute
