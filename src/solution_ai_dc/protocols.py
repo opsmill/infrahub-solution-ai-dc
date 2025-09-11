@@ -53,6 +53,7 @@ class NetworkDevice(CoreArtifactTarget):
 
 class NetworkFabric(NetworkBuildingBlock):
     amount_of_super_spines: Integer
+    super_spine_switch_template: RelatedNode
 
 
 class LocationHall(LocationPhysical):
@@ -90,9 +91,11 @@ class NetworkPod(NetworkBuildingBlock, GeneratorTarget):
     loopback_pool: RelatedNode
     prefix_pool: RelatedNode
     racks: RelationshipManager
+    spine_switch_template: RelatedNode
 
 
 class LocationRack(LocationPhysical, GeneratorTarget):
     rack_type: Dropdown
     devices: RelationshipManager
+    leaf_switch_template: RelatedNode
     pod: RelatedNode
