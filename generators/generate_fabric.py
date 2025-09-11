@@ -12,6 +12,7 @@ from solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
 class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_name: str
     fabric_id: str
+    fabric_super_spine_switch_template: str
 
     loopback_pool: CoreIPAddressPool
 
@@ -20,6 +21,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     async def generate(self, data: dict) -> None:
         self.fabric_name = data["NetworkFabric"]["edges"][0]["node"]["name"]["value"].lower()
         self.fabric_id = data["NetworkFabric"]["edges"][0]["node"]["id"]
+        self.fabric_super_spine_switch_template = data["NetworkFabric"]["edges"][0]["node"]["super_spine_switch_template"]["node"]["id"]
         self.amount_of_super_spines = data["NetworkFabric"]["edges"][0]["node"]["amount_of_super_spines"]["value"]
 
         await self.allocate_resource_pools()
@@ -35,7 +37,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
             device = await self.client.create(
                 NetworkDevice,
                 hostname=f"ss-{self.fabric_name}-{idx}",
-                object_template={"hfid": ["Super Spine Switch"]},
+                object_template={"id": self.fabric_super_spine_switch_template},
                 loopback_ip=self.loopback_pool,
                 role="super_spine",
                 pod=fabric_pod,

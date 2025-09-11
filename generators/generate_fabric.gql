@@ -9,6 +9,11 @@ query($fabric_name: String!) {
         amount_of_super_spines {
           value
         }
+        super_spine_switch_template {
+          node {
+            id
+          }
+        }
       }
     }
   }

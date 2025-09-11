@@ -28,6 +28,12 @@ nodes:
         kind: Number
         optional: false
         default_value: 4
+    relationships:
+      - name: super_spine_switch_template
+        peer: CoreObjectTemplate
+        kind: Attribute
+        cardinality: one
+        identifier: "fabric__super_spine_template"
 
   - name: Pod
     namespace: Network
