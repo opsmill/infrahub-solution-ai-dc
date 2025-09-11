@@ -45,3 +45,21 @@ Available tasks:
 
 To start infrahub simply use `invoke start`
 
+## Loading the data
+
+```
+inv load
+```
+
+## (Optionally) load the event triggers and rules
+
+This needs to be done because we only load the triggers after the repository has been fully synced and the generators have been properly imported.
+
+```
+cp objects/20_triggers.yml.save triggers.yml
+infrahubctl object load triggers.yml
+```
+
+## Run the generators
+
+Goto Actions > Generator definitions > generate_fabric, click the run button and select one of the target fabrics
