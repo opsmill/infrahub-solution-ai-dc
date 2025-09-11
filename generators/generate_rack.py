@@ -37,7 +37,9 @@ class RackGenerator(InfrahubGenerator):
         self.rack_index: int = data["LocationRack"]["edges"][0]["node"]["index"]["value"]
         self.rack_name: str = data["LocationRack"]["edges"][0]["node"]["name"]["value"]
         self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
-        self.rack_leaf_switch_template: str = data["LocationRack"]["edges"][0]["node"]["leaf_switch_template"]["node"]["id"]
+        self.rack_leaf_switch_template: str = data["LocationRack"]["edges"][0]["node"]["leaf_switch_template"]["node"][
+            "id"
+        ]
 
         self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
         self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]

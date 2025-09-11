@@ -21,7 +21,9 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     async def generate(self, data: dict) -> None:
         self.fabric_name = data["NetworkFabric"]["edges"][0]["node"]["name"]["value"].lower()
         self.fabric_id = data["NetworkFabric"]["edges"][0]["node"]["id"]
-        self.fabric_super_spine_switch_template = data["NetworkFabric"]["edges"][0]["node"]["super_spine_switch_template"]["node"]["id"]
+        self.fabric_super_spine_switch_template = data["NetworkFabric"]["edges"][0]["node"][
+            "super_spine_switch_template"
+        ]["node"]["id"]
         self.amount_of_super_spines = data["NetworkFabric"]["edges"][0]["node"]["amount_of_super_spines"]["value"]
 
         await self.allocate_resource_pools()
