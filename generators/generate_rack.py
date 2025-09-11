@@ -12,16 +12,12 @@ from solution_ai_dc.sorting import create_sorted_device_interface_map
 
 EXCLUDED_RACK_TYPES = []
 
-LEAF_TEMPLATE_MAP = {
-    "compute": "leaf-switch-compute",
-    "storage": "leaf-switch-storage",
-}
-
 
 class RackGenerator(InfrahubGenerator):
     rack_id: str
     rack_index: int
     rack_name: str
+    rack_leaf_switch_template: str
 
     pod_id: str
     pod_index: int
@@ -41,6 +37,7 @@ class RackGenerator(InfrahubGenerator):
         self.rack_index: int = data["LocationRack"]["edges"][0]["node"]["index"]["value"]
         self.rack_name: str = data["LocationRack"]["edges"][0]["node"]["name"]["value"]
         self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
+        self.rack_leaf_switch_template: str = data["LocationRack"]["edges"][0]["node"]["leaf_switch_template"]["node"]["id"]
 
         self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
         self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]
@@ -75,7 +72,7 @@ class RackGenerator(InfrahubGenerator):
         self.leaf_switch = await self.client.create(
             NetworkDevice,
             hostname=f"leaf-{self.pod_name}-{self.rack_index}",
-            object_template={"hfid": [LEAF_TEMPLATE_MAP[self.rack_type]]},
+            object_template={"id": self.rack_leaf_switch_template},
             pod={"id": self.pod_id},
             rack={"id": self.rack_id},
             loopback_ip=self.loopback_pool,
