@@ -39,6 +39,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 loopback_ip=self.loopback_pool,
                 role="super_spine",
                 pod=fabric_pod,
+                member_of_groups=["devices"],
             )
             await device.save(allow_upsert=True)
 

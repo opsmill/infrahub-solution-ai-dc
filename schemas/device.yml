@@ -15,6 +15,8 @@ nodes:
   - name: Device
     namespace: Network
     generate_template: true
+    inherit_from:
+      - CoreArtifactTarget
     display_labels:
       - hostname__value
     include_in_menu: false

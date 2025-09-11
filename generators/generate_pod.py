@@ -74,6 +74,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
                 pod={"id": self.pod_id},
                 loopback_ip=self.loopback_pool,
                 role="spine",
+                member_of_groups=["devices"],
             )
             await device.save(allow_upsert=True)
 

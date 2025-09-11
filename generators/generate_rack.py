@@ -80,6 +80,7 @@ class RackGenerator(InfrahubGenerator):
             rack={"id": self.rack_id},
             loopback_ip=self.loopback_pool,
             role="leaf",
+            member_of_groups=["devices"],
         )
         await self.leaf_switch.save(allow_upsert=True)
         # FIX: seems the id of a related node assigned from a pool is not immediately accessible
