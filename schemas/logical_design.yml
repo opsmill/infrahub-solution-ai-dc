@@ -28,6 +28,12 @@ nodes:
         kind: Number
         optional: false
         default_value: 4
+    relationships:
+      - name: super_spine_switch_template
+        peer: CoreObjectTemplate
+        kind: Attribute
+        cardinality: one
+        identifier: "fabric__super_spine_template"
 
   - name: Pod
     namespace: Network
@@ -55,6 +61,11 @@ nodes:
             label: Storage
         optional: true
     relationships:
+      - name: spine_switch_template
+        peer: CoreObjectTemplate
+        kind: Attribute
+        cardinality: one
+        identifier: "pod__spine_template"
       - name: racks
         peer: LocationRack
         cardinality: many

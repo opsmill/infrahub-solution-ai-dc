@@ -7,6 +7,7 @@ spec:
     - name: "Fabric-A"
       index: 1
       amount_of_super_spines: 6
+      super_spine_switch_template: "super-spine-switch"
       member_of_groups: ["fabrics"]
       children:
         kind: NetworkPod
@@ -17,13 +18,16 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-A2"
             index: 2
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-A3"
             index: 3
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
     - name: "Fabric-B"
       index: 2
       member_of_groups: ["fabrics"]
+      super_spine_switch_template: "super-spine-switch"
       amount_of_super_spines: 4
       children:
         kind: NetworkPod
@@ -34,7 +38,9 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-B2"
             index: 2
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-B3"
             index: 3
+            spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]

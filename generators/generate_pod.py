@@ -18,6 +18,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_id: str
     pod_index: int
     pod_name: str
+    pod_spine_switch_template: str
 
     fabric_id: str
     fabric_name: str
@@ -35,6 +36,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
         self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
         self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"]
+        self.pod_spine_switch_template = data["NetworkPod"]["edges"][0]["node"]["spine_switch_template"]["node"]["id"]
         self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
         self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
         self.amount_of_spines: int = data["NetworkPod"]["edges"][0]["node"]["amount_of_spines"]["value"]
@@ -70,7 +72,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             device = await self.client.create(
                 NetworkDevice,
                 hostname=f"spine-{self.pod_name}-{idx}",
-                object_template={"hfid": ["Spine Switch"]},
+                object_template={"id": self.pod_spine_switch_template},
                 pod={"id": self.pod_id},
                 loopback_ip=self.loopback_pool,
                 role="spine",

@@ -18,6 +18,11 @@ query ($pod_name: String!) {
         role {
           value
         }
+	spine_switch_template {
+	  node {
+	    id
+	  }
+	}
         parent {
           node {
             id

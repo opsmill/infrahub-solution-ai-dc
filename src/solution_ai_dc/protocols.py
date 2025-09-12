@@ -4,39 +4,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import CoreNode, BuiltinIPAddress, BuiltinIPAddressSync, BuiltinIPNamespace, BuiltinIPNamespaceSync, BuiltinIPPrefix, BuiltinIPPrefixSync, BuiltinTag, BuiltinTagSync, CoreAccount, CoreAccountGroup, CoreAccountGroupSync, CoreAccountRole, CoreAccountRoleSync, CoreAccountSync, CoreAction, CoreActionSync, CoreArtifact, CoreArtifactCheck, CoreArtifactCheckSync, CoreArtifactDefinition, CoreArtifactDefinitionSync, CoreArtifactSync, CoreArtifactTarget, CoreArtifactTargetSync, CoreArtifactThread, CoreArtifactThreadSync, CoreArtifactValidator, CoreArtifactValidatorSync, CoreBasePermission, CoreBasePermissionSync, CoreChangeComment, CoreChangeCommentSync, CoreChangeThread, CoreChangeThreadSync, CoreCheck, CoreCheckDefinition, CoreCheckDefinitionSync, CoreCheckSync, CoreComment, CoreCommentSync, CoreCredential, CoreCredentialSync, CoreCustomWebhook, CoreCustomWebhookSync, CoreDataCheck, CoreDataCheckSync, CoreDataValidator, CoreDataValidatorSync, CoreFileCheck, CoreFileCheckSync, CoreFileThread, CoreFileThreadSync, CoreGeneratorAction, CoreGeneratorActionSync, CoreGeneratorCheck, CoreGeneratorCheckSync, CoreGeneratorDefinition, CoreGeneratorDefinitionSync, CoreGeneratorGroup, CoreGeneratorGroupSync, CoreGeneratorInstance, CoreGeneratorInstanceSync, CoreGeneratorValidator, CoreGeneratorValidatorSync, CoreGenericAccount, CoreGenericAccountSync, CoreGenericRepository, CoreGenericRepositorySync, CoreGlobalPermission, CoreGlobalPermissionSync, CoreGraphQLQuery, CoreGraphQLQueryGroup, CoreGraphQLQueryGroupSync, CoreGraphQLQuerySync, CoreGroup, CoreGroupAction, CoreGroupActionSync, CoreGroupSync, CoreGroupTriggerRule, CoreGroupTriggerRuleSync, CoreIPAddressPool, CoreIPAddressPoolSync, CoreIPPrefixPool, CoreIPPrefixPoolSync, CoreMenu, CoreMenuItem, CoreMenuItemSync, CoreMenuSync, CoreNodeSync, CoreNodeTriggerAttributeMatch, CoreNodeTriggerAttributeMatchSync, CoreNodeTriggerMatch, CoreNodeTriggerMatchSync, CoreNodeTriggerRelationshipMatch, CoreNodeTriggerRelationshipMatchSync, CoreNodeTriggerRule, CoreNodeTriggerRuleSync, CoreNumberPool, CoreNumberPoolSync, CoreObjectComponentTemplate, CoreObjectComponentTemplateSync, CoreObjectPermission, CoreObjectPermissionSync, CoreObjectTemplate, CoreObjectTemplateSync, CoreObjectThread, CoreObjectThreadSync, CorePasswordCredential, CorePasswordCredentialSync, CoreProfile, CoreProfileSync, CoreProposedChange, CoreProposedChangeSync, CoreReadOnlyRepository, CoreReadOnlyRepositorySync, CoreRepository, CoreRepositoryGroup, CoreRepositoryGroupSync, CoreRepositorySync, CoreRepositoryValidator, CoreRepositoryValidatorSync, CoreResourcePool, CoreResourcePoolSync, CoreSchemaCheck, CoreSchemaCheckSync, CoreSchemaValidator, CoreSchemaValidatorSync, CoreStandardCheck, CoreStandardCheckSync, CoreStandardGroup, CoreStandardGroupSync, CoreStandardWebhook, CoreStandardWebhookSync, CoreTaskTarget, CoreTaskTargetSync, CoreThread, CoreThreadComment, CoreThreadCommentSync, CoreThreadSync, CoreTransformJinja2, CoreTransformJinja2Sync, CoreTransformPython, CoreTransformPythonSync, CoreTransformation, CoreTransformationSync, CoreTriggerRule, CoreTriggerRuleSync, CoreUserValidator, CoreUserValidatorSync, CoreValidator, CoreValidatorSync, CoreWebhook, CoreWebhookSync, InternalAccountToken, InternalAccountTokenSync, InternalRefreshToken, InternalRefreshTokenSync, IpamNamespace, IpamNamespaceSync, LineageOwner, LineageOwnerSync, LineageSource, LineageSourceSync
+from infrahub_sdk.protocols import (
+    BuiltinIPAddress,
+    BuiltinIPPrefix,
+    CoreArtifactTarget,
+    CoreNode,
+)
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     from infrahub_sdk.protocols_base import (
-        AnyAttribute,
-        AnyAttributeOptional,
-        String,
-        StringOptional,
-        Integer,
-        IntegerOptional,
-        Boolean,
-        BooleanOptional,
-        DateTime,
-        DateTimeOptional,
         Dropdown,
         DropdownOptional,
-        HashedPassword,
-        HashedPasswordOptional,
-        MacAddress,
-        MacAddressOptional,
-        IPHost,
-        IPHostOptional,
-        IPNetwork,
-        IPNetworkOptional,
-        JSONAttribute,
-        JSONAttributeOptional,
-        ListAttribute,
-        ListAttributeOptional,
-        URL,
-        URLOptional,
+        Integer,
+        String,
+        StringOptional,
     )
 
 
@@ -44,16 +28,18 @@ class NetworkBuildingBlock(CoreNode):
     index: Integer
     name: String
 
+
 class NetworkEndpoint(CoreNode):
     link: RelatedNode
+
 
 class LocationPhysical(CoreNode):
     index: Integer
     name: String
 
+
 class GeneratorTarget(CoreNode):
     checksum: StringOptional
-
 
 
 class NetworkDevice(CoreArtifactTarget):
@@ -67,6 +53,7 @@ class NetworkDevice(CoreArtifactTarget):
 
 class NetworkFabric(NetworkBuildingBlock):
     amount_of_super_spines: Integer
+    super_spine_switch_template: RelatedNode
 
 
 class LocationHall(LocationPhysical):
@@ -104,14 +91,11 @@ class NetworkPod(NetworkBuildingBlock, GeneratorTarget):
     loopback_pool: RelatedNode
     prefix_pool: RelatedNode
     racks: RelationshipManager
+    spine_switch_template: RelatedNode
 
 
 class LocationRack(LocationPhysical, GeneratorTarget):
     rack_type: Dropdown
     devices: RelationshipManager
+    leaf_switch_template: RelatedNode
     pod: RelatedNode
-
-
-
-
-
