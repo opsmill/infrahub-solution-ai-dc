@@ -25,3 +25,17 @@ def create_sorted_device_interface_map(interfaces: list[NetworkInterface]) -> di
         device_interface_map[device] = [interface_map[interface] for interface in sorted_interface_names]
 
     return device_interface_map
+
+def create_reverse_sorted_device_interface_map(interfaces: list[NetworkInterface]) -> dict[NetworkDevice, list[NetworkInterface]]:
+    device_interface_map = defaultdict(list)
+
+    for interface in interfaces:
+        device_interface_map[interface.device.peer].append(interface)
+
+    for device, intfs in device_interface_map.items():
+        interface_map = {interface.name.value: interface for interface in intfs}
+        sorted_interface_names = sort_interface_list(list(interface_map.keys()))
+        sorted_interface_names.reverse()
+        device_interface_map[device] = [interface_map[interface] for interface in sorted_interface_names]
+
+    return device_interface_map
