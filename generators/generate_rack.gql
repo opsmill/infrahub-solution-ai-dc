@@ -15,6 +15,9 @@ query($rack_name: String!) {
 	rack_type {
 	  value
 	}
+	amount_of_leafs {
+	  value
+	}
 	leaf_switch_template {
 	  node {
 	    id

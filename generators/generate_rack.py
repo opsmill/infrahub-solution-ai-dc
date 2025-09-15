@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 
 from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumberPool
 
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
+from solution_ai_dc.cabling import build_cabling_plan, build_rack_cabling_plan ,connect_interface_maps
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 from solution_ai_dc.sorting import create_sorted_device_interface_map
 
@@ -18,6 +18,7 @@ class RackGenerator(InfrahubGenerator):
     rack_index: int
     rack_name: str
     rack_leaf_switch_template: str
+    rack_amount_of_leafs: int
 
     pod_id: str
     pod_index: int
@@ -25,7 +26,7 @@ class RackGenerator(InfrahubGenerator):
 
     spine_switches: list[NetworkDevice]
 
-    leaf_switch: NetworkDevice
+    leaf_switches: list[NetworkDevice]
 
     loopback_pool: CoreIPAddressPool
     prefix_pool: CoreIPPrefixPool
@@ -40,6 +41,8 @@ class RackGenerator(InfrahubGenerator):
         self.rack_leaf_switch_template: str = data["LocationRack"]["edges"][0]["node"]["leaf_switch_template"]["node"][
             "id"
         ]
+        self.rack_amount_of_leafs: int = data["LocationRack"]["edges"][0]["node"]["amount_of_leafs"]["value"]
+        self.leaf_switches = []
 
         self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
         self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]
@@ -66,48 +69,51 @@ class RackGenerator(InfrahubGenerator):
             msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
             raise RuntimeError(msg)
 
-        await self.create_leaf_switch()
+        await self.create_leaf_switches()
 
-        await self.connect_leaf_to_spine()
+        await self.connect_leafs_to_spine()
 
-    async def create_leaf_switch(self) -> None:
-        self.leaf_switch = await self.client.create(
-            NetworkDevice,
-            hostname=f"leaf-{self.pod_name}-{self.rack_index}",
-            object_template={"id": self.rack_leaf_switch_template},
-            pod={"id": self.pod_id},
-            rack={"id": self.rack_id},
-            loopback_ip=self.loopback_pool,
-            role="leaf",
-            member_of_groups=["devices"],
-        )
-        await self.leaf_switch.save(allow_upsert=True)
-        # FIX: seems the id of a related node assigned from a pool is not immediately accessible
-        device = await self.client.get(
-            NetworkDevice,
-            id=self.leaf_switch.id,
-            include=["ip_address"],
-            exclude=["rack", "pod", "role", "hostname", "object_template", "member_of_groups"],
-        )
-        loopback_interface = await self.client.get(NetworkInterface, device__ids=[device.id], role__value="loopback")
-        loopback_interface.status.value = "active"
-        loopback_interface.ip_address = device.loopback_ip.id
-        await loopback_interface.save(allow_upsert=True)
+    async def create_leaf_switches(self) -> None:
+        for index in range(1, self.rack_amount_of_leafs + 1):
+            leaf_switch = await self.client.create(
+                NetworkDevice,
+                hostname=f"leaf-{self.pod_name}-{self.rack_index}-{index}",
+                object_template={"id": self.rack_leaf_switch_template},
+                pod={"id": self.pod_id},
+                rack={"id": self.rack_id},
+                loopback_ip=self.loopback_pool,
+                index=index,
+                role="leaf",
+                member_of_groups=["devices"],
+            )
+            await leaf_switch.save(allow_upsert=True)
+            self.leaf_switches.append(leaf_switch)
 
-    async def connect_leaf_to_spine(self) -> None:
+            # FIX: seems the id of a related node assigned from a pool is not immediately accessible
+            device = await self.client.get(
+                NetworkDevice,
+                id=leaf_switch.id,
+                include=["ip_address"],
+                exclude=["rack", "pod", "role", "hostname", "object_template", "member_of_groups"],
+            )
+            loopback_interface = await self.client.get(NetworkInterface, device__ids=[device.id], role__value="loopback")
+            loopback_interface.status.value = "active"
+            loopback_interface.ip_address = device.loopback_ip.id
+            await loopback_interface.save(allow_upsert=True)
+
+    async def connect_leafs_to_spine(self) -> None:
         spine_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[spine.id for spine in self.spine_switches], role__value="leaf"
         )
         spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
 
         leaf_interfaces = await self.client.filters(
-            kind=NetworkInterface, device__ids=[self.leaf_switch.id], role__value="spine"
+            kind=NetworkInterface, device__ids=[leaf_switch.id for leaf_switch in self.leaf_switches], role__value="spine"
         )
         leaf_interface_map = create_sorted_device_interface_map(leaf_interfaces)
 
-        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_cabling_plan(
-            logger=self.logger,
-            pod_index=self.rack_index,
+        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_rack_cabling_plan(
+            rack_index=self.rack_index,
             src_interface_map=leaf_interface_map,
             dst_interface_map=spine_interface_map,
         )
