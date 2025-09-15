@@ -53,6 +53,12 @@ query($rack_name: String!) {
 	    amount_of_spines {
 	      value
 	    }
+	    leaf_interface_sorting_method {
+	      value
+	    }
+	    spine_interface_sorting_method {
+	      value
+	    }
 	  }
 	}
       }

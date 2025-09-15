@@ -8,6 +8,8 @@ spec:
       index: 1
       amount_of_super_spines: 6
       super_spine_switch_template: "super-spine-switch"
+      fabric_interface_sorting_method: "create_reverse_sorted_device_interface_map"
+      spine_interface_sorting_method: "create_sorted_device_interface_map"
       member_of_groups: ["fabrics"]
       children:
         kind: NetworkPod
@@ -16,14 +18,20 @@ spec:
             index: 1
             role: "fabric"
             member_of_groups: ["pods"]
+            leaf_interface_sorting_method: "create_sorted_device_interface_map"
+            spine_interface_sorting_method: "create_sorted_device_interface_map"
           - name: "Pod-A2"
             index: 2
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
+            leaf_interface_sorting_method: "create_sorted_device_interface_map"
+            spine_interface_sorting_method: "create_sorted_device_interface_map"
           - name: "Pod-A3"
             index: 3
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
+            leaf_interface_sorting_method: "create_sorted_device_interface_map"
+            spine_interface_sorting_method: "create_sorted_device_interface_map"
     - name: "Fabric-B"
       index: 2
       member_of_groups: ["fabrics"]

@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import logging
 
+from typing import Callable
+
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumberPool
 
+import solution_ai_dc.sorting
+
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_cabling_plan, build_rack_cabling_plan ,connect_interface_maps
+from solution_ai_dc.cabling import build_rack_cabling_plan ,connect_interface_maps
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
-from solution_ai_dc.sorting import create_sorted_device_interface_map
 
 EXCLUDED_RACK_TYPES = []
 
@@ -19,6 +22,9 @@ class RackGenerator(InfrahubGenerator):
     rack_name: str
     rack_leaf_switch_template: str
     rack_amount_of_leafs: int
+
+    spine_interface_sorting_function: Callable
+    leaf_interface_sorting_function: Callable
 
     pod_id: str
     pod_index: int
@@ -69,6 +75,12 @@ class RackGenerator(InfrahubGenerator):
             msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
             raise RuntimeError(msg)
 
+        leaf_interface_sorting_method: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["leaf_interface_sorting_method"]["value"]
+        spine_interface_sorting_method: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["spine_interface_sorting_method"]["value"]
+
+        self.leaf_interface_sorting_function = getattr(solution_ai_dc.sorting, leaf_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(solution_ai_dc.sorting, spine_interface_sorting_method)
+
         await self.create_leaf_switches()
 
         await self.connect_leafs_to_spine()
@@ -105,12 +117,12 @@ class RackGenerator(InfrahubGenerator):
         spine_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[spine.id for spine in self.spine_switches], role__value="leaf"
         )
-        spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
+        spine_interface_map = self.spine_interface_sorting_function(spine_interfaces)
 
         leaf_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[leaf_switch.id for leaf_switch in self.leaf_switches], role__value="spine"
         )
-        leaf_interface_map = create_sorted_device_interface_map(leaf_interfaces)
+        leaf_interface_map = self.leaf_interface_sorting_function(leaf_interfaces)
 
         created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_rack_cabling_plan(
             rack_index=self.rack_index,

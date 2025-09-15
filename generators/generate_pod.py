@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import logging
 
+from typing import Callable
+
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+
+import solution_ai_dc.sorting
 
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from solution_ai_dc.generator import GeneratorMixin
 from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
-from solution_ai_dc.sorting import create_sorted_device_interface_map
 
 EXCLUDED_POD_ROLES = ["fabric"]
 
@@ -20,6 +23,9 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_name: str
     pod_spine_switch_template: str
     pod_role: str
+
+    fabric_interface_sorting_function: Callable
+    spine_interface_sorting_function: Callable
 
     fabric_id: str
     fabric_name: str
@@ -56,6 +62,12 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         if self.fabric_amount_of_super_spines != len(self.super_spine_switches):
             msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: the fabric doesn't seem to be fully generated yet!"
             raise RuntimeError(msg)
+
+        fabric_interface_sorting_method: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["fabric_interface_sorting_method"]["value"]
+        spine_interface_sorting_method: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["spine_interface_sorting_method"]["value"]
+
+        self.fabric_interface_sorting_function = getattr(solution_ai_dc.sorting, fabric_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(solution_ai_dc.sorting, spine_interface_sorting_method)
 
         await self.allocate_resource_pools()
 
@@ -153,13 +165,12 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         spine_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[spine.id for spine in self.spine_switches], role__value="super_spine"
         )
-        spine_interface_map = create_sorted_device_interface_map(spine_interfaces)
+        spine_interface_map = self.spine_interface_sorting_function(spine_interfaces)
 
         super_spine_interfaces = await self.client.filters(
             kind=NetworkInterface, device__ids=[ss.id for ss in self.super_spine_switches], role__value="spine"
         )
-        super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
-
+        super_spine_interface_map = self.fabric_interface_sorting_function(super_spine_interfaces)
 
         created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_pod_cabling_plan(
             pod_index=self.pod_index,
