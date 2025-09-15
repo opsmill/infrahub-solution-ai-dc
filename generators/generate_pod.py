@@ -6,7 +6,7 @@ from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_cabling_plan, connect_interface_maps
+from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from solution_ai_dc.generator import GeneratorMixin
 from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
 from solution_ai_dc.sorting import create_sorted_device_interface_map
@@ -19,6 +19,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_index: int
     pod_name: str
     pod_spine_switch_template: str
+    pod_role: str
 
     fabric_id: str
     fabric_name: str
@@ -44,7 +45,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             "amount_of_super_spines"
         ]["value"]
 
-        self.pod_role = self.pod_role.lower() if self.pod_role else None
         self.spine_switches = []
 
         if self.pod_role in EXCLUDED_POD_ROLES:
@@ -160,8 +160,8 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
         super_spine_interface_map = create_sorted_device_interface_map(super_spine_interfaces)
 
-        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_cabling_plan(
-            logger=self.logger,
+
+        created_cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = build_pod_cabling_plan(
             pod_index=self.pod_index,
             src_interface_map=spine_interface_map,
             dst_interface_map=super_spine_interface_map,

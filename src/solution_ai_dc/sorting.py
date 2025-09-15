@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 from netutils.interface import sort_interface_list
 
 if TYPE_CHECKING:
-    from solution_ai_dc.protocols import NetworkInterface
+    from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 
 
-def create_sorted_device_interface_map(interfaces: list[NetworkInterface]) -> dict[str, list[NetworkInterface]]:
+def create_sorted_device_interface_map(interfaces: list[NetworkInterface]) -> dict[NetworkDevice, list[NetworkInterface]]:
     """
     Creates a dictionary that maps a device hostname to a sorted list of interfaces from a list of interfaces
     """
@@ -17,7 +17,7 @@ def create_sorted_device_interface_map(interfaces: list[NetworkInterface]) -> di
     device_interface_map = defaultdict(list)
 
     for interface in interfaces:
-        device_interface_map[interface.device.display_label].append(interface)
+        device_interface_map[interface.device.peer].append(interface)
 
     for device, intfs in device_interface_map.items():
         interface_map = {interface.name.value: interface for interface in intfs}
