@@ -55,4 +55,4 @@ class CablingPlan(InfrahubTransform):
             )
 
         rows = "\n".join([",".join(entry) for entry in csv_data])
-        return header + rows
+        return header + "\n" + rows
