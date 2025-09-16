@@ -10,11 +10,14 @@ generics:
     attributes:
       - name: name
         kind: Text
+        branch: aware
       - name: index
         kind: Number
+        branch: agnostic
 nodes:
   - name: Hall
     namespace: Location
+    branch: agnostic
     inherit_from:
       - LocationPhysical
     human_friendly_id:
@@ -25,6 +28,7 @@ nodes:
 
   - name: Rack
     namespace: Location
+    branch: agnostic
     inherit_from:
       - LocationPhysical
       - GeneratorTarget
@@ -37,6 +41,7 @@ nodes:
     attributes:
       - name: rack_type
         kind: Dropdown
+        branch: aware
         choices:
           - name: compute
             label: Compute
@@ -45,6 +50,7 @@ nodes:
         default_value: compute
       - name: amount_of_leafs
         kind: Number
+        branch: aware
         label: Amount of leaf switches
         default_value: 1
         optional: false
@@ -54,17 +60,20 @@ nodes:
     relationships:
       - name: leaf_switch_template
         kind: Attribute
+        branch: aware
         peer: CoreObjectTemplate
         cardinality: one
         identifier: "rack__leaf_template"
       - name: pod
         peer: NetworkPod
+        branch: aware
         kind: Attribute
         cardinality: one
         optional: false
         identifier: "rack__pod"
       - name: devices
         peer: NetworkDevice
+        branch: aware
         kind: Generic
         cardinality: many
         identifier: "rack__device"

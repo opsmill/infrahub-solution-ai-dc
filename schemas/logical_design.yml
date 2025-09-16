@@ -11,12 +11,15 @@ generics:
       - name: name
         kind: Text
         unique: true
+        branch: aware
       - name: index
         kind: Number
+        branch: agnostic
 
 nodes:
   - name: Fabric
     namespace: Network
+    branch: agnostic
     inherit_from:
       - NetworkBuildingBlock
     parent: ""
@@ -28,20 +31,24 @@ nodes:
         kind: Number
         optional: false
         default_value: 4
+        branch: aware
       - name: fabric_interface_sorting_method
         kind: Dropdown
+        branch: aware
         choices:
           - name: create_sorted_device_interface_map
           - name: create_reverse_sorted_device_interface_map
         default_value: create_sorted_device_interface_map
       - name: spine_interface_sorting_method
         kind: Dropdown
+        branch: aware
         choices:
           - name: create_sorted_device_interface_map
           - name: create_reverse_sorted_device_interface_map
         default_value: create_sorted_device_interface_map
     relationships:
       - name: super_spine_switch_template
+        branch: aware
         peer: CoreObjectTemplate
         kind: Attribute
         cardinality: one
@@ -49,6 +56,7 @@ nodes:
 
   - name: Pod
     namespace: Network
+    branch: agnostic
     inherit_from:
       - NetworkBuildingBlock
       - GeneratorTarget
@@ -58,11 +66,13 @@ nodes:
     attributes:
       - name: amount_of_spines
         label: Amount of Spine switches
+        branch: aware
         kind: Number
         optional: false
         default_value: 4
       - name: role
         kind: Dropdown
+        branch: aware
         default_value: cpu
         choices:
           - name: fabric
@@ -73,12 +83,14 @@ nodes:
             label: Storage
         optional: false
       - name: leaf_interface_sorting_method
+        branch: aware
         kind: Dropdown
         choices:
           - name: create_sorted_device_interface_map
           - name: create_reverse_sorted_device_interface_map
         default_value: create_sorted_device_interface_map
       - name: spine_interface_sorting_method
+        branch: aware
         kind: Dropdown
         choices:
           - name: create_sorted_device_interface_map
@@ -87,27 +99,32 @@ nodes:
     relationships:
       - name: spine_switch_template
         peer: CoreObjectTemplate
+        branch: aware
         kind: Attribute
         cardinality: one
         identifier: "pod__spine_template"
       - name: racks
         peer: LocationRack
+        branch: aware
         cardinality: many
         kind: Generic
         identifier: "rack__pod"
       - name: devices
         peer: NetworkDevice
+        branch: aware
         kind: Generic
         cardinality: many
         identifier: "pod__device"
       - name: loopback_pool
         peer: CoreIPAddressPool
+        branch: aware
         kind: Attribute
         cardinality: one
         optional: true
         identifier: "pod__loopback_pool"
       - name: prefix_pool
         peer: CoreIPPrefixPool
+        branch: aware
         kind: Attribute
         cardinality: one
         optional: true
