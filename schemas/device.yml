@@ -21,6 +21,9 @@ nodes:
       - hostname__value
     include_in_menu: false
     attributes:
+      - name: index
+        kind: Number
+        optional: true
       - name: hostname
         kind: Text
         unique: true

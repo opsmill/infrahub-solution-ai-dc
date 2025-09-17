@@ -7,21 +7,20 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
-    from solution_ai_dc.protocols import NetworkInterface
+    from solution_ai_dc.protocols import NetworkDevice,NetworkInterface
 
 
-def build_cabling_plan(
-    logger: logging.Logger,  # noqa: ARG001
+def build_pod_cabling_plan(
     pod_index: int,
-    src_interface_map: dict[str, list[NetworkInterface]],
-    dst_interface_map: dict[str, list[NetworkInterface]],
+    src_interface_map: dict[NetworkDevice, list[NetworkInterface]],
+    dst_interface_map: dict[NetworkDevice, list[NetworkInterface]],
 ) -> list[tuple[NetworkInterface, NetworkInterface]]:
-    """Builds a cabling plan between source and destination interfaces based in Indexes
+    """Builds a cabling plan between source and destination interfaces based on Indexes
 
     TODO Write unit test to validate that the algorithm works as expected
     """
-    dst_device_names = list(dst_interface_map.keys())
-    dst_device_count = len(dst_device_names)
+    dst_devices = list(dst_interface_map.keys())
+    dst_device_count = len(dst_devices)
     dst_interface_base_index = (pod_index - 2) * len(dst_interface_map)
     src_index = 0
 
@@ -31,7 +30,7 @@ def build_cabling_plan(
         dst_interface_index = dst_interface_base_index + src_index
 
         for dst_index, src_interface in enumerate(src_interfaces[:dst_device_count]):
-            dst_interface = dst_interface_map[dst_device_names[dst_index]][dst_interface_index]
+            dst_interface = dst_interface_map[dst_devices[dst_index]][dst_interface_index]
 
             cabling_plan.append((src_interface, dst_interface))
 
@@ -39,6 +38,30 @@ def build_cabling_plan(
         dst_interface_index = dst_interface_base_index + src_index
 
     return cabling_plan
+
+
+def build_rack_cabling_plan(
+    rack_index: int,
+    src_interface_map: dict[NetworkDevice, list[NetworkInterface]],
+    dst_interface_map: dict[NetworkDevice, list[NetworkInterface]],
+) -> list[tuple[NetworkInterface, NetworkInterface]]:
+
+    cabling_plan: list[tuple[NetworkInterface, NetworkInterface]] = []
+
+    dst_devices = list(dst_interface_map.keys())
+
+    for src_device, src_interfaces in src_interface_map.items():
+
+        src_device_index: int = src_device.index.value
+
+        for dst_index, src_interface in enumerate(src_interfaces):
+            start = (rack_index * 2) - 2
+            end = start + 2
+            dst_interface = dst_interface_map[dst_devices[dst_index]][start:end][src_device_index-1]
+            cabling_plan.append((src_interface, dst_interface))
+
+    return cabling_plan
+
 
 
 async def connect_interface_maps(

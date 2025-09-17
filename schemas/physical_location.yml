@@ -43,6 +43,14 @@ nodes:
           - name: storage
             label: Storage
         default_value: compute
+      - name: amount_of_leafs
+        kind: Number
+        label: Amount of leaf switches
+        default_value: 1
+        optional: false
+        parameters:
+          min_value: 1
+          max_value: 2
     relationships:
       - name: leaf_switch_template
         kind: Attribute

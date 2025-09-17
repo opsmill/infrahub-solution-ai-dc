@@ -28,6 +28,18 @@ nodes:
         kind: Number
         optional: false
         default_value: 4
+      - name: fabric_interface_sorting_method
+        kind: Dropdown
+        choices:
+          - name: create_sorted_device_interface_map
+          - name: create_reverse_sorted_device_interface_map
+        default_value: create_sorted_device_interface_map
+      - name: spine_interface_sorting_method
+        kind: Dropdown
+        choices:
+          - name: create_sorted_device_interface_map
+          - name: create_reverse_sorted_device_interface_map
+        default_value: create_sorted_device_interface_map
     relationships:
       - name: super_spine_switch_template
         peer: CoreObjectTemplate
@@ -59,7 +71,19 @@ nodes:
             label: CPU
           - name: storage
             label: Storage
-        optional: true
+        optional: false
+      - name: leaf_interface_sorting_method
+        kind: Dropdown
+        choices:
+          - name: create_sorted_device_interface_map
+          - name: create_reverse_sorted_device_interface_map
+        default_value: create_sorted_device_interface_map
+      - name: spine_interface_sorting_method
+        kind: Dropdown
+        choices:
+          - name: create_sorted_device_interface_map
+          - name: create_reverse_sorted_device_interface_map
+        default_value: create_sorted_device_interface_map
     relationships:
       - name: spine_switch_template
         peer: CoreObjectTemplate
