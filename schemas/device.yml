@@ -11,6 +11,7 @@ generics:
         cardinality: one
         kind: Attribute
         optional: true
+        order_weight: 6000
 nodes:
   - name: Device
     namespace: Network
@@ -68,11 +69,15 @@ nodes:
       - NetworkEndpoint
     uniqueness_constraints:
       - [device, name__value]
+    human_friendly_id:
+      - device__hostname__value
+      - name__value
     order_by: ["index__value"]
     include_in_menu: false
     attributes:
       - name: name
         kind: Text
+        order_weight: 1000
       - name: description
         kind: Text
         computed_attribute:
@@ -80,6 +85,7 @@ nodes:
           transform: computed_interface_description
         read_only: true
         optional: true
+        order_weight: 4000
       - name: status
         kind: Dropdown
         default_value: inactive
@@ -87,6 +93,7 @@ nodes:
           - name: active
           - name: inactive
           - name: maintenance
+        order_weight: 2000
       - name: role
         kind: Dropdown
         optional: true
@@ -107,6 +114,7 @@ nodes:
             label: Server
           - name: storage
             label: Storage
+        order_weight: 3000
       - name: index
         kind: Text
         read_only: true
@@ -114,6 +122,7 @@ nodes:
         computed_attribute:
           jinja2_template: "{{ \"%03d\"| format(name__value | split_interface | last | int) }}"
           kind: Jinja2
+        order_weight: 20000
     relationships:
       - name: device
         peer: NetworkDevice
@@ -121,6 +130,7 @@ nodes:
         optional: false
         cardinality: one
         identifier: device__interface
+        order_weight: 10000
       - name: ip_address
         label: IP Address
         peer: IpamIPAddress
@@ -128,6 +138,7 @@ nodes:
         cardinality: one
         optional: true
         identifier: interface__ip_address
+        order_weight: 5000
 
   - name: Link
     namespace: Network

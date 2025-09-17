@@ -1,0 +1,41 @@
+query FabricCablingPlan($name: String!) {
+  NetworkFabric(name__value: $name) {
+    edges {
+      node {
+        children {
+          edges {
+            node {
+	      id
+              ... on NetworkPod {
+                devices {
+                  edges {
+                    node {
+		      id
+		      rack {
+			node {
+			  id
+			}
+		      }
+                      interfaces {
+                        edges {
+                          node {
+			    id
+                            link {
+                              node {
+                                id
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

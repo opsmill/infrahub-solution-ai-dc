@@ -21,6 +21,9 @@ queries:
   - name: computed_interface_description
     file_path: "./transforms/computed_interface_description.gql"
 
+  - name: cabling_plan
+    file_path: "./transforms/cabling_plan.gql"
+
 
 generator_definitions:
   - name: generate-fabric
@@ -66,6 +69,9 @@ python_transforms:
   - name: computed_interface_description
     class_name: ComputedInterfaceDescription
     file_path: "./transforms/computed_interface_description.py"
+  - name: cabling_plan
+    class_name: CablingPlan
+    file_path: "./transforms/cabling_plan.py"
 
 artifact_definitions:
   - name: "startup_configuration"
@@ -75,3 +81,10 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "devices"
     transformation: "device_startup_config"
+  - name: "cabling_plan"
+    artifact_name: "Cabling Plan"
+    parameters:
+      name: "name__value"
+    content_type: "text/csv"
+    targets: "fabrics"
+    transformation: "cabling_plan"
