@@ -10,6 +10,7 @@ generics:
     attributes:
       - name: name
         kind: Text
+        optional: true
       - name: index
         kind: Number
 nodes:
@@ -30,11 +31,30 @@ nodes:
       - GeneratorTarget
     parent: LocationHall
     children: ""
-    human_friendly_id:
-      - name__value
     uniqueness_constraints: [["pod", "index__value"]]
+    human_friendly_id:
+      - "pod__name__value"
+      - "index__value"
     include_in_menu: false
     attributes:
+      - name: name
+        kind: Text
+        optional: true
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "Rack-{{ pod__fabric_identifier__value }}{{ pod__index__value }}-{{ row__value or 'Unknown-' }}{{ position__value or 'Unknown' }}"
+      - name: row
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: A
+            label: A
+          - name: B
+            label: B
+      - name: position
+        kind: Number
+        optional: true
       - name: rack_type
         kind: Dropdown
         choices:

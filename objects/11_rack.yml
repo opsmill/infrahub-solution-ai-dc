@@ -4,7 +4,7 @@ kind: Object
 spec:
   kind: LocationHall
   data:
-    - name: "Hall-A1"
+    - name: "Hall-A"
       index: 1
 
 ---
@@ -13,67 +13,59 @@ kind: Object
 spec:
   kind: LocationRack
   data:
-    - name: "Rack-A2-1"
-      index: 1
+    - index: 1
       rack_type: compute
-      pod: Pod-A2
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A2"]
+      parent: "Hall-A"
       amount_of_leafs: 2
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
-    - name: "Rack-A2-2"
-      index: 2
+    - index: 2
       rack_type: compute
-      pod: Pod-A2
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A2"]
+      parent: "Hall-A"
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
-    - name: "Rack-A2-3"
-      index: 3
+    - index: 3
       rack_type: compute
-      pod: Pod-A2
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A2"]
+      parent: "Hall-A"
       amount_of_leafs: 2
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
-    - name: "Rack-A2-4"
-      index: 4
+    - index: 4
       rack_type: storage
-      pod: Pod-A2
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A2"]
+      parent: "Hall-A"
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-storage
       member_of_groups: ["racks"]
-    - name: "Rack-A3-1"
-      index: 1
+    - index: 1
       rack_type: compute
-      pod: Pod-A3
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A3"]
+      parent: "Hall-A"
       amount_of_leafs: 2
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
-    - name: "Rack-A3-2"
-      index: 2
+    - index: 2
       rack_type: compute
-      pod: Pod-A3
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A3"]
+      parent: "Hall-A"
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
-    - name: "Rack-A3-3"
-      index: 3
+    - index: 3
       rack_type: storage
-      pod: Pod-A3
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A3"]
+      parent: "Hall-A"
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-storage
       member_of_groups: ["racks"]
-    - name: "Rack-A3-4"
-      index: 4
+    - index: 4
       rack_type: compute
-      pod: Pod-A3
-      parent: "Hall-A1"
+      pod: ["Fabric-A", "Pod-A3"]
+      parent: "Hall-A"
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]

@@ -14,20 +14,20 @@ spec:
       children:
         kind: NetworkPod
         data:
-          - name: "Pod-A1"
-            index: 1
+          - index: 1
+            fabric_identifier: "A"
             role: "fabric"
             member_of_groups: ["pods"]
             leaf_interface_sorting_method: "create_sorted_device_interface_map"
             spine_interface_sorting_method: "create_sorted_device_interface_map"
-          - name: "Pod-A2"
-            index: 2
+          - index: 2
+            fabric_identifier: "A"
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
             leaf_interface_sorting_method: "create_sorted_device_interface_map"
             spine_interface_sorting_method: "create_sorted_device_interface_map"
-          - name: "Pod-A3"
-            index: 3
+          - index: 3
+            fabric_identifier: "A"
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
             leaf_interface_sorting_method: "create_sorted_device_interface_map"
@@ -40,15 +40,15 @@ spec:
       children:
         kind: NetworkPod
         data:
-          - name: "Pod-B1"
-            index: 1
+          - index: 1
+            fabric_identifier: "B"
             role: "fabric"
             member_of_groups: ["pods"]
-          - name: "Pod-B2"
-            index: 2
+          - index: 2
+            fabric_identifier: "B"
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]
-          - name: "Pod-B3"
-            index: 3
+          - index: 3
+            fabric_identifier: "B"
             spine_switch_template: "spine-switch"
             member_of_groups: ["pods"]

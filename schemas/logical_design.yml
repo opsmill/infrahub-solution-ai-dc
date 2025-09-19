@@ -10,7 +10,6 @@ generics:
     attributes:
       - name: name
         kind: Text
-        unique: true
       - name: index
         kind: Number
 
@@ -21,6 +20,8 @@ nodes:
       - NetworkBuildingBlock
     parent: ""
     children: NetworkPod
+    uniqueness_constraints:
+      - ["name__value"]
     include_in_menu: false
     attributes:
       - name: amount_of_super_spines
@@ -55,7 +56,25 @@ nodes:
     parent: NetworkFabric
     children: ""
     include_in_menu: false
+    uniqueness_constraints:
+      - ["parent", "name__value"]
+      - ["name__value"]
+    human_friendly_id:
+      - "parent__name__value"
+      - "name__value"
     attributes:
+      - name: name
+        kind: Text
+        optional: false
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "Pod-{{ fabric_identifier__value }}{{ index__value }}"
+      - name: fabric_identifier
+        kind: Text
+        optional: false
+        parameters:
+          regex: "[A-Z]{1}"
       - name: amount_of_spines
         label: Amount of Spine switches
         kind: Number
