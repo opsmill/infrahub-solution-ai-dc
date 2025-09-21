@@ -1,4 +1,4 @@
-query ($pod_name: String!) {
+query PodGeneratorQuery($pod_name: String!) {
   NetworkPod(name__value: $pod_name) {
     edges {
       node {
@@ -18,13 +18,15 @@ query ($pod_name: String!) {
         role {
           value
         }
-	spine_switch_template {
-	  node {
-	    id
-	  }
-	}
+        spine_switch_template {
+          node {
+            __typename
+            id
+          }
+        }
         parent {
           node {
+            __typename
             id
             name {
               value
@@ -33,12 +35,12 @@ query ($pod_name: String!) {
               amount_of_super_spines {
                 value
               }
-	      fabric_interface_sorting_method {
-		value
-	      }
-	      spine_interface_sorting_method {
-		value
-	      }
+              fabric_interface_sorting_method {
+                value
+              }
+              spine_interface_sorting_method {
+                value
+              }
             }
           }
         }

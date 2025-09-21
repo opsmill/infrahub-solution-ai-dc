@@ -1,12 +1,14 @@
-query StartupConfig($name: String!){
+query StartupConfigQuery($name: String!){
   NetworkDevice(hostname__value: $name) {
     edges {
       node {
+        __typename
         hostname {
           value
         }
         loopback_ip {
           node {
+            __typename
             address {
               ip
             }
@@ -15,6 +17,7 @@ query StartupConfig($name: String!){
         interfaces {
           edges {
             node {
+              __typename
               name {
                 value
               }
@@ -29,6 +32,7 @@ query StartupConfig($name: String!){
               }
               ip_address {
                 node {
+                  __typename
                   address {
                     value
                   }

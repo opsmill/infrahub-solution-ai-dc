@@ -1,4 +1,4 @@
-query($fabric_name: String!) {
+query FabricGeneratorQuery($fabric_name: String!) {
   NetworkFabric(name__value: $fabric_name) {
     edges {
       node {
@@ -11,6 +11,7 @@ query($fabric_name: String!) {
         }
         super_spine_switch_template {
           node {
+            __typename
             id
           }
         }

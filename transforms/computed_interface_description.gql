@@ -1,14 +1,17 @@
-query ComputedInterfaceDescription($id: ID!) {
+query ComputedInterfaceDescriptionQuery($id: ID!) {
   NetworkInterface(ids: [$id]) {
     edges {
       node {
+        __typename
         id
         link {
           node {
+            __typename
             id
             endpoints {
               edges {
                 node {
+                  __typename
                   id
                   ... on NetworkInterface {
                     name {
@@ -16,6 +19,7 @@ query ComputedInterfaceDescription($id: ID!) {
                     }
                     device {
                       node {
+                        __typename
                         hostname {
                           value
                         }

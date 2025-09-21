@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import logging
-
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumberPool
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
-import solution_ai_dc.sorting
-
+from solution_ai_dc import sorting as solution_ai_dc_sorting
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_rack_cabling_plan ,connect_interface_maps
+from solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
+
+from .rack_generator_query import RackGeneratorQuery
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 EXCLUDED_RACK_TYPES = []
 
@@ -40,27 +43,23 @@ class RackGenerator(InfrahubGenerator):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.rack_id: str = data["LocationRack"]["edges"][0]["node"]["id"]
-        self.rack_index: int = data["LocationRack"]["edges"][0]["node"]["index"]["value"]
-        self.rack_name: str = data["LocationRack"]["edges"][0]["node"]["name"]["value"]
-        self.rack_type: str = data["LocationRack"]["edges"][0]["node"]["rack_type"]["value"]
-        self.rack_leaf_switch_template: str = data["LocationRack"]["edges"][0]["node"]["leaf_switch_template"]["node"][
-            "id"
-        ]
-        self.rack_amount_of_leafs: int = data["LocationRack"]["edges"][0]["node"]["amount_of_leafs"]["value"]
+        data: RackGeneratorQuery = RackGeneratorQuery(**data)
+
+        self.rack_id: str = data.location_rack.edges[0].node.id
+        self.rack_index: int = data.location_rack.edges[0].node.index.value
+        self.rack_name: str = data.location_rack.edges[0].node.name.value
+        self.rack_type: str = data.location_rack.edges[0].node.rack_type.value
+        self.rack_leaf_switch_template: str = data.location_rack.edges[0].node.leaf_switch_template.node.id
+        self.rack_amount_of_leafs: int = data.location_rack.edges[0].node.amount_of_leafs.value
         self.leaf_switches = []
 
-        self.pod_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["id"]
-        self.pod_index: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["index"]["value"]
-        self.pod_name: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["name"]["value"].lower()
-        self.pod_amount_of_spines: int = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["amount_of_spines"][
-            "value"
-        ]
+        self.pod_id: str = data.location_rack.edges[0].node.pod.node.id
+        self.pod_index: int = data.location_rack.edges[0].node.pod.node.index.value
+        self.pod_name: str = data.location_rack.edges[0].node.pod.node.name.value.lower()
+        self.pod_amount_of_spines: int = data.location_rack.edges[0].node.pod.node.amount_of_spines.value
 
-        self.loopback_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["loopback_pool"]["node"][
-            "id"
-        ]
-        self.prefix_pool_id: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["prefix_pool"]["node"]["id"]
+        self.loopback_pool_id: str = data.location_rack.edges[0].node.pod.node.loopback_pool.node.id
+        self.prefix_pool_id: str = data.location_rack.edges[0].node.pod.node.prefix_pool.node.id
 
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
@@ -75,11 +74,15 @@ class RackGenerator(InfrahubGenerator):
             msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
             raise RuntimeError(msg)
 
-        leaf_interface_sorting_method: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["leaf_interface_sorting_method"]["value"]
-        spine_interface_sorting_method: str = data["LocationRack"]["edges"][0]["node"]["pod"]["node"]["spine_interface_sorting_method"]["value"]
+        leaf_interface_sorting_method: str = data.location_rack.edges[
+            0
+        ].node.pod.node.leaf_interface_sorting_method.value
+        spine_interface_sorting_method: str = data.location_rack.edges[
+            0
+        ].node.pod.node.spine_interface_sorting_method.value
 
-        self.leaf_interface_sorting_function = getattr(solution_ai_dc.sorting, leaf_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(solution_ai_dc.sorting, spine_interface_sorting_method)
+        self.leaf_interface_sorting_function = getattr(solution_ai_dc_sorting, leaf_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(solution_ai_dc_sorting, spine_interface_sorting_method)
 
         await self.create_leaf_switches()
 
@@ -108,7 +111,9 @@ class RackGenerator(InfrahubGenerator):
                 include=["ip_address"],
                 exclude=["rack", "pod", "role", "hostname", "object_template", "member_of_groups"],
             )
-            loopback_interface = await self.client.get(NetworkInterface, device__ids=[device.id], role__value="loopback")
+            loopback_interface = await self.client.get(
+                NetworkInterface, device__ids=[device.id], role__value="loopback"
+            )
             loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id
             await loopback_interface.save(allow_upsert=True)
@@ -120,7 +125,9 @@ class RackGenerator(InfrahubGenerator):
         spine_interface_map = self.spine_interface_sorting_function(spine_interfaces)
 
         leaf_interfaces = await self.client.filters(
-            kind=NetworkInterface, device__ids=[leaf_switch.id for leaf_switch in self.leaf_switches], role__value="spine"
+            kind=NetworkInterface,
+            device__ids=[leaf_switch.id for leaf_switch in self.leaf_switches],
+            role__value="spine",
         )
         leaf_interface_map = self.leaf_interface_sorting_function(leaf_interfaces)
 

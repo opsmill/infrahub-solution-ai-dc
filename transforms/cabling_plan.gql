@@ -1,27 +1,33 @@
-query FabricCablingPlan($name: String!) {
+query FabricCablingPlanQuery($name: String!) {
   NetworkFabric(name__value: $name) {
     edges {
       node {
+        __typename
         children {
           edges {
             node {
-	      id
+              __typename
+              id
               ... on NetworkPod {
                 devices {
                   edges {
                     node {
-		      id
-		      rack {
-			node {
-			  id
-			}
-		      }
+                      __typename
+                      id
+                      rack {
+                        node {
+                          __typename
+                          id
+                        }
+                      }
                       interfaces {
                         edges {
                           node {
-			    id
+                            __typename
+                            id
                             link {
                               node {
+                                __typename
                                 id
                               }
                             }
