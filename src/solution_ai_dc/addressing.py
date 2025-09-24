@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.protocols import CoreIPPrefixPool
 
-    from solution_ai_dc.protocols import NetworkInterface
+    from .protocols import NetworkInterface
 
 
 async def assign_ip_address_to_interface(

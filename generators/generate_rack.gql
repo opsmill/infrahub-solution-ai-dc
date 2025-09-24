@@ -1,4 +1,4 @@
-query($rack_name: String!) {
+query RackGeneratorQuery($rack_name: String!) {
   LocationRack(name__value: $rack_name) {
     edges {
       node {
@@ -9,58 +9,62 @@ query($rack_name: String!) {
         checksum {
           value
         }
-	index {
-	  value
-	}
-	rack_type {
-	  value
-	}
-	amount_of_leafs {
-	  value
-	}
-	leaf_switch_template {
-	  node {
-	    id
-	  }
-	}
-	parent {
-	  node {
-	    id
-	    name {
-	      value
-	    }
-	  }
-	}
-	pod {
-	  node {
-	    id
-	    name {
-	      value
-	    }
-	    index {
-	      value
-	    }
-	    prefix_pool {
-	      node {
-		id
-	      }
-	    }
-	    loopback_pool {
-	      node {
-		id
-	      }
-	    }
-	    amount_of_spines {
-	      value
-	    }
-	    leaf_interface_sorting_method {
-	      value
-	    }
-	    spine_interface_sorting_method {
-	      value
-	    }
-	  }
-	}
+				index {
+					value
+				}
+				rack_type {
+					value
+				}
+				amount_of_leafs {
+					value
+				}
+				leaf_switch_template {
+					node {
+						__typename
+						id
+					}
+				}
+				parent {
+					node {
+						__typename
+						id
+						name {
+							value
+						}
+					}
+				}
+				pod {
+					node {
+						id
+						name {
+							value
+						}
+						index {
+							value
+						}
+						prefix_pool {
+							node {
+								__typename
+								id
+							}
+						}
+						loopback_pool {
+							node {
+								__typename
+								id
+							}
+						}
+						amount_of_spines {
+							value
+						}
+						leaf_interface_sorting_method {
+							value
+						}
+						spine_interface_sorting_method {
+							value
+						}
+					}
+				}
       }
     }
   }

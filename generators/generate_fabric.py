@@ -8,6 +8,8 @@ from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 from solution_ai_dc.generator import GeneratorMixin
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
 
+from .fabric_generator_query import FabricGeneratorQuery
+
 
 class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_name: str
@@ -19,12 +21,12 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     log = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.fabric_name = data["NetworkFabric"]["edges"][0]["node"]["name"]["value"].lower()
-        self.fabric_id = data["NetworkFabric"]["edges"][0]["node"]["id"]
-        self.fabric_super_spine_switch_template = data["NetworkFabric"]["edges"][0]["node"][
-            "super_spine_switch_template"
-        ]["node"]["id"]
-        self.amount_of_super_spines = data["NetworkFabric"]["edges"][0]["node"]["amount_of_super_spines"]["value"]
+        data: FabricGeneratorQuery = FabricGeneratorQuery(**data)
+
+        self.fabric_name = data.network_fabric.edges[0].node.name.value.lower()
+        self.fabric_id = data.network_fabric.edges[0].node.id
+        self.fabric_super_spine_switch_template = data.network_fabric.edges[0].node.super_spine_switch_template.node.id
+        self.amount_of_super_spines = data.network_fabric.edges[0].node.amount_of_super_spines.value
 
         await self.allocate_resource_pools()
 

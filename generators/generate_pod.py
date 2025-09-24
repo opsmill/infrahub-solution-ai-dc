@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import logging
-
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
-import solution_ai_dc.sorting
-
+from solution_ai_dc import sorting as solution_ai_dc_sorting
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from solution_ai_dc.generator import GeneratorMixin
 from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
+
+from .pod_generator_query import PodGeneratorQuery
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 EXCLUDED_POD_ROLES = ["fabric"]
 
@@ -39,17 +42,19 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        self.pod_id: str = data["NetworkPod"]["edges"][0]["node"]["id"]
-        self.pod_index: int = data["NetworkPod"]["edges"][0]["node"]["index"]["value"]
-        self.pod_name: str = data["NetworkPod"]["edges"][0]["node"]["name"]["value"].lower()
-        self.pod_role: str = data["NetworkPod"]["edges"][0]["node"]["role"]["value"]
-        self.pod_spine_switch_template = data["NetworkPod"]["edges"][0]["node"]["spine_switch_template"]["node"]["id"]
-        self.fabric_id: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["id"]
-        self.fabric_name: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["name"]["value"].lower()
-        self.amount_of_spines: int = data["NetworkPod"]["edges"][0]["node"]["amount_of_spines"]["value"]
-        self.fabric_amount_of_super_spines: int = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"][
-            "amount_of_super_spines"
-        ]["value"]
+        data: PodGeneratorQuery = PodGeneratorQuery(**data)
+
+        self.pod_id: str = data.network_pod.edges[0].node.id
+        self.pod_index: int = data.network_pod.edges[0].node.index.value
+        self.pod_name: str = data.network_pod.edges[0].node.name.value.lower()
+        self.pod_role: str = data.network_pod.edges[0].node.role.value
+        self.pod_spine_switch_template = data.network_pod.edges[0].node.spine_switch_template.node.id
+        self.fabric_id: str = data.network_pod.edges[0].node.parent.node.id
+        self.fabric_name: str = data.network_pod.edges[0].node.parent.node.name.value.lower()
+        self.amount_of_spines: int = data.network_pod.edges[0].node.amount_of_spines.value
+        self.fabric_amount_of_super_spines: int = data.network_pod.edges[
+            0
+        ].node.parent.node.amount_of_super_spines.value
 
         self.spine_switches = []
 
@@ -63,11 +68,15 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: the fabric doesn't seem to be fully generated yet!"
             raise RuntimeError(msg)
 
-        fabric_interface_sorting_method: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["fabric_interface_sorting_method"]["value"]
-        spine_interface_sorting_method: str = data["NetworkPod"]["edges"][0]["node"]["parent"]["node"]["spine_interface_sorting_method"]["value"]
+        fabric_interface_sorting_method: str = data.network_pod.edges[
+            0
+        ].node.parent.node.fabric_interface_sorting_method.value
+        spine_interface_sorting_method: str = data.network_pod.edges[
+            0
+        ].node.parent.node.spine_interface_sorting_method.value
 
-        self.fabric_interface_sorting_function = getattr(solution_ai_dc.sorting, fabric_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(solution_ai_dc.sorting, spine_interface_sorting_method)
+        self.fabric_interface_sorting_function = getattr(solution_ai_dc_sorting, fabric_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(solution_ai_dc_sorting, spine_interface_sorting_method)
 
         await self.allocate_resource_pools()
 
