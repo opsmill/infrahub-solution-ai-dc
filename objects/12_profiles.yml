@@ -1,0 +1,20 @@
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: ProfileNetworkInterface
+  data:
+    - profile_name: "profile-interface-server"
+      role: "server"
+      mtu: 1500
+    - profile_name: "profile-interface-compute"
+      role: "storage"
+      mtu: 9000
+    - profile_name: "profile-interface-spine"
+      role: "spine"
+      mtu: 9200
+    - profile_name: "profile-interface-leaf"
+      role: "leaf"
+      mtu: 9200
+    - profile_name: "profile-interface-super-spine"
+      role: "super_spine"
+      mtu: 9200
