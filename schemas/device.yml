@@ -119,7 +119,6 @@ nodes:
         label: MTU
         kind: Number
         optional: true
-        default_value: 1500
         order_weight: 5000
       - name: index
         kind: Text
