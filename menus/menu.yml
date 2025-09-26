@@ -29,6 +29,12 @@ spec:
             icon: "mdi:server"
 
           - namespace: Network
+            name: DeviceType
+            label: Device Types
+            kind: NetworkDeviceType
+            icon: "mdi:server"
+
+          - namespace: Network
             name: Link
             label: Connections
             kind: NetworkLink
@@ -52,3 +58,15 @@ spec:
             label: Rack
             kind: LocationRack
             icon: "clarity:rack-server-solid"
+
+    - namespace: Organization
+      name: Menu
+      label: Organization
+      icon: "mdi:domain"
+      children:
+        data:
+          - namespace: Organization
+            name: Manufacturer
+            label: Manufacturer
+            kind: OrganizationManufacturer
+            icon: "mdi:domain"
