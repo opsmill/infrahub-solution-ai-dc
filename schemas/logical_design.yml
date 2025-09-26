@@ -23,6 +23,7 @@ nodes:
     namespace: Network
     branch: agnostic
     inherit_from:
+      - CoreArtifactTarget
       - NetworkBuildingBlock
     parent: ""
     children: NetworkPod
