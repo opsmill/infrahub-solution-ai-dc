@@ -115,6 +115,11 @@ nodes:
           - name: storage
             label: Storage
         order_weight: 3000
+      - name: mtu
+        label: MTU
+        kind: Number
+        optional: true
+        order_weight: 5000
       - name: index
         kind: Text
         read_only: true
@@ -138,7 +143,7 @@ nodes:
         cardinality: one
         optional: true
         identifier: interface__ip_address
-        order_weight: 5000
+        order_weight: 6000
 
   - name: Link
     namespace: Network
