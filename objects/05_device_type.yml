@@ -4,5 +4,7 @@ kind: Object
 spec:
   kind: NetworkDeviceType
   data:
-    - name: Z9864F-ON
+    - name: "PowerSwitch Z9864F-ON"
+      manufacturer: ["Dell"]
+    - name: "PowerSwitch S5232F-ON"
       manufacturer: ["Dell"]
