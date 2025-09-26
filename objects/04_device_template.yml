@@ -849,6 +849,9 @@ spec:
       interfaces:
         kind: TemplateNetworkInterface
         data:
+          - template_name: "DellS5232LeafSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/1"
             name: ethernet1/1/1
             role: "spine"
@@ -957,6 +960,9 @@ spec:
       interfaces:
         kind: TemplateNetworkInterface
         data:
+          - template_name: "DellS5232FLeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
           - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/1"
             name: ethernet1/1/1
             role: "spine"
