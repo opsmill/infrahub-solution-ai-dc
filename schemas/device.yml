@@ -13,6 +13,54 @@ generics:
         optional: true
         order_weight: 6000
 nodes:
+  - name: Manufacturer
+    namespace: Organization
+    label: Manufacturer
+    human_friendly_id:
+      - name__value
+    display_labels:
+      - name__value
+    include_in_menu: false
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+    relationships:
+      - name: device_types
+        optional: true
+        kind: "Generic"
+        peer: NetworkDeviceType
+        identifier: "manufacturer__device_type"
+  - name: DeviceType
+    namespace: Network
+    label: Device Type
+    uniqueness_constraints:
+      - [manufacturer, name__value]
+    human_friendly_id:
+      - manufacturer__name__value
+      - name__value
+    include_in_menu: false
+    attributes:
+      - name: name
+        label: Name
+        kind: Text
+        optional: false
+    relationships:
+      - name: manufacturer
+        label: Manufacturer
+        kind: Attribute
+        cardinality: one
+        peer: OrganizationManufacturer
+        optional: false
+        identifier: "manufacturer__device_type"
+      - name: devices
+        optional: true
+        peer: NetworkDevice
+        kind: Generic
+        cardinality: many
+        identifier: "device__device_type"
   - name: Device
     namespace: Network
     generate_template: true
@@ -38,6 +86,12 @@ nodes:
           - name: leaf
             label: Leaf
     relationships:
+      - name: device_type
+        kind: Attribute
+        optional: true
+        cardinality: one
+        peer: NetworkDeviceType
+        identifier: "device__device_type"
       - name: loopback_ip
         peer: IpamIPAddress
         kind: Attribute

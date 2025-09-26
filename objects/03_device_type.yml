@@ -1,0 +1,10 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkDeviceType
+  data:
+    - name: "PowerSwitch Z9864F-ON"
+      manufacturer: ["Dell"]
+    - name: "PowerSwitch S5232F-ON"
+      manufacturer: ["Dell"]

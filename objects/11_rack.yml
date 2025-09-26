@@ -77,3 +77,67 @@ spec:
       amount_of_leafs: 1
       leaf_switch_template: leaf-switch-compute
       member_of_groups: ["racks"]
+    - name: "Rack-B2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-B2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-B2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-B2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-B2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B3-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-B3
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B3-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-B3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-B3-3"
+      index: 3
+      rack_type: storage
+      pod: Pod-B3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-storage
+      member_of_groups: ["racks"]
+    - name: "Rack-B3-4"
+      index: 4
+      rack_type: compute
+      pod: Pod-B3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-storage
+      member_of_groups: ["racks"]
