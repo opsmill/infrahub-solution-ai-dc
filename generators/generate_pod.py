@@ -48,7 +48,11 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_index: int = data.network_pod.edges[0].node.index.value
         self.pod_name: str = data.network_pod.edges[0].node.name.value.lower()
         self.pod_role: str = data.network_pod.edges[0].node.role.value
-        self.pod_spine_switch_template = data.network_pod.edges[0].node.spine_switch_template.node.id
+        self.pod_spine_switch_template: Optional[str] = (
+            data.network_pod.edges[0].node.spine_switch_template.node.id
+            if data.network_pod.edges[0].node.spine_switch_template.node
+            else None
+        )
         self.fabric_id: str = data.network_pod.edges[0].node.parent.node.id
         self.fabric_name: str = data.network_pod.edges[0].node.parent.node.name.value.lower()
         self.amount_of_spines: int = data.network_pod.edges[0].node.amount_of_spines.value
@@ -66,6 +70,10 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
 
         if self.fabric_amount_of_super_spines != len(self.super_spine_switches):
             msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: the fabric doesn't seem to be fully generated yet!"
+            raise RuntimeError(msg)
+
+        if not self.pod_spine_switch_template:
+            msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: no spine switch template defined!"
             raise RuntimeError(msg)
 
         fabric_interface_sorting_method: str = data.network_pod.edges[
