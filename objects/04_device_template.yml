@@ -843,7 +843,7 @@ spec:
           - template_name: "DellZ9864FSuperSpineSwitchEthernet1/64"
             name: "Ethernet1/64"
             role: "spine"
-    - template_name: "dell-s5232f-on-leaf-switch"
+    - template_name: "dell-s5232f-on-leaf-switch-compute"
       role: "leaf"
       device_type: ["Dell", "PowerSwitch S5232F-ON"]
       interfaces:
