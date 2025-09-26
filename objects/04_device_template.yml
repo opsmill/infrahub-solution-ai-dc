@@ -843,7 +843,7 @@ spec:
           - template_name: "DellZ9864FSuperSpineSwitchEthernet1/64"
             name: "Ethernet1/64"
             role: "spine"
-    - template_name: "dell-s5232f-on-on-spine-switch"
+    - template_name: "dell-s5232f-on-leaf-switch"
       role: "leaf"
       device_type: ["Dell", "PowerSwitch S5232F-ON"]
       interfaces:
@@ -929,25 +929,133 @@ spec:
             role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/27"
             name: Ethernet1/1/27
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/28"
             name: Ethernet1/1/28
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/29"
             name: Ethernet1/1/29
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/30"
             name: Ethernet1/1/30
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/31"
             name: Ethernet1/1/31
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/32"
             name: Ethernet1/1/32
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/33"
             name: Ethernet1/1/33
-            role: "storage"
+            role: "server"
           - template_name: "DellS5232FLeafSwitchEthernet1/1/34"
+            name: Ethernet1/1/34
+            role: "server"
+    - template_name: "dell-s5232f-on-leaf-switch-storage"
+      role: "leaf"
+      device_type: ["Dell", "PowerSwitch S5232F-ON"]
+      interfaces:
+        kind: TemplateNetworkInterface
+        data:
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/1"
+            name: ethernet1/1/1
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/2"
+            name: Ethernet1/1/2
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/3"
+            name: Ethernet1/1/3
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/4"
+            name: Ethernet1/1/4
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/5"
+            name: Ethernet1/1/5
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/6"
+            name: Ethernet1/1/6
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/7"
+            name: Ethernet1/1/7
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/8"
+            name: Ethernet1/1/8
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/9"
+            name: Ethernet1/1/9
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/10"
+            name: Ethernet1/1/10
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/11"
+            name: Ethernet1/1/11
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/12"
+            name: Ethernet1/1/12
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/13"
+            name: Ethernet1/1/13
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/14"
+            name: Ethernet1/1/14
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/15"
+            name: Ethernet1/1/15
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/16"
+            name: Ethernet1/1/16
+            role: "spine"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/17"
+            name: Ethernet1/1/17
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/18"
+            name: Ethernet1/1/18
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/19"
+            name: Ethernet1/1/19
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/20"
+            name: Ethernet1/1/20
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/21"
+            name: Ethernet1/1/21
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/22"
+            name: Ethernet1/1/22
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/23"
+            name: Ethernet1/1/23
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/24"
+            name: Ethernet1/1/24
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/25"
+            name: Ethernet1/1/25
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/26"
+            name: Ethernet1/1/26
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/27"
+            name: Ethernet1/1/27
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/28"
+            name: Ethernet1/1/28
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/29"
+            name: Ethernet1/1/29
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/30"
+            name: Ethernet1/1/30
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/31"
+            name: Ethernet1/1/31
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/32"
+            name: Ethernet1/1/32
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/33"
+            name: Ethernet1/1/33
+            role: "storage"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/34"
             name: Ethernet1/1/34
             role: "storage"
