@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .protocols import NetworkDevice, NetworkInterface
+
 if TYPE_CHECKING:
     import logging
 
     from infrahub_sdk import InfrahubClient
-
-    from .protocols import NetworkDevice, NetworkInterface
 
 
 def build_pod_cabling_plan(
@@ -70,8 +70,12 @@ async def connect_interface_maps(
             kind="NetworkLink", name=name, medium="copper", endpoints=[src_interface, dst_interface]
         )
         await network_link.save(allow_upsert=True)
+
+        src_interface = await client.get(NetworkInterface, id=src_interface.id, include=["link"])
+        dst_interface = await client.get(NetworkInterface, id=dst_interface.id, include=["link"])
+
         src_interface.status.value = "active"
-        await src_interface.save(allow_upsert=True)
         dst_interface.status.value = "active"
+        await src_interface.save(allow_upsert=True)
         await dst_interface.save(allow_upsert=True)
         logger.info(f"Connected {name}")

@@ -49,7 +49,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.pod_index: int = data.network_pod.edges[0].node.index.value
         self.pod_name: str = data.network_pod.edges[0].node.name.value.lower()
         self.pod_role: str = data.network_pod.edges[0].node.role.value
-        self.pod_spine_switch_template: Optional[str] = (
+        self.pod_spine_switch_template: str | None = (
             data.network_pod.edges[0].node.spine_switch_template.node.id
             if data.network_pod.edges[0].node.spine_switch_template.node
             else None
@@ -127,7 +127,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             await set_interface_profiles(self.client, device)
 
             self.spine_switches.append(device)
-
 
     async def allocate_resource_pools(self) -> None:
         """Allocate IP Space for the Pod"""

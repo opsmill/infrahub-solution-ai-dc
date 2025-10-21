@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from .protocols import NetworkInterface
+
 if TYPE_CHECKING:
     import logging
     from collections.abc import Generator
@@ -10,8 +12,6 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.protocols import CoreIPPrefixPool
-
-    from .protocols import NetworkInterface
 
 
 async def assign_ip_address_to_interface(
@@ -23,6 +23,7 @@ async def assign_ip_address_to_interface(
 ) -> None:
     ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
     await ip_address.save(allow_upsert=True)
+    interface = await client.get(NetworkInterface, id=interface.id, include=["link"])
     interface.ip_address = ip_address
     await interface.save(allow_upsert=True)
     logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")
