@@ -11,7 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "infrahub-sdk[all]==1.15.0b1",
+    "infrahub-sdk[all]==1.16.0",
     "infrahub-testcontainers>=1.3.0",
     "invoke>=2.2.0",
     "mypy>=1.17.1",
