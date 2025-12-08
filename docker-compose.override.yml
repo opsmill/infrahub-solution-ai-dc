@@ -1,11 +1,11 @@
 ---
 x-infrahub-custom-build: &infrahub_custom_build
-  image: opsmill/infrahub-solution-ai-dc:${INFRAHUB_BASE_VERSION:-1.4.2}
+  image: opsmill/infrahub-solution-ai-dc:${INFRAHUB_BASE_VERSION:-1.6.0}
   build:
     context: .
     dockerfile: Dockerfile
     args:
-      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:-1.4.2}"
+      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:-1.6.0}"
 
 services:
   infrahub-server:
