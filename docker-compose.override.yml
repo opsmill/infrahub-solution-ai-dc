@@ -22,6 +22,8 @@ services:
 
   task-worker:
     <<: *infrahub_custom_build
+    environment:
+      INFRAHUB_TIMEOUT: 180
     volumes:
       - ./:/upstream
       - ./src:/opt/local/src
