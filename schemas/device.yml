@@ -18,8 +18,7 @@ nodes:
     label: Manufacturer
     human_friendly_id:
       - name__value
-    display_labels:
-      - name__value
+    display_label: name__value
     include_in_menu: false
     attributes:
       - name: name
@@ -66,8 +65,7 @@ nodes:
     generate_template: true
     inherit_from:
       - CoreArtifactTarget
-    display_labels:
-      - hostname__value
+    display_label: hostname__value
     include_in_menu: false
     attributes:
       - name: index
