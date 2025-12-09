@@ -2,7 +2,7 @@ ARG INFRAHUB_BASE_VERSION=1.6.0
 FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_BASE_VERSION}
 
 # Use the system Python environment
-ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+ENV UV_PROJECT_ENVIRONMENT="/.venv"
 
 WORKDIR /opt/local
 
