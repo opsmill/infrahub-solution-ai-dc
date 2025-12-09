@@ -23,7 +23,6 @@ class CablingPlan(InfrahubTransform):
 
         header: str = ",".join(  # noqa: FLY002
             [
-                "Pod",
                 "Source Rack",
                 "Source Device",
                 "Source Interface",
@@ -37,7 +36,6 @@ class CablingPlan(InfrahubTransform):
 
             csv_data.append(
                 [
-                    src_interface.peer.device.peer.pod.peer.name.value,
                     src_interface.peer.device.peer.rack.peer.name.value
                     if src_interface.peer.device.peer.rack.initialized
                     else "",
@@ -84,12 +82,11 @@ class CablingPlan(InfrahubTransform):
         data: FabricCablingPlanQuery = FabricCablingPlanQuery(**data)
         link_ids, pod_ids, device_ids, rack_ids, interface_ids = self.process_transform_input_data(data=data)
 
-        # populate SDK client store with all relevant objects
-        await self.client.filters(NetworkPod, ids=pod_ids, include=["devices"])
-        await self.client.filters(NetworkDevice, ids=device_ids, include=["interfaces", "rack"])
-        await self.client.filters(NetworkInterface, ids=interface_ids, include=["link"])
-        await self.client.filters(LocationRack, ids=rack_ids, include=["devices"])
-
         links: list[NetworkLink] = await self.client.filters(NetworkLink, ids=link_ids, include=["endpoints"])
+
+        # populate SDK client store with all relevant objects
+        await self.client.filters(NetworkDevice, ids=device_ids, include=["interfaces", "rack"])
+        await self.client.filters(NetworkInterface, ids=interface_ids, include=["link", "device"])
+        await self.client.filters(LocationRack, ids=rack_ids, include=["devices"])
 
         return self.generate_csv(links)
