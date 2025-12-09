@@ -9,7 +9,6 @@ from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 from solution_ai_dc import sorting as solution_ai_dc_sorting
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
-from solution_ai_dc.interfaces import set_interface_profiles
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 
 from .rack_generator_query import RackGeneratorQuery
@@ -118,8 +117,6 @@ class RackGenerator(InfrahubGenerator):
             loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id
             await loopback_interface.save(allow_upsert=True)
-
-            await set_interface_profiles(self.client, leaf_switch)
 
     async def connect_leafs_to_spine(self) -> None:
         spine_interfaces = await self.client.filters(

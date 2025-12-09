@@ -6,7 +6,6 @@ from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.interfaces import set_interface_profiles
 from solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
 
 from .fabric_generator_query import FabricGeneratorQuery
@@ -63,8 +62,6 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
             loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id
             await loopback_interface.save(allow_upsert=True)
-
-            await set_interface_profiles(self.client, device)
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
