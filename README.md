@@ -10,16 +10,7 @@ uv sync --all-packages
 
 ## Building the image
 
-For now, we need to build Infrahub from a specific branch in the Infrahub repository.
-
-```bash
-git clone --single-branch --branch integration/generator ssh://github.com/opsmill/infrahub.git
-cd infrahub
-poetry install
-poetry run inv dev.build
-```
-
-Next, from within this repository, build a custom image.
+From within this repository, build a custom image.
 
 ```bash
 cd solution-ai-dc

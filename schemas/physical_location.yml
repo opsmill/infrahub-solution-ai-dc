@@ -5,7 +5,7 @@ generics:
   - name: Physical
     namespace: Location
     hierarchical: true
-    display_labels: ["name__value"]
+    display_label: name__value
     include_in_menu: false
     attributes:
       - name: name

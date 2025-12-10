@@ -1,11 +1,16 @@
 ---
 x-infrahub-custom-build: &infrahub_custom_build
-  image: opsmill/infrahub-solution-ai-dc:${INFRAHUB_BASE_VERSION:-1.4.2}
+  image: opsmill/infrahub-solution-ai-dc:${INFRAHUB_BASE_VERSION:-1.6.0}
+  environment:
+    INFRAHUB_GIT_USER_NAME: "infrahub"
+    INFRAHUB_GIT_EMAIL: "no-reply@opsmill.com"
+    INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT: true
+    INFRAHUB_TIMEOUT: 180
   build:
     context: .
     dockerfile: Dockerfile
     args:
-      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:-1.4.2}"
+      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:-1.6.0}"
 
 services:
   infrahub-server:

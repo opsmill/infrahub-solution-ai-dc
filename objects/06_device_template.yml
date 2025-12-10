@@ -1,0 +1,149 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: TemplateNetworkDevice
+  parameters:
+    expand_range: true
+  data:
+    - template_name: "spine-switch"
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SpineSwitchEthernet[1-27]"
+            name: "Ethernet[1-27]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "SpineSwitchEthernet[28-32]"
+            name: "Ethernet[28-32]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "super-spine-switch"
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SuperSpineSwitchEthernet[1-28]"
+            name: "Ethernet[1-28]"
+            profiles: ["profile-interface-spine"]
+          - template_name: "SuperSpineSwitchEthernet[29-32]"
+            name: "Ethernet[29-32]"
+    - template_name: "Generic Switch"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "GenericSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "GenericSwitchEthernet[1-32]"
+            name: "Ethernet[1-32]"
+
+    - template_name: "leaf-switch-compute"
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "LeafSwitchComputeLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "LeafSwitchComputeEthernet[1-26]"
+            name: "Ethernet[1-26]"
+            profiles: ["profile-interface-server"]
+          - template_name: "LeafSwitchComputeEthernet[27-32]"
+            name: "Ethernet[27-32]"
+            profiles: ["profile-interface-spine"]
+
+    - template_name: "leaf-switch-storage"
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "LeafSwitchStorageLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "LeafSwitchStorageEthernet[1-10]"
+            name: "Ethernet[1-10]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "LeafSwitchStorageEthernet[11-16]"
+            name: "Ethernet[11-16]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "dell-z9864f-on-spine-switch"
+      device_type: ["Dell", "PowerSwitch Z9864F-ON"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "DellZ9864FSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "DellZ9864FSpineSwitchEthernet1/[1-32]"
+            name: "Ethernet1/[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "DellZ9864FSpineSwitchEthernet1/[33-64]"
+            name: "Ethernet1/[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "dell-z9864f-on-super-spine-switch"
+      device_type: ["Dell", "PowerSwitch Z9864F-ON"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "DellZ9864FSuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "DellZ9864FSuperSpineSwitchEthernet1/[1-64]"
+            name: "Ethernet1/[1-64]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "dell-s5232f-on-leaf-switch-compute"
+      role: "leaf"
+      device_type: ["Dell", "PowerSwitch S5232F-ON"]
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "DellS5232LeafSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "DellS5232FLeafSwitchEthernet1/1/[1-16]"
+            name: Ethernet1/1/[1-16]
+            profiles: ["profile-interface-spine"]
+          - template_name: "DellS5232FLeafSwitchEthernet1/1/[17-34]"
+            name: Ethernet1/1/[17-34]
+            profiles: ["profile-interface-server"]
+    - template_name: "dell-s5232f-on-leaf-switch-storage"
+      role: "leaf"
+      device_type: ["Dell", "PowerSwitch S5232F-ON"]
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "DellS5232FLeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/[1-16]"
+            name: Ethernet1/1/[1-16]
+            profiles: ["profile-interface-spine"]
+          - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/[17-34]"
+            name: Ethernet1/1/[17-34]
+            profiles: ["profile-interface-compute"]

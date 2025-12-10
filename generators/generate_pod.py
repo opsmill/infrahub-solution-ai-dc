@@ -10,7 +10,6 @@ from solution_ai_dc import sorting as solution_ai_dc_sorting
 from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.interfaces import set_interface_profiles
 from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
 
 from .pod_generator_query import PodGeneratorQuery
@@ -123,8 +122,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id
             await loopback_interface.save(allow_upsert=True)
-
-            await set_interface_profiles(self.client, device)
 
             self.spine_switches.append(device)
 
