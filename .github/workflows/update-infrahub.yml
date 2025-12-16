@@ -1,0 +1,87 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "Update Infrahub Test Containers Version"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Infrahub version to test"
+        required: true
+        default: "1.5.1"
+      run:
+        description: "Whether to run integration tests"
+        required: false
+        type: boolean
+        default: true
+
+  repository_dispatch:
+    types: [trigger-infrahub-update]
+
+env:
+  # always needed
+  # INFRAHUB_API_TOKEN: ${{ secrets.INFRAHUB_API_TOKEN }}
+  INFRAHUB_TIMEOUT: 600
+  INFRAHUB_TESTING_LOG_LEVEL: INFO
+
+jobs:
+  update-dependencies:
+    strategy:
+      matrix:
+        branch-name:
+          - main
+
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: update-infrahub-${{ github.event.client_payload.version }}-${{ matrix.branch-name }}
+      cancel-in-progress: false
+
+    env:
+      INFRAHUB_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}
+      BRANCH_NAME: ${{ matrix.branch-name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          pip install uv
+          uv sync
+
+      - name: Update testcontainers to workflow version ${{ env.INFRAHUB_VERSION }}
+        run: |
+          uv add infrahub-testcontainers==${INFRAHUB_VERSION}
+
+      - name: Prepare the branch for the update
+        id: prepare-branch
+        run: |
+          echo "Checking if branch ${{ env.BRANCH_NAME }} exists..."
+          BRANCH_EXISTS=$(git ls-remote --heads origin ${{ env.BRANCH_NAME }} | wc -l)
+          echo "BRANCH_EXISTS=$BRANCH_EXISTS" >> $GITHUB_ENV
+
+      - name: Commit and push changes with github-actions-x/commit
+        uses: github-actions-x/commit@v2.9
+        with:
+          github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          push-branch: ${{ env.BRANCH_NAME }}
+          commit-message: "chore: update test-containers to version ${{ env.INFRAHUB_VERSION }} and bump version in pyproject"
+          files: |
+            pyproject.toml
+            uv.lock
+          name: opsmill-bot
+          email: github-bot@opsmill.com
+          rebase: ${{ env.BRANCH_EXISTS == 1 }}
+
+      - name: Create a pull request
+        run: |
+          echo ${{ secrets.GH_UPDATE_PACKAGE_OTTO }} | gh auth login --with-token
+          gh pr create \
+            --title "update test-containers to version ${{ env.INFRAHUB_VERSION }} against ${{ matrix.branch-name}}" \
+            --body "This PR updates test-containers to version ${{ env.INFRAHUB_VERSION }}." \
+            --base ${{ matrix.branch-name}} \
+            --head ${{ env.BRANCH_NAME }}

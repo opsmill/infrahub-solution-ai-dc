@@ -1,0 +1,21 @@
+# Dependency directories
+
+node_modules/
+docs/node_modules/
+
+# Build output
+
+docs/build/
+docs/.docusaurus/
+
+# Version control
+
+.git/
+
+# Other
+
+.kiro/
+.claude/
+.mypy_cache/
+.ruff_cache/
+.venv/
