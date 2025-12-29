@@ -1,0 +1,53 @@
+---
+version: 2
+updates:
+  # Maintain dependencies for uv (pip replacement)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "12:00"
+    open-pull-requests-limit: 10
+    target-branch: main
+    labels:
+      - "dependencies"
+    groups:
+      all:
+        patterns:
+          - "^(?!infrahub-sdk$).*"  # Exclude infrahub-sdk from this group
+      infrahub-sdk:
+        patterns:
+          - "infrahub-sdk"
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "12:00"
+    open-pull-requests-limit: 10
+    target-branch: main
+    labels:
+      - "dependencies"
+    groups:
+      all:
+        patterns:
+          - "^(?!infrahub-sdk$).*"  # Exclude infrahub-sdk from this group
+      infrahub-sdk:
+        patterns:
+          - "infrahub-sdk"
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    target-branch: main
+    labels:
+      - "dependencies"
+    groups:
+      all-actions:
+        patterns:
+          - "*"
+
