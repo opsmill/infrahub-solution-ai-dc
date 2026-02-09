@@ -1,0 +1,23 @@
+fragment intfFrag on NetworkInterface {
+    __typename
+    name {
+        value
+    }
+    description {
+        value
+    }
+    role {
+        value
+    }
+    status {
+        value
+    }
+    ip_address {
+        node {
+            __typename
+            address {
+                value
+            }
+        }
+    }
+}

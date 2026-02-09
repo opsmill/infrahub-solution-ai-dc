@@ -1,0 +1,23 @@
+{% macro interface_edge(interface) %}
+
+interface {{ interface.name.value }}
+{% if interface.description.value %}
+  description {{ interface.description.value }}
+{% endif %}
+{% if interface.status.value == "inactive" %}
+  shutdown
+{% else %}
+  no shutdown
+{% endif %}
+{% if interface.ip_address.node %}
+  ip address {{ interface.ip_address.node.address.value }}
+{% endif %}
+{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.status.value != "inactive" %}
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+{% elif interface.role.value in ["loopback"] %}
+  ip router ospf UNDERLAY area 0.0.0.0
+
+{% endif %}
+{% endmacro %}
+

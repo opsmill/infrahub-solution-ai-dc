@@ -17,29 +17,19 @@ query StartupConfigQuery($name: String!){
         interfaces {
           edges {
             node {
-              __typename
-              name {
-                value
-              }
-              description {
-                value
-              }
-              role {
-                value
-              }
-              status {
-                value
-              }
-              ip_address {
-                node {
-                  __typename
-                  address {
-                    value
-                  }
-                }
-              }
+              ...intfFrag
             }
           }
+        }
+        artifacts {
+          edges {
+            node(name__value: "base_config") {
+              __typename
+              id
+              storage_id {
+                value
+              }
+            }
         }
       }
     }
