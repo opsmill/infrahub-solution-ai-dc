@@ -1,7 +1,7 @@
 [project]
-name = "solution-ai-dc"
+name = "infrahub-bundle-dc-ai"
 version = "0.1.0"
-description = "Infrahub Repository"
+description = ""
 authors = []
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -78,7 +78,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["solution_ai_dc"]
+known-first-party = ["infrahub_bundle_dc_ai"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150
