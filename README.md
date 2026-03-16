@@ -1,4 +1,4 @@
-# Solution AI-DC
+# Infrahub Bundle DC AI
 
 ## Installation
 
