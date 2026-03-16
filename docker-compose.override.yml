@@ -1,6 +1,6 @@
 ---
 x-infrahub-custom-build: &infrahub_custom_build
-  image: opsmill/infrahub-solution-ai-dc:${INFRAHUB_BASE_VERSION:-1.6.0}
+  image: opsmill/infrahub-bundle-dc-ai:${INFRAHUB_BASE_VERSION:-1.6.0}
   environment:
     INFRAHUB_GIT_USER_NAME: "infrahub"
     INFRAHUB_GIT_EMAIL: "no-reply@opsmill.com"

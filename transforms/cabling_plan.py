@@ -2,7 +2,7 @@ from typing import Any, NamedTuple
 
 from infrahub_sdk.transforms import InfrahubTransform
 
-from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkLink, NetworkPod
+from infrahub_bundle_dc_ai.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkLink, NetworkPod
 
 from .fabric_cabling_plan_query import FabricCablingPlanQuery
 

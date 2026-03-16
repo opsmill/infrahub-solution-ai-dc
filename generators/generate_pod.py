@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
-from solution_ai_dc import sorting as solution_ai_dc_sorting
-from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
-from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_bundle_dc_ai import sorting as infrahub_bundle_dc_ai_sorting
+from infrahub_bundle_dc_ai.addressing import assign_ip_addresses_to_p2p_connections
+from infrahub_bundle_dc_ai.cabling import build_pod_cabling_plan, connect_interface_maps
+from infrahub_bundle_dc_ai.generator import GeneratorMixin
+from infrahub_bundle_dc_ai.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
 
 from .pod_generator_query import PodGeneratorQuery
 
@@ -83,8 +83,8 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             0
         ].node.parent.node.spine_interface_sorting_method.value
 
-        self.fabric_interface_sorting_function = getattr(solution_ai_dc_sorting, fabric_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(solution_ai_dc_sorting, spine_interface_sorting_method)
+        self.fabric_interface_sorting_function = getattr(infrahub_bundle_dc_ai_sorting, fabric_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(infrahub_bundle_dc_ai_sorting, spine_interface_sorting_method)
 
         await self.allocate_resource_pools()
 

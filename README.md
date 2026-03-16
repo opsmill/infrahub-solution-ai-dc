@@ -13,7 +13,7 @@ uv sync --all-packages
 From within this repository, build a custom image.
 
 ```bash
-cd solution-ai-dc
+cd infrahub-bundle-dc-ai
 export INFRAHUB_BASE_VERSION=local
 uv run inv build
 ```

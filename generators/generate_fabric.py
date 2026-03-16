@@ -5,8 +5,8 @@ import logging
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
-from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_bundle_dc_ai.generator import GeneratorMixin
+from infrahub_bundle_dc_ai.protocols import NetworkDevice, NetworkInterface, NetworkPod
 
 from .fabric_generator_query import FabricGeneratorQuery
 
