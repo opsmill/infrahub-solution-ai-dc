@@ -1,0 +1,211 @@
+---
+title: Installation & Setup
+description: Prerequisites, environment setup, and repository structure for the AI/DC solution bundle.
+---
+
+# Installation & Setup
+
+Everything needed to run the AI/DC solution locally is included in the repository. The environment runs in Docker; you interact with it through the `infrahubctl` CLI and the Infrahub web UI.
+
+## Requirements
+
+- **Python 3.11+** (3.12 recommended — matches `.python-version`)
+- **Docker** and **Docker Compose** (v2)
+- **[uv](https://docs.astral.sh/uv/)** — Python package manager
+- **Git** — for cloning the repository
+
+:::info infrahubctl is included
+The `infrahubctl` CLI is installed automatically as part of the `infrahub-sdk` dependency. No separate installation is needed.
+:::
+
+## Getting started
+
+### Install dependencies
+
+```bash
+uv sync --all-packages
+```
+
+This installs all Python dependencies including `infrahub-sdk` (which provides `infrahubctl`), `invoke` (task runner), and the solution's own `solution-ai-dc` package.
+
+### Configure environment variables
+
+The repository includes a `.envrc` file (compatible with [direnv](https://direnv.net/)):
+
+```bash
+export INFRAHUB_USERNAME="admin"
+export INFRAHUB_PASSWORD="infrahub"
+export VERSION="1.6.0"
+```
+
+`INFRAHUB_USERNAME` and `INFRAHUB_PASSWORD` are used by `infrahubctl` to authenticate with the Infrahub API. `VERSION` sets the Infrahub image tag. If not using direnv, source the file manually or export these variables:
+
+```bash
+source .envrc
+```
+
+### Start Infrahub
+
+```bash
+inv start
+```
+
+This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` (if not already present), then runs `docker compose up -d`. The override file (`docker-compose.override.yml`) replaces the standard Infrahub image with a custom build that includes the solution's Python package.
+
+**Services started:**
+
+| Service | Description | Port |
+|---------|-------------|------|
+| `infrahub-server` | Infrahub API and web UI | `8000` |
+| `task-manager` | Prefect API server for workflow orchestration | `4200` |
+| `task-worker` | Infrahub task workers (2 replicas) | — |
+| `database` | Neo4j graph database | `7474`, `7687` |
+| `cache` | Redis | — |
+| `message-queue` | RabbitMQ | — |
+| `task-manager-db` | PostgreSQL for Prefect | — |
+
+:::success Verify the environment
+Open `http://localhost:8000` in a browser and log in with username `admin`, password `infrahub`.
+:::
+
+### Load data
+
+```bash
+inv load
+```
+
+This runs four steps in sequence:
+
+1. `infrahubctl schema load schemas` — loads the 5 schema files defining the data model
+2. `infrahubctl menu load menus/` — loads UI menu configuration
+3. `infrahubctl object load objects/` — loads all design objects (groups, manufacturers, device types, IPAM, profiles, device templates, fabrics, pods, racks)
+4. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
+
+:::info Repository sync
+After `inv load`, Infrahub imports the repository and reads `.infrahub.yml` to register Generators, Transforms, queries, and artifact definitions. Verify with `infrahubctl repository list`. Generators cannot run until this completes.
+:::
+
+### Load trigger rules (optional)
+
+```bash
+cp objects/20_triggers.yml.save triggers.yml
+infrahubctl object load triggers.yml
+```
+
+This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects for the automatic cascade. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+
+:::warning Load triggers after repository sync
+If loaded before Generator definitions are imported, the trigger rules will fail to resolve their action references.
+:::
+
+## Repository structure
+
+The repository is self-contained — everything below is included. You do not need to build any of these from scratch.
+
+### Schemas
+
+| File | Contents |
+|------|----------|
+| `schemas/logical_design.yml` | `NetworkFabric` and `NetworkPod` — the design hierarchy with cascade attributes (checksum, amount_of_spines) |
+| `schemas/physical_location.yml` | `LocationHall` and `LocationRack` — physical locations with Generator target support |
+| `schemas/device.yml` | `NetworkDevice`, `NetworkInterface`, and `NetworkLink` — devices with computed attributes (interface index, description) |
+| `schemas/ipam.yml` | `IpamIPPrefix` with role-based allocation and `IpamIPAddress` |
+| `schemas/generator.yml` | `GeneratorTarget` generic enabling trigger-based cascades via checksum attribute |
+
+### Generators
+
+| File | Responsibility |
+|------|---------------|
+| `generators/generate_fabric.py` | FabricGenerator — IP pool allocation, super spine creation, writes checksums to child Pods |
+| `generators/generate_pod.py` | PodGenerator — validates fabric complete, spine creation, spine-to-super-spine cabling, writes checksums to child Racks |
+| `generators/generate_rack.py` | RackGenerator — validates pod complete, leaf creation, leaf-to-spine cabling |
+
+Each Generator has a paired `.gql` query file in the same directory. The `.infrahub.yml` file in the repository root wires Generator definitions to their queries and target groups.
+
+### Transforms and artifacts
+
+| File | Purpose |
+|------|---------|
+| `transforms/startup_config.gql` / `templates/startup_config.j2` | Jinja2 Transform producing a startup configuration artifact per device |
+| `transforms/cabling_plan.py` / `.gql` | Python Transform producing a CSV cabling plan artifact per fabric |
+| `transforms/computed_interface_description.py` / `.gql` | Python Transform applied as a computed attribute on each interface |
+
+### Demo data (object files)
+
+Loaded in numbered order by `infrahubctl object load objects/`:
+
+| File | Contents |
+|------|----------|
+| `objects/01_groups.yml` | `CoreStandardGroup` objects: `halls`, `racks`, `fabrics`, `pods`, `devices` |
+| `objects/02_manufacturer.yml` | Equipment manufacturers |
+| `objects/03_device_type.yml` | Device types for leaf, spine, and super spine switches |
+| `objects/04_ipam.yml` | IP supernet (`10.0.0.0/8`) and `FabricSupernetPool` |
+| `objects/05_profiles.yml` | Interface role profiles (MTU, role assignments) |
+| `objects/06_device_template.yml` | 9 device templates defining interface layouts per device role |
+| `objects/10_fabric.yml` | Fabric and Pod objects: Fabric-A (6 super spines, 3 pods), Fabric-B (4 super spines, 3 pods, Dell equipment) |
+| `objects/11_rack.yml` | 16 Rack objects across both fabrics with leaf counts and template assignments |
+| `objects/20_triggers.yml.save` | Trigger rules (`.save` extension — loaded separately after repository sync) |
+
+### Infrastructure
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Builds a custom Infrahub image with the `solution-ai-dc` Python package installed |
+| `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes |
+| `repository.yml` | `CoreRepository` object pointing to `/upstream` (the mounted repository) |
+| `tasks.py` | Invoke task definitions for environment management |
+| `.infrahub.yml` | Central configuration wiring Generators, Transforms, queries, and artifacts |
+| `.envrc` | Environment variables for `infrahubctl` authentication |
+
+## Invoke tasks
+
+| Task | Command | Description |
+|------|---------|-------------|
+| Start | `inv start` | Download compose file (if needed) and start all services |
+| Stop | `inv stop` | Stop containers, remove networks (data preserved) |
+| Destroy | `inv destroy` | Stop containers, remove networks **and volumes** (full reset) |
+| Restart | `inv restart` | Restart all services (or `inv restart --component=<name>` for one) |
+| Load | `inv load` | Load schemas, menus, objects, and register repository |
+| Load schema | `inv load-schema` | Load schema files only |
+| Load menu | `inv load-menu` | Load menu definitions only |
+| Build | `inv build` | Build the custom Docker image locally |
+| Test | `inv test` | Run pytest test suite |
+| Format | `inv format` | Run Ruff formatter and auto-fix linting issues |
+
+## Building a custom image
+
+For modifying Generator code or adding new Transforms:
+
+```bash
+inv build
+inv restart
+```
+
+The `Dockerfile` extends the base Infrahub image (`registry.opsmill.io/opsmill/infrahub`) with the solution's Python package. Running `inv build` builds the image locally; `inv restart` picks up the new build. The `docker-compose.override.yml` also mounts `src/` into the task worker container, so changes to utility code in `src/solution_ai_dc/` are picked up without rebuilding.
+
+## Troubleshooting
+
+### Services fail to start
+
+- Check Docker is running: `docker info`
+- Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687
+- View logs: `docker compose logs infrahub-server` or `docker compose logs task-worker`
+- Full reset: `inv destroy && inv start`
+
+### Repository not syncing
+
+- Verify with `infrahubctl repository list`
+- The repository mounts from `/upstream` inside the container — check `docker compose logs task-worker` for import errors
+- Schema mismatches between what `.infrahub.yml` references and what is loaded can block sync
+
+### Generator fails with prerequisite error
+
+- "the fabric doesn't seem to be fully generated yet" — the PodGenerator requires all super spines to exist before it runs. Run the FabricGenerator first.
+- "the pod doesn't seem to be fully generated yet" — the RackGenerator requires all spines to exist. Run the PodGenerator for that pod first.
+- These errors are by design: each Generator validates that the tier above is complete before proceeding.
+
+### Cascade stops mid-way
+
+- Check task execution in the Infrahub UI for failed tasks
+- Triggers fire only on non-main branches (`branch_scope: other_branches`) — verify you are working on a branch
+- Triggers must be loaded after repository sync — if loaded before, Generator action references will not resolve
