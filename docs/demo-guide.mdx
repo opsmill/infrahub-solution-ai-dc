@@ -1,0 +1,239 @@
+---
+title: Demo guide
+description: Run the AI/DC solution end to end — from loading design data to generating a complete data center fabric.
+---
+
+# Demo guide
+
+This guide walks through the AI/DC solution from start to finish. You will load a data center design into Infrahub, trigger Generators that build the infrastructure from that design, and inspect the results. No code changes are required.
+
+:::info Prerequisites
+Python 3.11+, Docker, and [uv](https://docs.astral.sh/uv/) are required. Refer to [Installation & Setup](./installation-setup) for detailed environment setup instructions.
+:::
+
+## What you are about to see
+
+### The problem
+
+AI data center fabrics involve hundreds of standardized switches, thousands of interfaces, and hierarchical IP addressing schemes that must be consistent across every pod and rack. Traditional scripting can automate the initial build, but it discards design intent after execution — the script knows what to create, but that knowledge lives in code, not in the data layer. Day-two changes (adding a rack, expanding a pod) require re-running or patching scripts with no guarantee that existing infrastructure remains untouched.
+
+### Design-driven automation
+
+Infrahub inverts this approach. Operators define *what* the infrastructure should look like — topology, device counts, IP ranges — as structured design objects stored in Infrahub. Generators read those design objects and produce the implementation: devices, IP allocations, cabling plans, and configuration data. Because the design stays in Infrahub as the source of truth, day-two changes are surgical — a Generator rebuilds only its target scope, leaving everything else intact.
+
+For more on how Generators work, see the [Infrahub documentation on Generators](https://docs.infrahub.app/topics/generator).
+
+### The fabric topology
+
+Fabric-A is a 5-stage Clos network with the following hierarchy:
+
+- **Fabric-A**: 6 super spine switches
+- **Pod-A1** (role: `fabric`): represents the super spine tier — the FabricGenerator places super spine devices here
+- **Pod-A2** and **Pod-A3**: each with 4 spine switches
+- **4 racks under Pod-A2**: Rack-A2-1 through Rack-A2-4, each containing 1–2 leaf switches
+- **4 racks under Pod-A3**: Rack-A3-1 through Rack-A3-4, each containing 1–2 leaf switches
+
+:::tip Topology diagram
+A visual topology diagram will be added in a future update.
+:::
+
+### Minimal inputs, complete infrastructure
+
+The contrast between what you define and what Generators produce illustrates the power of design-driven automation.
+
+**Design inputs** (loaded by `inv load`):
+
+- 2 fabrics, 6 pods, 16 racks
+- 9 device templates (defining interface layouts and roles)
+- 1 IP supernet (`10.0.0.0/8`) with a `FabricSupernetPool`
+
+**Generated output** (for Fabric-A alone):
+
+- 25 devices: 6 super spines + 8 spines + 11 leafs
+- Hierarchical IP pools carved from the supernet through fabric, pod, and rack levels
+- Interface-level cabling with point-to-point /31 addressing between tiers
+- Computed interface descriptions on every connected interface
+
+## Setting up the demo
+
+### Start the environment
+
+```bash
+uv sync --all-packages
+inv start
+```
+
+This installs Python dependencies and launches the Infrahub stack via Docker Compose — including the server, task workers, Neo4j, Redis, RabbitMQ, and PostgreSQL.
+
+### Load the design data
+
+```bash
+inv load
+```
+
+This runs four steps in sequence: loads schema definitions (`infrahubctl schema load`), loads UI menus (`infrahubctl menu load`), loads all design objects from `objects/`, and registers the Git repository from `repository.yml`. After this command completes, Infrahub contains the full design — fabrics, pods, racks, device templates, and IP pools — but no actual devices.
+
+:::info What `inv load` does not create
+No devices exist yet. The fabrics, pods, and racks define design intent — they describe *what* the infrastructure should look like. Browse the NetworkDevice list in the Infrahub UI to confirm it is empty.
+:::
+
+### Wait for repository sync
+
+```bash
+infrahubctl repository list
+```
+
+Verify the repository status shows as synced. When Infrahub imports the repository, it reads `.infrahub.yml` to register Generator definitions, Transforms, queries, and artifact definitions. Generators cannot run until this import completes.
+
+### Load trigger rules
+
+```bash
+cp objects/20_triggers.yml.save triggers.yml
+infrahubctl object load triggers.yml
+```
+
+This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable the automatic cascade. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+
+:::warning Branch scope
+Triggers fire only on non-main branches. All trigger rules are configured with `branch_scope: other_branches` by design. Running a Generator on `main` will not trigger the cascade.
+:::
+
+## Running the Generators
+
+This section walks through each Generator tier manually on a branch. Running them one at a time lets you inspect what each Generator creates before moving to the next tier.
+
+### Create a branch
+
+```bash
+infrahubctl branch create demo
+```
+
+All Generator work happens on branches, not on `main`. This keeps the main branch clean and lets you review changes before merging.
+
+### Step 1: Run the FabricGenerator
+
+In the Infrahub UI, navigate to the Generators page (accessible from the left menu). Find `generate-fabric`, click **Run**, and select **Fabric-A** as the target.
+
+**What it creates:**
+
+- **Fabric supernet**: a /16 prefix allocated from the `FabricSupernetPool`
+- **`fabric-a-prefix-pool`**: a prefix pool backed by the fabric supernet
+- **Super spine loopback prefix**: a /28 prefix allocated from `fabric-a-prefix-pool`
+- **`fabric-a-super-spine-loopback-pool`**: an address pool backed by the loopback prefix, allocating /32 addresses
+- **6 super spine devices**: `ss-fabric-a-1` through `ss-fabric-a-6`, each with a Loopback0 interface and a /32 IP address drawn from the loopback pool
+- **Checksum update**: a SHA-256 checksum written to each child Pod (Pod-A1, Pod-A2, Pod-A3) — this is the signal that triggers PodGenerators in the automatic cascade
+
+:::success After FabricGenerator completes
+Verify in the UI: 6 devices in the NetworkDevice list (all with role `super_spine`), new IP prefixes under the fabric supernet, new IP pools, and a `checksum` value on each Pod object.
+:::
+
+### Step 2: Run the PodGenerator
+
+Find `generate-pod`, click **Run**, and select **Pod-A2** as the target.
+
+:::info Pod-A1 is skipped
+Pod-A1 has role `fabric` — it represents the super spine tier. The PodGenerator raises an error if targeted at a fabric-role pod.
+:::
+
+**What it creates for Pod-A2:**
+
+- **Pod supernet**: a /19 prefix allocated from `fabric-a-prefix-pool`
+- **`fabric-a-pod-a2-prefix-pool`**: a prefix pool backed by the pod supernet
+- **Pod loopback prefix**: a /27 prefix allocated from `fabric-a-pod-a2-prefix-pool`
+- **`fabric-a-pod-a2-loopback-pool`**: an address pool allocating /32 addresses for spine and leaf loopbacks
+- **4 spine devices**: `spine-pod-a2-1` through `spine-pod-a2-4`, each with a Loopback0 interface and /32 IP
+- **NetworkLink objects**: connecting each spine to each super spine, with point-to-point /31 IP addresses allocated from the pod prefix pool
+- **Checksum update**: written to child Racks (Rack-A2-1 through Rack-A2-4)
+
+:::success After PodGenerator completes
+Verify in the UI: 4 new spine devices, NetworkLink objects visible in the link list, pod-level IP pools, and interfaces showing their connections and IP addresses.
+:::
+
+Run the PodGenerator again for **Pod-A3** to build the second pod (4 more spines: `spine-pod-a3-1` through `spine-pod-a3-4`).
+
+### Step 3: Run the RackGenerator
+
+Find `generate-rack`, click **Run**, and select **Rack-A2-1** as the target.
+
+**What it creates for Rack-A2-1** (which has `amount_of_leafs: 2`):
+
+- **2 leaf devices**: `leaf-pod-a2-1-1` and `leaf-pod-a2-1-2`, each with a Loopback0 interface and /32 IP drawn from the pod loopback pool (`fabric-a-pod-a2-loopback-pool`)
+- **NetworkLink objects**: connecting each leaf to each spine in the pod, with point-to-point /31 IP addresses allocated from the pod prefix pool
+
+:::success After RackGenerator completes
+Verify in the UI: 2 new leaf devices assigned to Rack-A2-1, new NetworkLink objects connecting leafs to spines, and /31 IP addresses on each point-to-point interface.
+:::
+
+Run the RackGenerator for the remaining racks to complete the fabric, or proceed to the next section to see how triggers automate this process.
+
+## The automatic cascade
+
+With trigger rules loaded, the cascade runs automatically. The FabricGenerator writes checksums to Pods — triggers fire the PodGenerator for each Pod — the PodGenerator writes checksums to Racks — triggers fire the RackGenerator for each Rack. One action at the fabric level builds the entire data center.
+
+### How it works
+
+1. **FabricGenerator** completes and writes a checksum to each child Pod
+2. The `CoreNodeTriggerRule` for `NetworkPod` detects the checksum update and fires the `run-pod-generator` action (`CoreGeneratorAction`)
+3. **PodGenerator** runs for each Pod (skipping fabric-role pods), creates spines and links, then writes a checksum to each child Rack
+4. The `CoreNodeTriggerRule` for `LocationRack` detects the checksum update and fires the `run-rack-generator` action
+5. **RackGenerator** runs for each Rack, creating leafs and links
+
+The chain is: **checksum write → trigger rule → Generator action → next tier**, repeated at each level.
+
+### Try it
+
+Create a fresh branch and run the FabricGenerator for Fabric-B (which uses Dell equipment):
+
+```bash
+infrahubctl branch create demo-cascade
+```
+
+In the UI, run `generate-fabric` with **Fabric-B** as the target. Watch the cascade: PodGenerators fire automatically for Pod-B2 and Pod-B3, followed by RackGenerators for all 8 racks.
+
+:::tip Monitoring the cascade
+Track progress through the Infrahub UI's proposed changes view or the task execution list. Each Generator execution appears as a separate task, so you can follow the cascade as it propagates through the tiers.
+:::
+
+## Day-two operations: adding a rack
+
+Design-driven automation extends beyond the initial build. Adding a rack demonstrates how Generators handle incremental changes without rebuilding existing infrastructure.
+
+1. On the `demo` branch, create a new **LocationRack** in the Infrahub UI:
+   - **Name**: `Rack-A2-5`
+   - **Index**: `5`
+   - **Rack type**: `compute`
+   - **Pod**: `Pod-A2`
+   - **Parent**: `Hall-A1`
+   - **Amount of leafs**: `2`
+   - **Leaf switch template**: `leaf-switch-compute`
+   - Add to the `racks` group
+
+2. Run `generate-rack` manually for **Rack-A2-5**
+
+3. Observe the results: 2 new leaf devices (`leaf-pod-a2-5-1` and `leaf-pod-a2-5-2`), new NetworkLink objects connecting them to the existing spines — and all existing devices, links, and IP addresses in other racks remain unchanged.
+
+:::info Surgical updates
+The RackGenerator creates objects only for its target rack. Existing devices, links, and IPs in other racks are not modified. Triggers fire only on updates to existing objects, not on new object creation — which is why the RackGenerator is run manually here.
+:::
+
+## What to take away
+
+### Key concepts demonstrated
+
+- **Design-driven automation** — you defined topology, device counts, and IP ranges; Generators produced 25 devices with full connectivity and addressing
+- **Event-driven cascade** — a single fabric-level action built the entire data center through chained checksum triggers
+- **Hierarchical IP delegation** — the supernet was carved automatically through fabric, pod, and rack levels via [Resource Manager](https://docs.infrahub.app/topics/resource-manager)
+- **Day-two change support** — adding a rack produced only new objects with no rebuild of existing infrastructure
+- **Branch-based workflow** — all changes happened on a branch, reviewable and mergeable through Infrahub's standard workflow
+
+### Next steps
+
+- [Design-driven automation](./design-driven-automation) — deeper explanation of the architecture and concepts
+- [Modular Generator architecture](./modular-generator-architecture) — how the cascade works internally
+- [Generator patterns](./generator-patterns) — implementation patterns for building your own Generators
+- [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
+- [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
+
+:::tip Beyond AI data centers
+The cascade pattern demonstrated here — hierarchical Generators chained by checksum triggers — applies to any standardized, layered infrastructure: edge deployments, service provider networks, enterprise campuses. The Fabric → Pod → Rack hierarchy is illustrative, not prescriptive.
+:::
