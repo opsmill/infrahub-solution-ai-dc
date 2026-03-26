@@ -100,74 +100,6 @@ Triggers fire only on non-main branches. All trigger rules are configured with `
 
 ## Running the Generators
 
-This section walks through each Generator tier manually on a branch. Running them one at a time lets you inspect what each Generator creates before moving to the next tier.
-
-### Create a branch
-
-```bash
-infrahubctl branch create demo
-```
-
-All Generator work happens on branches, not on `main`. This keeps the main branch clean and lets you review changes before merging.
-
-### Step 1: Run the FabricGenerator
-
-In the Infrahub UI, navigate to the Generators page (accessible from the left menu). Find `generate-fabric`, click **Run**, and select **Fabric-A** as the target.
-
-**What it creates:**
-
-- **Fabric supernet**: a /16 prefix allocated from the `FabricSupernetPool`
-- **`fabric-a-prefix-pool`**: a prefix pool backed by the fabric supernet
-- **Super spine loopback prefix**: a /28 prefix allocated from `fabric-a-prefix-pool`
-- **`fabric-a-super-spine-loopback-pool`**: an address pool backed by the loopback prefix, allocating /32 addresses
-- **6 super spine devices**: `ss-fabric-a-1` through `ss-fabric-a-6`, each with a Loopback0 interface and a /32 IP address drawn from the loopback pool
-- **Checksum update**: a SHA-256 checksum written to each child Pod (Pod-A1, Pod-A2, Pod-A3) — this is the signal that triggers PodGenerators in the automatic cascade
-
-:::success After FabricGenerator completes
-Verify in the UI: 6 devices in the NetworkDevice list (all with role `super_spine`), new IP prefixes under the fabric supernet, new IP pools, and a `checksum` value on each Pod object.
-:::
-
-### Step 2: Run the PodGenerator
-
-Find `generate-pod`, click **Run**, and select **Pod-A2** as the target.
-
-:::info Pod-A1 is skipped
-Pod-A1 has role `fabric` — it represents the super spine tier. The PodGenerator raises an error if targeted at a fabric-role pod.
-:::
-
-**What it creates for Pod-A2:**
-
-- **Pod supernet**: a /19 prefix allocated from `fabric-a-prefix-pool`
-- **`fabric-a-pod-a2-prefix-pool`**: a prefix pool backed by the pod supernet
-- **Pod loopback prefix**: a /27 prefix allocated from `fabric-a-pod-a2-prefix-pool`
-- **`fabric-a-pod-a2-loopback-pool`**: an address pool allocating /32 addresses for spine and leaf loopbacks
-- **4 spine devices**: `spine-pod-a2-1` through `spine-pod-a2-4`, each with a Loopback0 interface and /32 IP
-- **NetworkLink objects**: connecting each spine to each super spine, with point-to-point /31 IP addresses allocated from the pod prefix pool
-- **Checksum update**: written to child Racks (Rack-A2-1 through Rack-A2-4)
-
-:::success After PodGenerator completes
-Verify in the UI: 4 new spine devices, NetworkLink objects visible in the link list, pod-level IP pools, and interfaces showing their connections and IP addresses.
-:::
-
-Run the PodGenerator again for **Pod-A3** to build the second pod (4 more spines: `spine-pod-a3-1` through `spine-pod-a3-4`).
-
-### Step 3: Run the RackGenerator
-
-Find `generate-rack`, click **Run**, and select **Rack-A2-1** as the target.
-
-**What it creates for Rack-A2-1** (which has `amount_of_leafs: 2`):
-
-- **2 leaf devices**: `leaf-pod-a2-1-1` and `leaf-pod-a2-1-2`, each with a Loopback0 interface and /32 IP drawn from the pod loopback pool (`fabric-a-pod-a2-loopback-pool`)
-- **NetworkLink objects**: connecting each leaf to each spine in the pod, with point-to-point /31 IP addresses allocated from the pod prefix pool
-
-:::success After RackGenerator completes
-Verify in the UI: 2 new leaf devices assigned to Rack-A2-1, new NetworkLink objects connecting leafs to spines, and /31 IP addresses on each point-to-point interface.
-:::
-
-Run the RackGenerator for the remaining racks to complete the fabric, or proceed to the next section to see how triggers automate this process.
-
-## The automatic cascade
-
 With trigger rules loaded, the cascade runs automatically. The FabricGenerator writes checksums to Pods — triggers fire the PodGenerator for each Pod — the PodGenerator writes checksums to Racks — triggers fire the RackGenerator for each Rack. One action at the fabric level builds the entire data center.
 
 ### How it works
@@ -182,16 +114,44 @@ The chain is: **checksum write → trigger rule → Generator action → next ti
 
 ### Try it
 
-Create a fresh branch and run the FabricGenerator for Fabric-B (which uses Dell equipment):
+Create a branch and run the FabricGenerator for Fabric-A:
 
 ```bash
-infrahubctl branch create demo-cascade
+infrahubctl branch create demo
 ```
 
-In the UI, run `generate-fabric` with **Fabric-B** as the target. Watch the cascade: PodGenerators fire automatically for Pod-B2 and Pod-B3, followed by RackGenerators for all 8 racks.
+All Generator work happens on branches, not on `main`. This keeps the main branch clean and lets you review changes before merging.
+
+In the Infrahub UI, navigate to the Generator Definitions page (accessible from the Actions menu). Find `generate-fabric`, click **Run**, and select **Fabric-A** as the target. Watch the cascade: PodGenerators fire automatically for Pod-A2 and Pod-A3 (Pod-A1 is skipped — its `fabric` role marks it as the super spine tier), followed by RackGenerators for all 8 racks.
+
+:::success After the cascade completes
+Verify in the UI: 25 devices in the NetworkDevice list (6 super spines, 8 spines, 11 leafs), hierarchical IP pools carved from the supernet, NetworkLink objects with point-to-point /31 addressing, and computed interface descriptions on every connected interface.
+:::
+
+Run the cascade again for **Fabric-B** (which uses Dell equipment) to build the second fabric.
 
 :::tip Monitoring the cascade
 Track progress through the Infrahub UI's proposed changes view or the task execution list. Each Generator execution appears as a separate task, so you can follow the cascade as it propagates through the tiers.
+:::
+
+## Reviewing changes and generating artifacts
+
+With the Generators finished, create a proposed change to review what was built and trigger artifact generation.
+
+1. In the Infrahub UI, navigate to the `demo` branch and click **Create Proposed Change**.
+2. Give it a title (for example, *Build Fabric-A*) and submit.
+
+The proposed change shows a diff of every object the Generators created — devices, IP allocations, links, and pools — against the `main` branch. This is the same review workflow used for any change in Infrahub.
+
+Creating the proposed change also triggers Infrahub's CI pipeline, which runs the Transforms and artifact definitions registered from the repository. Once the pipeline completes, the following artifacts are available:
+
+- **Startup configuration** — a text artifact per device, rendered from a Jinja2 template
+- **Cabling plan** — a CSV artifact per fabric, produced by a Python Transformation
+
+Browse the generated artifacts from the proposed change view or from individual device and fabric objects.
+
+:::tip Computed interface descriptions
+Computed interface descriptions are not generated by CI — they are computed attributes that update automatically whenever an interface's relationships change. They are already visible on interfaces after the Generators run.
 :::
 
 ## Day-two operations: adding a rack
@@ -223,6 +183,7 @@ The RackGenerator creates objects only for its target rack. Existing devices, li
 - **Design-driven automation** — you defined topology, device counts, and IP ranges; Generators produced 25 devices with full connectivity and addressing
 - **Event-driven cascade** — a single fabric-level action built the entire data center through chained checksum triggers
 - **Hierarchical IP delegation** — the supernet was carved automatically through fabric, pod, and rack levels via [Resource Manager](https://docs.infrahub.app/topics/resource-manager)
+- **Proposed change review** — a diff of every generated object, with CI-triggered artifact generation (startup configs, cabling plans)
 - **Day-two change support** — adding a rack produced only new objects with no rebuild of existing infrastructure
 - **Branch-based workflow** — all changes happened on a branch, reviewable and mergeable through Infrahub's standard workflow
 
