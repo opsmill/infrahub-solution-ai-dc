@@ -9,6 +9,7 @@ from invoke import Context, task
 VERSION = os.getenv("INFRAHUB_IMAGE_VER", None)
 CURRENT_DIRECTORY = Path(__file__).resolve()
 MAIN_DIRECTORY_PATH = Path(__file__).parent
+BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
 
 
 @task
@@ -97,16 +98,21 @@ def test(ctx: Context) -> None:
 
 
 @task(help={"override": "Redownload the compose file even if it already exists."})
-def download_compose_file(ctx: Context, override: bool = False) -> Path:  # noqa: ARG001
+def download_compose_file(ctx: Context, infrahub_version: str = "", override: bool = False) -> Path:  # noqa: ARG001
     """
     Download docker-compose.yml from InfraHub if missing or override is True.
     """
     compose_file = Path("./docker-compose.yml")
 
+    compose_file_url = BASE_COMPOSE_FILE_URL
+
+    if infrahub_version != "":
+        compose_file_url = f"{compose_file_url}/{infrahub_version}"
+
     if compose_file.exists() and not override:
         return compose_file
 
-    response = httpx.get("https://infrahub.opsmill.io")
+    response = httpx.get(compose_file_url)
     response.raise_for_status()
 
     with compose_file.open("w", encoding="utf-8") as f:
