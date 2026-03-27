@@ -1,0 +1,142 @@
+---
+title: Modular Generator architecture
+description: How the AI/DC solution chains Generators through checksum triggers, validates parent completion, and allocates interfaces deterministically.
+---
+
+# Modular Generator architecture
+
+The AI/DC solution uses three Generators — FabricGenerator, PodGenerator, RackGenerator — that chain automatically through a checksum-based cascade. This page explains the cascade mechanism, how each tier validates that the previous tier completed, and how interface allocation works without Infrahub's resource allocators.
+
+See [Design-driven automation](./design-driven-automation) for what the Generators read and produce, or [Generator patterns](./generator-patterns) for implementation-level code patterns.
+
+## The cascade
+
+### Checksum-driven chaining
+
+Each Generator writes a checksum to its child objects after it finishes. That checksum change fires a trigger rule, which runs the next Generator tier. The chain repeats until the lowest tier completes.
+
+The `GeneratorTarget` generic (defined in `schemas/generator.yml`) adds a `checksum` attribute to both `NetworkPod` and `LocationRack`. This attribute is the only thing that flows from parent to child — it carries no configuration, only a signal that "something changed upstream."
+
+The checksum itself is a SHA-256 hash of all object IDs fetched during the Generator run. It is deterministic: the same set of objects produces the same hash. If a Generator re-runs and nothing has changed, the checksum stays the same and no downstream triggers fire.
+
+### Trigger rules
+
+Trigger rules connect checksum changes to Generator actions. Each rule watches for an attribute update on a specific node type and fires the corresponding Generator.
+
+| Trigger                 | Watches        | Attribute                                       | Fires           |
+|-------------------------|----------------|-------------------------------------------------|-----------------|
+| Pod Generator triggers  | `NetworkPod`   | `checksum`, `index`, `amount_of_spines`, `role` | `generate-pod`  |
+| Rack Generator triggers | `LocationRack` | `checksum`, `index`, `rack_type`                | `generate-rack` |
+
+The checksum trigger handles the cascade flow. The additional attribute triggers allow a Generator to re-run when an operator changes a design parameter (for example, updating `amount_of_spines` on a Pod).
+
+:::info Branch scope
+Trigger rules are scoped to branches other than `main`. Generators run on branches where changes can be reviewed before merging — they do not fire on `main` directly.
+:::
+
+### Full cascade sequence
+
+Running the FabricGenerator for a single fabric triggers the following sequence:
+
+1. **FabricGenerator** creates super spine devices and IP pools, then writes a checksum to each child Pod
+2. Checksum change on each Pod fires the **PodGenerator**
+3. **PodGenerator** validates the parent Fabric is complete, creates spine devices and spine-to-super-spine links, then writes a checksum to each child Rack
+4. Checksum change on each Rack fires the **RackGenerator**
+5. **RackGenerator** validates the parent Pod is complete, creates leaf devices and leaf-to-spine links
+
+One action at the fabric level produces the entire data center — devices, links, and IP addressing across all tiers.
+
+## Validation gates
+
+Each Generator validates that the parent tier completed before it runs. If validation fails, the Generator raises an error and aborts, preventing partial or inconsistent infrastructure from being generated.
+
+### PodGenerator validation
+
+Before creating spines, the PodGenerator checks:
+
+1. **Role exclusion** — Pods with role `fabric` represent the super spine tier and are skipped
+2. **Parent completeness** — the number of super spine devices in the fabric must match the fabric's `amount_of_super_spines`. If the FabricGenerator created only 4 of 6 expected super spines (for example, due to a failure), the PodGenerator refuses to run
+3. **Template defined** — the Pod must have a `spine_switch_template` assigned
+
+### RackGenerator validation
+
+Before creating leafs, the RackGenerator checks:
+
+1. **Parent completeness** — the number of spine devices in the pod must match the pod's `amount_of_spines`. If the PodGenerator has not finished, the RackGenerator refuses to run
+2. **Template defined** — the Rack must have a `leaf_switch_template` assigned
+
+These gates make the cascade self-healing in practice: if a Generator fails partway through, the checksum still changes for child objects whose parent data was modified. The child Generators fire, detect that the parent is incomplete, and abort. When the failed Generator is re-run and completes, child checksums update again and the cascade resumes.
+
+## Deterministic interface allocation
+
+Cabling — connecting spines to super spines, and leafs to spines — requires allocating specific interfaces on each device. The allocation must be **stable**: the same rack must always land on the same spine interfaces, regardless of what happens to other racks.
+
+### Why stability matters
+
+Consider a pod with 4 spines and 4 racks, fully cabled. Rack-3 is decommissioned — its leaf switches and links are removed. The spine interfaces that were connected to Rack-3 are now free, sitting in the middle of each spine's used range.
+
+If the Generator allocated interfaces by filling the next available slot, re-running it for the remaining racks would reassign them to a denser packing — shifting Rack-4's leafs onto the interfaces that Rack-3 previously occupied. In the data model, the cabling would look correct. In the physical world, those cables are already plugged in. The generated design would no longer match the actual infrastructure, and operators would need to re-cable interfaces to restore alignment.
+
+The AI/DC solution avoids this by tying interface selection to the rack's `index` attribute, not to the set of racks that currently exist. Rack-4 always connects to the same spine interfaces whether Rack-3 is present or not. Decommissioning a rack leaves a gap in the interface range — which is exactly what the physical fabric looks like.
+
+### How it works
+
+The allocation follows three steps:
+
+1. **Collect** — fetch all interfaces of a given role (for example, all super-spine-facing interfaces on spine devices)
+2. **Sort** — sort each device's interfaces by name using `netutils.interface.sort_interface_list`, producing a stable ordering (Ethernet1, Ethernet2, ... Ethernet10, Ethernet11 — not lexicographic)
+3. **Index** — use the device's position (pod index or rack index) to calculate which slot in the sorted list each cable connects to
+
+Because the index is derived from the design object (`NetworkPod.index`, `LocationRack.index`), the same design always produces the same cabling. Re-running a Generator selects the same interfaces every time.
+
+### Pod cabling: spine-to-super-spine
+
+Each spine connects to every super spine. The pod's `index` attribute determines which slot on each super spine the connections use:
+
+- Pod with index 2 → spines connect starting at super spine interface slot 0
+- Pod with index 3 → spines connect starting at a higher offset
+
+Within a pod, each spine occupies one slot per super spine. The offset formula ensures that pods do not compete for the same interfaces — each pod owns a contiguous range of slots on every super spine device.
+
+### Rack cabling: leaf-to-spine
+
+Each leaf connects to every spine in the pod. The rack's `index` attribute determines which slot on each spine the connections use:
+
+- Rack with index 1 → leafs connect to spine interface slots 0–1 (for a 2-leaf rack)
+- Rack with index 2 → leafs connect to spine interface slots 2–3
+
+Within a rack, leaf 1 uses the first slot in the range and leaf 2 uses the second. Racks with a single leaf use only one slot.
+
+### Configurable sorting direction
+
+The sorting direction is not hardcoded. Operators can choose between ascending (`create_sorted_device_interface_map`) and reverse (`create_reverse_sorted_device_interface_map`) per fabric level:
+
+| Schema attribute                                | Controls                                    |
+|-------------------------------------------------|---------------------------------------------|
+| `NetworkFabric.fabric_interface_sorting_method` | Super spine interface ordering              |
+| `NetworkFabric.spine_interface_sorting_method`  | Spine interface ordering (for pod cabling)  |
+| `NetworkPod.leaf_interface_sorting_method`      | Leaf interface ordering (for rack cabling)  |
+| `NetworkPod.spine_interface_sorting_method`     | Spine interface ordering (for rack cabling) |
+
+This allows different cabling patterns on different fabrics — for example, one fabric might allocate interfaces top-down while another allocates bottom-up.
+
+## Idempotency
+
+Every layer of the system is designed for safe re-runs:
+
+| Operation            | Mechanism                                                                                                                                       |
+|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| Device creation      | `allow_upsert=True` — creating a device with an existing name updates rather than duplicates                                                    |
+| Link creation        | `allow_upsert=True` — creating a link with existing endpoints is a no-op                                                                        |
+| Interface allocation | Index-based — same design produces the same cabling plan every time                                                                             |
+| IP allocation        | Deterministic identifiers — the resource allocator key is derived from the interface pair IDs, so the same pair always receives the same prefix |
+| Checksum propagation | Deterministic hash — if nothing changed, the checksum stays the same and no downstream triggers fire                                            |
+
+If a Generator fails mid-run, the already-created objects remain. Re-running the Generator picks up where it left off: existing objects are upserted (no duplicates), and new objects are created. The validation gates ensure that downstream Generators do not run until the failed tier completes.
+
+## Learn more
+
+- [Design-driven automation](./design-driven-automation) — what the Generators read and produce
+- [Generator patterns](./generator-patterns) — implementation-level code patterns
+- [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
+- [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
