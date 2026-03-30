@@ -1,0 +1,27 @@
+{
+  "id": "demo-guide",
+  "title": "Demo guide",
+  "description": "Run the AI/DC solution end to end — from loading design data to generating a complete data center fabric.",
+  "source": "@site/docs/solution-ai-dc/demo-guide.mdx",
+  "sourceDirName": ".",
+  "slug": "/demo-guide",
+  "permalink": "/solution-ai-dc/demo-guide",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/demo-guide.mdx",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "title": "Demo guide",
+    "description": "Run the AI/DC solution end to end — from loading design data to generating a complete data center fabric."
+  },
+  "sidebar": "solutionAiDcSidebar",
+  "previous": {
+    "title": "Installation & Setup",
+    "permalink": "/solution-ai-dc/installation-setup"
+  },
+  "next": {
+    "title": "Design-driven automation",
+    "permalink": "/solution-ai-dc/design-driven-automation"
+  }
+}

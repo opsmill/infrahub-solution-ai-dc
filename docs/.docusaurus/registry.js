@@ -1,0 +1,13 @@
+export default {
+  "17896441": [() => import(/* webpackChunkName: "17896441" */ "@theme/DocItem"), "@theme/DocItem", require.resolveWeak("@theme/DocItem")],
+  "25470f93": [() => import(/* webpackChunkName: "25470f93" */ "@site/docs/solution-ai-dc/modular-generator-architecture.mdx"), "@site/docs/solution-ai-dc/modular-generator-architecture.mdx", require.resolveWeak("@site/docs/solution-ai-dc/modular-generator-architecture.mdx")],
+  "34bafbb9": [() => import(/* webpackChunkName: "34bafbb9" */ "@site/docs/solution-ai-dc/generator-patterns.mdx"), "@site/docs/solution-ai-dc/generator-patterns.mdx", require.resolveWeak("@site/docs/solution-ai-dc/generator-patterns.mdx")],
+  "5e95c892": [() => import(/* webpackChunkName: "5e95c892" */ "@theme/DocsRoot"), "@theme/DocsRoot", require.resolveWeak("@theme/DocsRoot")],
+  "77140d38": [() => import(/* webpackChunkName: "77140d38" */ "@generated/docusaurus-plugin-content-docs/default/p/solution-ai-dc-222.json"), "@generated/docusaurus-plugin-content-docs/default/p/solution-ai-dc-222.json", require.resolveWeak("@generated/docusaurus-plugin-content-docs/default/p/solution-ai-dc-222.json")],
+  "a09514ee": [() => import(/* webpackChunkName: "a09514ee" */ "@site/docs/solution-ai-dc/overview.mdx"), "@site/docs/solution-ai-dc/overview.mdx", require.resolveWeak("@site/docs/solution-ai-dc/overview.mdx")],
+  "a7bd4aaa": [() => import(/* webpackChunkName: "a7bd4aaa" */ "@theme/DocVersionRoot"), "@theme/DocVersionRoot", require.resolveWeak("@theme/DocVersionRoot")],
+  "a94703ab": [() => import(/* webpackChunkName: "a94703ab" */ "@theme/DocRoot"), "@theme/DocRoot", require.resolveWeak("@theme/DocRoot")],
+  "aba21aa0": [() => import(/* webpackChunkName: "aba21aa0" */ "@generated/docusaurus-plugin-content-docs/default/__plugin.json"), "@generated/docusaurus-plugin-content-docs/default/__plugin.json", require.resolveWeak("@generated/docusaurus-plugin-content-docs/default/__plugin.json")],
+  "e047ee90": [() => import(/* webpackChunkName: "e047ee90" */ "@site/docs/solution-ai-dc/demo-guide.mdx"), "@site/docs/solution-ai-dc/demo-guide.mdx", require.resolveWeak("@site/docs/solution-ai-dc/demo-guide.mdx")],
+  "ec8fb272": [() => import(/* webpackChunkName: "ec8fb272" */ "@site/docs/solution-ai-dc/installation-setup.mdx"), "@site/docs/solution-ai-dc/installation-setup.mdx", require.resolveWeak("@site/docs/solution-ai-dc/installation-setup.mdx")],
+  "f6217fd4": [() => import(/* webpackChunkName: "f6217fd4" */ "@site/docs/solution-ai-dc/design-driven-automation.mdx"), "@site/docs/solution-ai-dc/design-driven-automation.mdx", require.resolveWeak("@site/docs/solution-ai-dc/design-driven-automation.mdx")],};

@@ -16,6 +16,7 @@
           buildInputs = with pkgs; [
             git
             stdenv.cc.cc.lib
+            nodejs_24
           ];
 
           shellHook = ''

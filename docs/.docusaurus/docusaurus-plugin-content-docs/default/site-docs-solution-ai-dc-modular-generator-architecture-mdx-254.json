@@ -1,0 +1,27 @@
+{
+  "id": "modular-generator-architecture",
+  "title": "Modular Generator architecture",
+  "description": "How the AI/DC solution chains Generators through checksum triggers, validates parent completion, and allocates interfaces deterministically.",
+  "source": "@site/docs/solution-ai-dc/modular-generator-architecture.mdx",
+  "sourceDirName": ".",
+  "slug": "/modular-generator-architecture",
+  "permalink": "/solution-ai-dc/modular-generator-architecture",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/modular-generator-architecture.mdx",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "title": "Modular Generator architecture",
+    "description": "How the AI/DC solution chains Generators through checksum triggers, validates parent completion, and allocates interfaces deterministically."
+  },
+  "sidebar": "solutionAiDcSidebar",
+  "previous": {
+    "title": "Design-driven automation",
+    "permalink": "/solution-ai-dc/design-driven-automation"
+  },
+  "next": {
+    "title": "Generator patterns",
+    "permalink": "/solution-ai-dc/generator-patterns"
+  }
+}

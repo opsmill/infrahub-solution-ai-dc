@@ -47,6 +47,7 @@ const config: Config = {
         alt: 'Infrahub',
         src: 'img/infrahub-hori.svg',
         srcDark: 'img/infrahub-hori-dark.svg',
+        href: '/solution-ai-dc/overview',
       },
       items: [
         {

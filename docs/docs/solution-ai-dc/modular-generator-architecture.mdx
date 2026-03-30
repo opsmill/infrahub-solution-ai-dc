@@ -9,6 +9,8 @@ The AI/DC solution uses three modular Generators — FabricGenerator, PodGenerat
 
 See [Design-driven automation](./design-driven-automation) for what the Generators read and produce, or [Generator patterns](./generator-patterns) for implementation-level code patterns.
 
+![Modular Generator execution flow](./modular-generator-flow.svg)
+
 ## How the modular Generators connect
 
 ### Checksum-driven signaling
@@ -70,6 +72,8 @@ These gates make the modular setup self-healing in practice: if a Generator fail
 ## Deterministic interface allocation
 
 Cabling — connecting spines to super spines, and leafs to spines — requires allocating specific interfaces on each device. The allocation must be **stable**: the same rack must always land on the same spine interfaces, regardless of what happens to other racks.
+
+![Deterministic interface allocation](./interface-allocation.svg)
 
 ### Why stability matters
 

@@ -1,0 +1,23 @@
+{
+  "id": "overview",
+  "title": "AI/DC solution",
+  "description": "Design-driven automation for large-scale AI data center fabrics using Infrahub Generators.",
+  "source": "@site/docs/solution-ai-dc/overview.mdx",
+  "sourceDirName": ".",
+  "slug": "/overview",
+  "permalink": "/solution-ai-dc/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/overview.mdx",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "title": "AI/DC solution",
+    "description": "Design-driven automation for large-scale AI data center fabrics using Infrahub Generators."
+  },
+  "sidebar": "solutionAiDcSidebar",
+  "next": {
+    "title": "Installation & Setup",
+    "permalink": "/solution-ai-dc/installation-setup"
+  }
+}

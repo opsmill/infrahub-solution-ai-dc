@@ -1,0 +1,23 @@
+{
+  "id": "generator-patterns",
+  "title": "Generator patterns",
+  "description": "Implementation patterns used in the AI/DC solution Generators — queries, device creation, IP allocation, cabling, and checksum propagation.",
+  "source": "@site/docs/solution-ai-dc/generator-patterns.mdx",
+  "sourceDirName": ".",
+  "slug": "/generator-patterns",
+  "permalink": "/solution-ai-dc/generator-patterns",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/generator-patterns.mdx",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "title": "Generator patterns",
+    "description": "Implementation patterns used in the AI/DC solution Generators — queries, device creation, IP allocation, cabling, and checksum propagation."
+  },
+  "sidebar": "solutionAiDcSidebar",
+  "previous": {
+    "title": "Modular Generator architecture",
+    "permalink": "/solution-ai-dc/modular-generator-architecture"
+  }
+}

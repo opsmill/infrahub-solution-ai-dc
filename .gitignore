@@ -230,3 +230,5 @@ Temporary Items
 
 # direnv
 .envrc
+
+docs/node_modules/

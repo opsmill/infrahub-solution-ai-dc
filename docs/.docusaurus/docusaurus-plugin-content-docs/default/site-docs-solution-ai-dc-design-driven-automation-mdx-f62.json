@@ -1,0 +1,27 @@
+{
+  "id": "design-driven-automation",
+  "title": "Design-driven automation",
+  "description": "How the AI/DC solution separates design intent from infrastructure implementation using Infrahub Generators.",
+  "source": "@site/docs/solution-ai-dc/design-driven-automation.mdx",
+  "sourceDirName": ".",
+  "slug": "/design-driven-automation",
+  "permalink": "/solution-ai-dc/design-driven-automation",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/design-driven-automation.mdx",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "title": "Design-driven automation",
+    "description": "How the AI/DC solution separates design intent from infrastructure implementation using Infrahub Generators."
+  },
+  "sidebar": "solutionAiDcSidebar",
+  "previous": {
+    "title": "Demo guide",
+    "permalink": "/solution-ai-dc/demo-guide"
+  },
+  "next": {
+    "title": "Modular Generator architecture",
+    "permalink": "/solution-ai-dc/modular-generator-architecture"
+  }
+}
