@@ -1,13 +1,13 @@
 ---
 title: Generator patterns
-description: Implementation patterns used in the AI/DC solution Generators — queries, device creation, IP allocation, cabling, and cascade propagation.
+description: Implementation patterns used in the AI/DC solution Generators — queries, device creation, IP allocation, cabling, and checksum propagation.
 ---
 
 # Generator patterns
 
 This page covers the implementation patterns used in the AI/DC solution's Generators. It is aimed at developers who want to understand, adapt, or extend the code. Each section focuses on a specific pattern with annotated code from the bundle.
 
-See [Modular Generator architecture](./modular-generator-architecture) for the architectural concepts (cascade mechanism, validation gates, interface allocation design) and [Design-driven automation](./design-driven-automation) for what the Generators read and produce.
+See [Modular Generator architecture](./modular-generator-architecture) for the architectural concepts (signaling mechanism, validation gates, interface allocation design) and [Design-driven automation](./design-driven-automation) for what the Generators read and produce.
 
 ## Generator definition wiring
 
@@ -332,7 +332,7 @@ async def update_checksum(self) -> None:
             await rack.save(allow_upsert=True)
 ```
 
-The `if rack.checksum.value != checksum` guard prevents unnecessary saves — if the checksum has not changed (because the Generator produced identical results), no trigger fires and the cascade stops.
+The `if rack.checksum.value != checksum` guard prevents unnecessary saves — if the checksum has not changed (because the Generator produced identical results), no trigger fires and downstream execution stops.
 
 ## Shared library
 
@@ -348,7 +348,7 @@ The Generators share common logic through the `solution_ai_dc` package (in `src/
 
 ## Learn more
 
-- [Modular Generator architecture](./modular-generator-architecture) — cascade mechanism, validation gates, interface allocation design
+- [Modular Generator architecture](./modular-generator-architecture) — signaling mechanism, validation gates, interface allocation design
 - [Design-driven automation](./design-driven-automation) — what the Generators read and produce
 - [Installation & Setup](./installation-setup) — repository structure and environment setup
 - [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)

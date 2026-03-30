@@ -87,7 +87,7 @@ cp objects/20_triggers.yml.save triggers.yml
 infrahubctl object load triggers.yml
 ```
 
-This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects for the automatic cascading Generators. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects for the automatic modular Generator execution. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
 
 :::warning Load triggers after repository sync
 If loaded before Generator definitions are imported, the trigger rules will fail to resolve their action references.
@@ -101,11 +101,11 @@ The repository is self-contained — everything below is included. You do not ne
 
 | File                            | Contents                                                                                                                 |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `schemas/logical_design.yml`    | `NetworkFabric` and `NetworkPod` — the design hierarchy with cascade attributes (checksum, amount_of_spines)             |
+| `schemas/logical_design.yml`    | `NetworkFabric` and `NetworkPod` — the design hierarchy with Generator signaling attributes (checksum, amount_of_spines)             |
 | `schemas/physical_location.yml` | `LocationHall` and `LocationRack` — physical locations with Generator target support                                     |
 | `schemas/device.yml`            | `NetworkDevice`, `NetworkInterface`, and `NetworkLink` — devices with computed attributes (interface index, description) |
 | `schemas/ipam.yml`              | `IpamIPPrefix` with role-based allocation and `IpamIPAddress`                                                            |
-| `schemas/generator.yml`         | `GeneratorTarget` generic enabling trigger-based cascades via checksum attribute                                         |
+| `schemas/generator.yml`         | `GeneratorTarget` generic enabling trigger-based modular Generator execution via checksum attribute                                         |
 
 ### Generators
 

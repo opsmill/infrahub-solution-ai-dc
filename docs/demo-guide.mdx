@@ -92,15 +92,15 @@ cp objects/20_triggers.yml.save triggers.yml
 infrahubctl object load triggers.yml
 ```
 
-This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable the automatic cascade. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
 
 :::warning Branch scope
-Triggers fire only on non-main branches. All trigger rules are configured with `branch_scope: other_branches` by design. Running a Generator on `main` will not trigger the cascade.
+Triggers fire only on non-main branches. All trigger rules are configured with `branch_scope: other_branches` by design. Running a Generator on `main` will not trigger downstream Generators.
 :::
 
 ## Running the Generators
 
-With trigger rules loaded, the cascade runs automatically. The FabricGenerator writes checksums to Pods — triggers fire the PodGenerator for each Pod — the PodGenerator writes checksums to Racks — triggers fire the RackGenerator for each Rack. One action at the fabric level builds the entire data center.
+With trigger rules loaded, the modular Generators run automatically. The FabricGenerator writes checksums to Pods — triggers fire the PodGenerator for each Pod — the PodGenerator writes checksums to Racks — triggers fire the RackGenerator for each Rack. One action at the fabric level builds the entire data center.
 
 ### How it works
 
@@ -110,7 +110,7 @@ With trigger rules loaded, the cascade runs automatically. The FabricGenerator w
 4. The `CoreNodeTriggerRule` for `LocationRack` detects the checksum update and fires the `run-rack-generator` action
 5. **RackGenerator** runs for each Rack, creating leafs and links
 
-The chain is: **checksum write → trigger rule → Generator action → next tier**, repeated at each level.
+The pattern is: **checksum write → trigger rule → Generator action → next tier**, repeated at each level.
 
 ### Try it
 
@@ -118,14 +118,14 @@ Create a branch and run the FabricGenerator for Fabric-A:
 
 All Generator work happens on branches, not on `main`. This keeps the main branch clean and lets you review changes before merging.
 
-In the Infrahub UI, navigate to the Generator Definitions page (accessible from the Actions menu). Find `generate-fabric`, click **Run**, and select **Fabric-A** as the target. Watch the cascade: PodGenerators fire automatically for Pod-A2 and Pod-A3 (Pod-A1 is skipped — its `fabric` role marks it as the super spine tier), followed by RackGenerators for all 8 racks.
+In the Infrahub UI, navigate to the Generator Definitions page (accessible from the Actions menu). Find `generate-fabric`, click **Run**, and select **Fabric-A** as the target. Watch the modular Generators in action: PodGenerators fire automatically for Pod-A2 and Pod-A3 (Pod-A1 is skipped — its `fabric` role marks it as the super spine tier), followed by RackGenerators for all 8 racks.
 
-:::success After the cascade completes
+:::success After all Generators complete
 Verify in the UI: 25 devices in the NetworkDevice list (6 super spines, 8 spines, 11 leafs), hierarchical IP pools carved from the supernet, NetworkLink objects with point-to-point /31 addressing, and computed interface descriptions on every connected interface.
 :::
 
-:::tip Monitoring the cascade
-You can track progress through the Infrahub UI task execution list. Each Generator execution appears as a separate task, so you can follow the cascade as it propagates through the tiers.
+:::tip Monitoring progress
+You can track progress through the Infrahub UI task execution list. Each Generator execution appears as a separate task, so you can follow the execution as it propagates through the tiers.
 :::
 
 ## Reviewing changes and generating artifacts
@@ -194,7 +194,7 @@ On the proposed change overview tab, click the **Merge** button to merge the cha
 ### Key concepts demonstrated
 
 - **Design-driven automation** — you defined topology, device counts, and IP ranges; Generators produced 25 devices with full connectivity and addressing
-- **Event-driven cascade** — a single fabric-level action built the entire data center through chained checksum triggers
+- **Modular Generators** — a single fabric-level action built the entire data center through checksum-triggered execution across layers
 - **Hierarchical IP delegation** — the supernet was carved automatically through fabric, pod, and rack levels via [Resource Manager](https://docs.infrahub.app/topics/resource-manager)
 - **Proposed change review** — a diff of every generated object, with CI-triggered artifact generation (startup configs, cabling plans)
 - **Day-two change support** — adding a rack produced only new objects with no rebuild of existing infrastructure
@@ -203,11 +203,11 @@ On the proposed change overview tab, click the **Merge** button to merge the cha
 ### Next steps
 
 - [Design-driven automation](./design-driven-automation) — deeper explanation of the architecture and concepts
-- [Modular Generator architecture](./modular-generator-architecture) — how the cascade works internally
+- [Modular Generator architecture](./modular-generator-architecture) — how the modular Generators work internally
 - [Generator patterns](./generator-patterns) — implementation patterns for building your own Generators
 - [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
 - [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
 
 :::tip Beyond AI data centers
-The cascade pattern demonstrated here — hierarchical Generators chained by checksum triggers — applies to any standardized, layered infrastructure: edge deployments, service provider networks, enterprise campuses. The Fabric → Pod → Rack hierarchy is illustrative, not prescriptive.
+The modular Generator pattern demonstrated here — hierarchical Generators connected by checksum triggers — applies to any standardized, layered infrastructure: edge deployments, service provider networks, enterprise campuses. The Fabric → Pod → Rack hierarchy is illustrative, not prescriptive.
 :::

@@ -5,7 +5,7 @@ description: How the AI/DC solution separates design intent from infrastructure 
 
 # Design-driven automation
 
-Operators describe what infrastructure should look like; Generators produce it. This page explains how that separation works in the AI/DC solution, what the design objects look like, and why it matters for ongoing operations. See the [Demo Guide](./demo-guide) for hands-on execution and [Modular Generator architecture](./modular-generator-architecture) for cascade internals.
+Operators describe what infrastructure should look like; Generators produce it. This page explains how that separation works in the AI/DC solution, what the design objects look like, and why it matters for ongoing operations. See the [Demo Guide](./demo-guide) for hands-on execution and [Modular Generator architecture](./modular-generator-architecture) for how the modular Generators connect.
 
 ## What design-driven automation means
 
@@ -37,7 +37,7 @@ A Generator reads design objects via a GraphQL query and creates implementation 
 - **PodGenerator** reads `NetworkPod` → produces spine devices, spine-to-super-spine links
 - **RackGenerator** reads `LocationRack` → produces leaf devices, leaf-to-spine links
 
-Generators are idempotent: running one again produces the same result, creating only what is missing. If the design changes, a Generator rebuilds only its scope — other layers remain untouched. Generators also chain: the output of one tier triggers the next, building a full data center from a single action. See [Modular Generator architecture](./modular-generator-architecture) for how the cascade works and [Generator patterns](./generator-patterns) for implementation details.
+Generators are idempotent: running one again produces the same result, creating only what is missing. If the design changes, a Generator rebuilds only its scope — other layers remain untouched. Generators also connect through triggers: the output of one tier triggers the next, building a full data center from a single action. See [Modular Generator architecture](./modular-generator-architecture) for how the modular Generators work and [Generator patterns](./generator-patterns) for implementation details.
 
 ## The design in this bundle
 

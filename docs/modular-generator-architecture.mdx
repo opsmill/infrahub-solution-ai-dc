@@ -5,15 +5,15 @@ description: How the AI/DC solution chains Generators through checksum triggers,
 
 # Modular Generator architecture
 
-The AI/DC solution uses three Generators — FabricGenerator, PodGenerator, RackGenerator — that chain automatically through a checksum-based cascade. This page explains the cascade mechanism, how each tier validates that the previous tier completed, and how interface allocation works without Infrahub's resource allocators.
+The AI/DC solution uses three modular Generators — FabricGenerator, PodGenerator, RackGenerator — that connect automatically through checksum-based triggers. This page explains the signaling mechanism, how each tier validates that the previous tier completed, and how interface allocation works.
 
 See [Design-driven automation](./design-driven-automation) for what the Generators read and produce, or [Generator patterns](./generator-patterns) for implementation-level code patterns.
 
-## The cascade
+## How the modular Generators connect
 
-### Checksum-driven chaining
+### Checksum-driven signaling
 
-Each Generator writes a checksum to its child objects after it finishes. That checksum change fires a trigger rule, which runs the next Generator tier. The chain repeats until the lowest tier completes.
+Each Generator writes a checksum to its child objects after it finishes. That checksum change fires a trigger rule, which runs the next Generator tier. The process repeats until the lowest tier completes.
 
 The `GeneratorTarget` generic (defined in `schemas/generator.yml`) adds a `checksum` attribute to both `NetworkPod` and `LocationRack`. This attribute is the only thing that flows from parent to child — it carries no configuration, only a signal that "something changed upstream."
 
@@ -28,13 +28,13 @@ Trigger rules connect checksum changes to Generator actions. Each rule watches f
 | Pod Generator triggers  | `NetworkPod`   | `checksum`, `index`, `amount_of_spines`, `role` | `generate-pod`  |
 | Rack Generator triggers | `LocationRack` | `checksum`, `index`, `rack_type`                | `generate-rack` |
 
-The checksum trigger handles the cascade flow. The additional attribute triggers allow a Generator to re-run when an operator changes a design parameter (for example, updating `amount_of_spines` on a Pod).
+The checksum trigger handles the modular execution flow. The additional attribute triggers allow a Generator to re-run when an operator changes a design parameter (for example, updating `amount_of_spines` on a Pod).
 
 :::info Branch scope
 Trigger rules are scoped to branches other than `main`. Generators run on branches where changes can be reviewed before merging — they do not fire on `main` directly.
 :::
 
-### Full cascade sequence
+### Full execution sequence
 
 Running the FabricGenerator for a single fabric triggers the following sequence:
 
@@ -65,7 +65,7 @@ Before creating leafs, the RackGenerator checks:
 1. **Parent completeness** — the number of spine devices in the pod must match the pod's `amount_of_spines`. If the PodGenerator has not finished, the RackGenerator refuses to run
 2. **Template defined** — the Rack must have a `leaf_switch_template` assigned
 
-These gates make the cascade self-healing in practice: if a Generator fails partway through, the checksum still changes for child objects whose parent data was modified. The child Generators fire, detect that the parent is incomplete, and abort. When the failed Generator is re-run and completes, child checksums update again and the cascade resumes.
+These gates make the modular setup self-healing in practice: if a Generator fails partway through, the checksum still changes for child objects whose parent data was modified. The child Generators fire, detect that the parent is incomplete, and abort. When the failed Generator is re-run and completes, child checksums update again and execution resumes.
 
 ## Deterministic interface allocation
 

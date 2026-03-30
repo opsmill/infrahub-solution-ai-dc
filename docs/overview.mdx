@@ -5,7 +5,7 @@ description: Design-driven automation for large-scale AI data center fabrics usi
 
 # AI/DC solution
 
-The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Three modular Generators (Fabric → Pod → Rack) chain automatically via an event-driven cascade, so triggering one Generator at the fabric level causes the entire data center to build itself. The solution is fully functional today and is positioned as a demo and reference implementation.
+The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Three modular Generators (Fabric → Pod → Rack) connect automatically via event-driven triggers, so triggering one Generator at the fabric level causes the entire data center to build itself. The solution is fully functional today and is positioned as a demo and reference implementation.
 
 ## The problem this solves
 
@@ -23,7 +23,7 @@ The AI/DC solution builds a 5-stage Clos data center fabric from minimal design 
 - **Pod** — the middle level, containing spine switches connected to the super spines above
 - **Rack** — the bottom level, containing leaf switches connected to the spines above
 
-Three Generators each own one layer of this hierarchy and chain automatically via checksum-triggered events:
+Three Generators each own one layer of this hierarchy and connect automatically via checksum-triggered events:
 
 1. **FabricGenerator** allocates IP pools and creates super spine switches, then signals child Pods to run.
 2. **PodGenerator** creates spine switches, connects them to super spines, and signals child Racks to run.
@@ -68,7 +68,7 @@ Five schema files define the data model:
 
 | File | Contents |
 |------|----------|
-| `logical_design.yml` | NetworkFabric and NetworkPod — the design hierarchy with Generator cascade attributes |
+| `logical_design.yml` | NetworkFabric and NetworkPod — the design hierarchy with Generator signaling attributes |
 | `physical_location.yml` | LocationHall and LocationRack — physical locations with Generator target support |
 | `device.yml` | NetworkDevice, NetworkInterface, and NetworkLink — devices with computed attributes |
 | `ipam.yml` | IpamIPPrefix with role-based allocation and IpamIPAddress |
@@ -94,7 +94,7 @@ Three Generators, each owning one layer of the hierarchy:
 
 - Two complete fabrics with pods, racks, device templates, and IP pools
 - Manufacturer and device type definitions
-- Event trigger rules (`CoreNodeTriggerRule` and `CoreGeneratorAction`) for automatic cascade execution
+- Event trigger rules (`CoreNodeTriggerRule` and `CoreGeneratorAction`) for automatic modular Generator execution
 
 ### Tooling
 
