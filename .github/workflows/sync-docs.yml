@@ -1,0 +1,39 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Sync Folders
+
+on:
+  push:
+    branches:
+      - stable
+    paths:
+      - 'docs/docs/**'
+      - 'docs/sidebars/sidebars-solution-ai-dc.ts'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v6
+        with:
+          path: source-repo
+
+      - name: Checkout target repository
+        uses: actions/checkout@v6
+        with:
+          repository: opsmill/infrahub-docs
+          token: ${{ secrets.PAT_TOKEN }}
+          path: target-repo
+
+      - name: Sync folders
+        run: |
+          rm -rf target-repo/docs/docs-solution-ai-dc/*
+          rm -f target-repo/docs/sidebars-solution-ai-dc.ts
+          cp -r source-repo/docs/docs/* target-repo/docs/docs-solution-ai-dc/
+          cp source-repo/docs/sidebars/sidebars-solution-ai-dc.ts target-repo/docs/
+          cd target-repo
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          if ! (git diff --quiet && git diff --staged --quiet); then git commit -m "Sync docs from AI/DC solution bundle repo" && git push; fi
