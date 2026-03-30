@@ -1,0 +1,355 @@
+---
+title: Generator patterns
+description: Implementation patterns used in the AI/DC solution Generators — queries, device creation, IP allocation, cabling, and cascade propagation.
+---
+
+# Generator patterns
+
+This page covers the implementation patterns used in the AI/DC solution's Generators. It is aimed at developers who want to understand, adapt, or extend the code. Each section focuses on a specific pattern with annotated code from the bundle.
+
+See [Modular Generator architecture](./modular-generator-architecture) for the architectural concepts (cascade mechanism, validation gates, interface allocation design) and [Design-driven automation](./design-driven-automation) for what the Generators read and produce.
+
+## Generator definition wiring
+
+Each Generator is registered in `.infrahub.yml` with a definition that connects a Python class to a GraphQL query and a target group:
+
+```yaml
+generator_definitions:
+  - name: generate-fabric
+    file_path: "./generators/generate_fabric.py"
+    query: generate_fabric
+    targets: fabrics
+    parameters:
+      fabric_name: name__value
+    class_name: FabricGenerator
+    convert_query_response: false
+    execute_in_proposed_change: false
+    execute_after_merge: false
+```
+
+Key fields:
+
+| Field | Purpose |
+|---|---|
+| `query` | References a named GraphQL query defined in the `queries` section of `.infrahub.yml` |
+| `targets` | The group whose members are valid targets for this Generator (e.g., `fabrics` is a `CoreStandardGroup`) |
+| `parameters` | Maps GraphQL query variables to target object attributes. `fabric_name: name__value` passes the target's `name` as the `$fabric_name` query variable |
+| `class_name` | The Python class inside `file_path` that Infrahub instantiates |
+| `convert_query_response` | Set to `false` to receive the raw GraphQL response as a dict. The Generators parse it with Pydantic models for type safety |
+
+## GraphQL queries
+
+Each Generator has a paired `.gql` file that fetches the design object and its context. The query receives parameters mapped from the target object via the definition in `.infrahub.yml`.
+
+### Fetching design context in a single query
+
+The PodGenerator needs data from both the Pod itself and its parent Fabric (super spine count, sorting methods). The query uses an inline fragment (`... on NetworkFabric`) to fetch parent-specific fields in a single request:
+
+```graphql
+query PodGeneratorQuery($pod_name: String!) {
+  NetworkPod(name__value: $pod_name) {
+    edges {
+      node {
+        id
+        amount_of_spines { value }
+        name { value }
+        index { value }
+        role { value }
+        spine_switch_template {
+          node { __typename, id }
+        }
+        parent {
+          node {
+            __typename
+            id
+            name { value }
+            ... on NetworkFabric {
+              amount_of_super_spines { value }
+              fabric_interface_sorting_method { value }
+              spine_interface_sorting_method { value }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The RackGenerator follows the same pattern — it fetches the Rack's attributes and traverses the `pod` relationship to get the pod's IP pools, spine count, and sorting methods.
+
+### Parsing query responses with Pydantic
+
+Each query has a corresponding Pydantic model file (e.g., `fabric_generator_query.py`, `pod_generator_query.py`) that mirrors the GraphQL response structure. The Generator parses the raw dict into typed models as the first step of `generate()`:
+
+```python
+from .pod_generator_query import PodGeneratorQuery
+
+async def generate(self, data: dict) -> None:
+    data: PodGeneratorQuery = PodGeneratorQuery(**data)
+
+    self.pod_id = data.network_pod.edges[0].node.id
+    self.pod_index = data.network_pod.edges[0].node.index.value
+    self.pod_name = data.network_pod.edges[0].node.name.value.lower()
+    self.fabric_amount_of_super_spines = (
+        data.network_pod.edges[0].node.parent.node.amount_of_super_spines.value
+    )
+```
+
+This gives type-safe access to nested fields and catches schema mismatches at parse time rather than deep in the generation logic.
+
+## Device creation
+
+Devices are created from object templates using the Infrahub SDK. The pattern is the same across all three Generators — only the role, naming convention, and template differ.
+
+### Creating a device from a template
+
+```python
+device = await self.client.create(
+    NetworkDevice,
+    hostname=f"spine-{self.pod_name}-{idx}",
+    object_template={"id": self.pod_spine_switch_template},
+    pod={"id": self.pod_id},
+    loopback_ip=self.loopback_pool,
+    role="spine",
+    member_of_groups=["devices"],
+)
+await device.save(allow_upsert=True)
+```
+
+Key aspects:
+
+- **`object_template`** — references a `CoreObjectTemplate` by ID. Infrahub stamps out the device with the template's predefined interfaces (Loopback0, Ethernet ranges with role profiles)
+- **`loopback_ip`** — passing a pool object triggers automatic IP allocation from that pool
+- **`allow_upsert=True`** — if a device with this hostname already exists, the save updates it rather than creating a duplicate. This is what makes re-runs safe
+- **`member_of_groups`** — adds the device to the `devices` group, making it a target for artifact definitions
+
+### Assigning the loopback IP to an interface
+
+After device creation, the allocated loopback IP must be assigned to the device's Loopback0 interface:
+
+```python
+device = await self.client.get(
+    NetworkDevice,
+    id=device.id,
+    include=["ip_address"],
+    exclude=["rack", "pod", "role", "hostname", "object_template", "member_of_groups"],
+)
+loopback_interface = await self.client.get(
+    NetworkInterface, device__ids=[device.id], role__value="loopback"
+)
+loopback_interface.status.value = "active"
+loopback_interface.ip_address = device.loopback_ip.id
+await loopback_interface.save(allow_upsert=True)
+```
+
+The device is re-fetched with `include=["ip_address"]` to retrieve the pool-allocated IP address ID, which is then assigned to the loopback interface.
+
+## IP pool allocation
+
+The Generators build a hierarchical IP pool tree using Infrahub's [Resource Manager](https://docs.infrahub.app/topics/resource-manager). Each tier carves a subnet from the pool created by the tier above.
+
+### Hierarchical pool delegation
+
+The FabricGenerator creates the top-level pools:
+
+```python
+# Allocate a /16 from the global FabricSupernetPool
+fabric_supernet_pool = await self.client.get(
+    kind=CoreIPPrefixPool, name__value="FabricSupernetPool"
+)
+fabric_supernet = await self.client.allocate_next_ip_prefix(
+    resource_pool=fabric_supernet_pool,
+    identifier=self.fabric_id,
+    data={"role": "fabric_supernet"},
+)
+
+# Create a fabric-scoped prefix pool backed by the allocated /16
+fabric_prefix_pool = await self.client.create(
+    kind=CoreIPPrefixPool,
+    name=f"{self.fabric_name}-prefix-pool",
+    default_prefix_type="IpamIPPrefix",
+    default_prefix_length=24,
+    ip_namespace={"hfid": ["default"]},
+    resources=[fabric_supernet],
+)
+await fabric_prefix_pool.save(allow_upsert=True)
+```
+
+The PodGenerator then allocates from the fabric prefix pool:
+
+```python
+# Allocate a /19 pod supernet from the fabric prefix pool
+pod_supernet = await self.client.allocate_next_ip_prefix(
+    resource_pool=fabric_prefix_pool,
+    identifier=self.pod_id,
+    member_type="prefix",
+    prefix_length=19,
+    data={"role": "pod_supernet"},
+)
+```
+
+### Deterministic allocation with identifiers
+
+Every `allocate_next_ip_prefix` call uses the object's ID as the `identifier` parameter. This makes allocation idempotent — calling the method again with the same identifier returns the previously allocated prefix rather than allocating a new one.
+
+For point-to-point link addressing, the identifier is the concatenation of both interface IDs:
+
+```python
+prefix = await client.allocate_next_ip_prefix(
+    resource_pool=pool,
+    identifier=src_interface.id + dst_interface.id,
+    member_type="address",
+    prefix_length=31,
+    data={"role": prefix_role},
+)
+```
+
+The same interface pair always produces the same /31 prefix.
+
+## Cabling
+
+Cabling connects devices across tiers — spines to super spines, leafs to spines. The pattern has three phases: sort interfaces, build a cabling plan, then create links and assign IPs. See [Modular Generator architecture: Deterministic interface allocation](./modular-generator-architecture#deterministic-interface-allocation) for the design rationale.
+
+### Interface sorting
+
+Interfaces are grouped by device and sorted using `netutils.interface.sort_interface_list`. The sorting function is selected at runtime based on the schema's sorting method attribute:
+
+```python
+from solution_ai_dc import sorting as solution_ai_dc_sorting
+
+# Resolve the sorting function from the schema dropdown value
+fabric_interface_sorting_method = (
+    data.network_pod.edges[0].node.parent.node.fabric_interface_sorting_method.value
+)
+self.fabric_interface_sorting_function = getattr(
+    solution_ai_dc_sorting, fabric_interface_sorting_method
+)
+```
+
+The sorting functions produce a `dict[NetworkDevice, list[NetworkInterface]]` — a stable, ordered mapping from device to interfaces that the cabling plan consumes.
+
+### Building and executing a cabling plan
+
+The PodGenerator's cabling sequence illustrates the full pattern:
+
+```python
+async def connect_spine_to_super_spine(self) -> None:
+    # 1. Fetch interfaces by role
+    spine_interfaces = await self.client.filters(
+        kind=NetworkInterface,
+        device__ids=[spine.id for spine in self.spine_switches],
+        role__value="super_spine",
+    )
+    super_spine_interfaces = await self.client.filters(
+        kind=NetworkInterface,
+        device__ids=[ss.id for ss in self.super_spine_switches],
+        role__value="spine",
+    )
+
+    # 2. Sort interfaces per device
+    spine_interface_map = self.spine_interface_sorting_function(spine_interfaces)
+    super_spine_interface_map = self.fabric_interface_sorting_function(
+        super_spine_interfaces
+    )
+
+    # 3. Build the cabling plan using the pod index
+    cabling_plan = build_pod_cabling_plan(
+        pod_index=self.pod_index,
+        src_interface_map=spine_interface_map,
+        dst_interface_map=super_spine_interface_map,
+    )
+
+    # 4. Create NetworkLink objects and mark interfaces active
+    await connect_interface_maps(
+        client=self.client, logger=self.logger, cabling_plan=cabling_plan
+    )
+
+    # 5. Allocate /31 prefixes and assign IPs to both endpoints
+    await assign_ip_addresses_to_p2p_connections(
+        client=self.client,
+        logger=self.logger,
+        connections=cabling_plan,
+        prefix_len=31,
+        prefix_role="pod_super_spine_spine",
+        pool=self.pod_prefix_pool,
+    )
+```
+
+The RackGenerator follows the same five-step pattern with `build_rack_cabling_plan` and the rack index.
+
+### Link creation
+
+Each interface pair in the cabling plan becomes a `NetworkLink` object:
+
+```python
+network_link = await client.create(
+    kind="NetworkLink",
+    name=f"{src_interface.device.display_label}-{src_interface.name.value}"
+         f"__{dst_interface.device.display_label}-{dst_interface.name.value}",
+    medium="copper",
+    endpoints=[src_interface, dst_interface],
+)
+await network_link.save(allow_upsert=True)
+```
+
+Both interfaces are then marked as `active`. The `allow_upsert=True` on the link save ensures that re-running the Generator does not create duplicate links.
+
+## Checksum propagation
+
+After the FabricGenerator and PodGenerator complete their work, they write a checksum to each child object to trigger the next tier. The RackGenerator does not propagate a checksum — it is the final tier.
+
+### Calculating the checksum
+
+The checksum is a SHA-256 hash of all object IDs accessed during the Generator run:
+
+```python
+class GeneratorMixin:
+    def calculate_checksum(self) -> str:
+        related_ids = (
+            self.client.group_context.related_group_ids
+            + self.client.group_context.related_node_ids
+        )
+        sorted_ids = sorted(related_ids)
+        joined = ",".join(sorted_ids)
+        return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+```
+
+The IDs are sorted before hashing, so the order in which objects were accessed does not matter — only the set of objects determines the checksum.
+
+### Writing the checksum to children
+
+The FabricGenerator writes the checksum to all child Pods; the PodGenerator writes it to all child Racks:
+
+```python
+async def update_checksum(self) -> None:
+    racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
+
+    checksum = self.calculate_checksum()
+    for rack in racks:
+        if rack.checksum.value != checksum:
+            rack.checksum.value = checksum
+            await rack.save(allow_upsert=True)
+```
+
+The `if rack.checksum.value != checksum` guard prevents unnecessary saves — if the checksum has not changed (because the Generator produced identical results), no trigger fires and the cascade stops.
+
+## Shared library
+
+The Generators share common logic through the `solution_ai_dc` package (in `src/solution_ai_dc/`). This package is installed into the custom Infrahub Docker image so that task workers can import it at runtime.
+
+| Module | Purpose |
+|---|---|
+| `generator.py` | `GeneratorMixin` — checksum calculation |
+| `cabling.py` | `build_pod_cabling_plan`, `build_rack_cabling_plan`, `connect_interface_maps` — cabling plan algorithms and link creation |
+| `sorting.py` | `create_sorted_device_interface_map`, `create_reverse_sorted_device_interface_map` — interface sorting strategies |
+| `addressing.py` | `assign_ip_addresses_to_p2p_connections`, `assign_ip_address_to_interface` — IP allocation and assignment |
+| `protocols.py` | Auto-generated SDK protocol classes (`infrahubctl protocols`) — typed interfaces for `NetworkDevice`, `NetworkInterface`, `LocationRack`, etc. |
+
+## Learn more
+
+- [Modular Generator architecture](./modular-generator-architecture) — cascade mechanism, validation gates, interface allocation design
+- [Design-driven automation](./design-driven-automation) — what the Generators read and produce
+- [Installation & Setup](./installation-setup) — repository structure and environment setup
+- [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
+- [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
