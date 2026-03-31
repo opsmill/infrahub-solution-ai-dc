@@ -11,7 +11,7 @@ const config: Config = {
   baseUrl: '/',
 
   organizationName: 'opsmill',
-  projectName: 'infrahub-bundle-dc-ai',
+  projectName: 'infrahub-solution-ai-dc',
   onBrokenLinks: 'throw',
   onDuplicateRoutes: 'throw',
 
@@ -25,7 +25,7 @@ const config: Config = {
       'classic',
       {
         docs: {
-          editUrl: 'https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs',
+          editUrl: 'https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs',
           path: 'docs/solution-ai-dc',
           routeBasePath: 'solution-ai-dc',
           sidebarPath: './sidebars/sidebars-solution-ai-dc.ts',
@@ -56,7 +56,7 @@ const config: Config = {
           label: 'AI/DC Solution',
         },
         {
-          href: 'https://github.com/opsmill/infrahub-bundle-dc-ai',
+          href: 'https://github.com/opsmill/infrahub-solution-ai-dc',
           position: 'right',
           className: 'header-github-link',
           'aria-label': 'GitHub repository',

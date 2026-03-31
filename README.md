@@ -48,8 +48,8 @@ The AI/DC Solution is a reference implementation showing how to use [Infrahub](h
 ## Quick start
 
 ```bash
-git clone git@github.com:opsmill/solution-ai-dc.git
-cd solution-ai-dc
+git clone git@github.com:opsmill/infrahub-solution-ai-dc.git
+cd infrahub-solution-ai-dc
 
 # Install dependencies and start the environment
 uv sync --all-packages

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Infrahub bundle for automated data center network management (Infrahub Bundle DC AI). Provides generators, transforms, and artifact definitions for creating network fabrics, pods, and racks using the Infrahub platform (SDK v1.16.0).
+Infrahub AI/DC Solution — a reference implementation for automated data center network management. Provides generators, transforms, and artifact definitions for creating network fabrics, pods, and racks using the Infrahub platform.
 
 ## Commands
 

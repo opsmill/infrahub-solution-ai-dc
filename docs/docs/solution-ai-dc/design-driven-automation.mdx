@@ -17,7 +17,7 @@ Design-driven automation encodes *what*: "this fabric has 6 super spines." The *
 
 ### Schema as design language
 
-The bundle's schema makes design intent machine-readable. Each schema node type represents a level in the data center hierarchy:
+The solution's schema makes design intent machine-readable. Each schema node type represents a level in the data center hierarchy:
 
 - `NetworkFabric` — the top level, defining super spine counts and templates
 - `NetworkPod` — the middle level, defining spine counts, roles, and templates
@@ -39,7 +39,7 @@ A Generator reads design objects via a GraphQL query and creates implementation 
 
 Generators are idempotent: running one again produces the same result, creating only what is missing. If the design changes, a Generator rebuilds only its scope — other layers remain untouched. Generators also connect through triggers: the output of one tier triggers the next, building a full data center from a single action. See [Modular Generator architecture](./modular-generator-architecture) for how the modular Generators work and [Generator patterns](./generator-patterns) for implementation details.
 
-## The design in this bundle
+## The design in this solution
 
 ### The Fabric-Pod-Rack hierarchy
 
