@@ -216,14 +216,14 @@ Cabling connects devices across tiers — spines to super spines, leafs to spine
 Interfaces are grouped by device and sorted using `netutils.interface.sort_interface_list`. The sorting function is selected at runtime based on the schema's sorting method attribute:
 
 ```python
-from solution_ai_dc import sorting as solution_ai_dc_sorting
+from infrahub_solution_ai_dc import sorting
 
 # Resolve the sorting function from the schema dropdown value
 fabric_interface_sorting_method = (
     data.network_pod.edges[0].node.parent.node.fabric_interface_sorting_method.value
 )
 self.fabric_interface_sorting_function = getattr(
-    solution_ai_dc_sorting, fabric_interface_sorting_method
+    sorting, fabric_interface_sorting_method
 )
 ```
 
@@ -336,7 +336,7 @@ The `if rack.checksum.value != checksum` guard prevents unnecessary saves — if
 
 ## Shared library
 
-The Generators share common logic through the `solution_ai_dc` package (in `src/solution_ai_dc/`). This package is installed into the custom Infrahub Docker image so that task workers can import it at runtime.
+The Generators share common logic through the `infrahub_solution_ai_dc` package (in `src/infrahub_solution_ai_dc/`). This package is installed into the custom Infrahub Docker image so that task workers can import it at runtime.
 
 | Module | Purpose |
 |---|---|

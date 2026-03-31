@@ -26,7 +26,7 @@ The `infrahubctl` CLI is installed automatically as part of the `infrahub-sdk` d
 uv sync --all-packages
 ```
 
-This installs all Python dependencies including `infrahub-sdk` (which provides `infrahubctl`), `invoke` (task runner), and the solution's own `solution-ai-dc` package.
+This installs all Python dependencies including `infrahub-sdk` (which provides `infrahubctl`), `invoke` (task runner), and the solution's own `infrahub-solution-ai-dc` package.
 
 ### Configure environment variables
 
@@ -45,7 +45,7 @@ Alternatively, you can use [direnv](https://direnv.net) and define the environme
 inv start
 ```
 
-This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `solution-ai-dc` Python package — a shared library (in `src/solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
+This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
 
 **Services started:**
 
@@ -145,7 +145,7 @@ Loaded in numbered order by `infrahubctl object load objects/`:
 
 | File                          | Purpose                                                                                     |
 |-------------------------------|---------------------------------------------------------------------------------------------|
-| `Dockerfile`                  | Builds a custom Infrahub image with the `solution-ai-dc` Python package installed           |
+| `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed           |
 | `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes |
 | `repository.yml`              | `CoreRepository` object pointing to `/upstream` (the mounted repository)                    |
 | `tasks.py`                    | Invoke task definitions for environment management                                          |
