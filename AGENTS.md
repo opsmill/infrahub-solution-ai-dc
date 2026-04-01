@@ -33,6 +33,7 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 ## Architecture
 
 ### Core Library (`src/infrahub_bunlde_dc_ai/`)
+
 - `generator.py` — `GeneratorMixin` providing checksum calculation for change detection
 - `protocols.py` — Auto-generated typed node definitions from Infrahub schemas
 - `cabling.py` — Cabling plan algorithms
@@ -40,7 +41,9 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 - `sorting.py` — Device/interface sorting utilities
 
 ### Generators (`generators/`)
+
 Three generators that create infrastructure objects via `InfrahubGenerator` + `GeneratorMixin`:
+
 - `generate_fabric.py` — Creates super-spine devices for a fabric
 - `generate_pod.py` — Creates spine/leaf devices for a pod
 - `generate_rack.py` — Creates devices for a rack
@@ -48,11 +51,13 @@ Three generators that create infrastructure objects via `InfrahubGenerator` + `G
 Each generator has a paired `.gql` query file and a `*_query.py` generated query model file. Configured in `.infrahub.yml`.
 
 ### Transforms (`transforms/`)
+
 - `cabling_plan.py` — CSV cabling plan generation (`InfrahubTransform`)
 - `computed_interface_description.py` — Interface description transform
 - `templates/startup_config.j2` — Jinja2 template for device startup configs
 
 ### Data Files
+
 - `schemas/` — Infrahub schema definitions (YAML)
 - `objects/` — Object data files loaded in numbered order (01-20)
 - `menus/` — UI menu definitions

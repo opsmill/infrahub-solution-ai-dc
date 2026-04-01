@@ -5,8 +5,11 @@
 # Disable rules that were disabled in markdownlint
 disable = [
     "MD013",  # Line length - disabled for readability in prose
+    "MD025",  # Multiple top-level headings - false positives with MDX frontmatter title
     "MD029",  # Ordered list item prefix - disabled for manual numbering
     "MD033",  # Inline HTML - disabled for MDX React components
+    "MD036",  # Emphasis used instead of heading - intentional styling in docs
+    "MD041",  # First line should be h1 - false positives with frontmatter and non-doc files
 ]
 
 # Exclude directories and files
