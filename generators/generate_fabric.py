@@ -15,18 +15,21 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_name: str
     fabric_id: str
     fabric_super_spine_switch_template: str
+    amount_of_super_spines: int
 
     loopback_pool: CoreIPAddressPool
 
     log = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        data: FabricGeneratorQuery = FabricGeneratorQuery(**data)
+        parsed = FabricGeneratorQuery(**data)
+        fabric = parsed.network_fabric.edges[0].node
+        assert fabric is not None
 
-        self.fabric_name = data.network_fabric.edges[0].node.name.value.lower()
-        self.fabric_id = data.network_fabric.edges[0].node.id
-        self.fabric_super_spine_switch_template = data.network_fabric.edges[0].node.super_spine_switch_template.node.id
-        self.amount_of_super_spines = data.network_fabric.edges[0].node.amount_of_super_spines.value
+        self.fabric_name = fabric.name.value.lower()  # type: ignore[union-attr]
+        self.fabric_id = fabric.id
+        self.fabric_super_spine_switch_template = fabric.super_spine_switch_template.node.id  # type: ignore[union-attr, assignment]
+        self.amount_of_super_spines = fabric.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
 
         await self.allocate_resource_pools()
 
