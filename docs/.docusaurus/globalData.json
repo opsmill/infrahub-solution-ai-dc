@@ -1,0 +1,58 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/solution-ai-dc",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/solution-ai-dc",
+          "mainDocId": "overview",
+          "docs": [
+            {
+              "id": "demo-guide",
+              "path": "/solution-ai-dc/demo-guide",
+              "sidebar": "solutionAiDcSidebar"
+            },
+            {
+              "id": "design-driven-automation",
+              "path": "/solution-ai-dc/design-driven-automation",
+              "sidebar": "solutionAiDcSidebar"
+            },
+            {
+              "id": "generator-patterns",
+              "path": "/solution-ai-dc/generator-patterns",
+              "sidebar": "solutionAiDcSidebar"
+            },
+            {
+              "id": "installation-setup",
+              "path": "/solution-ai-dc/installation-setup",
+              "sidebar": "solutionAiDcSidebar"
+            },
+            {
+              "id": "modular-generator-architecture",
+              "path": "/solution-ai-dc/modular-generator-architecture",
+              "sidebar": "solutionAiDcSidebar"
+            },
+            {
+              "id": "overview",
+              "path": "/solution-ai-dc/overview",
+              "sidebar": "solutionAiDcSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "solutionAiDcSidebar": {
+              "link": {
+                "path": "/solution-ai-dc/overview",
+                "label": "Infrahub AI/DC Solution"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

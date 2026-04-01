@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+from infrahub_sdk.generator import InfrahubGenerator  # type: ignore[import-not-found]
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: ignore[import-not-found]
 
-from solution_ai_dc import sorting as solution_ai_dc_sorting
-from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
-from solution_ai_dc.generator import GeneratorMixin
-from solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc import sorting
+from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
+from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
+from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
 
 from .pod_generator_query import PodGeneratorQuery
 
@@ -24,7 +24,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_id: str
     pod_index: int
     pod_name: str
-    pod_spine_switch_template: str
+    pod_spine_switch_template: str | None
     pod_role: str
 
     fabric_interface_sorting_function: Callable
@@ -42,23 +42,23 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        data: PodGeneratorQuery = PodGeneratorQuery(**data)
+        parsed = PodGeneratorQuery(**data)
+        pod = parsed.network_pod.edges[0].node
+        assert pod is not None
 
-        self.pod_id: str = data.network_pod.edges[0].node.id
-        self.pod_index: int = data.network_pod.edges[0].node.index.value
-        self.pod_name: str = data.network_pod.edges[0].node.name.value.lower()
-        self.pod_role: str = data.network_pod.edges[0].node.role.value
+        self.pod_id: str = pod.id
+        self.pod_index: int = pod.index.value  # type: ignore[union-attr, assignment]
+        self.pod_name: str = pod.name.value.lower()  # type: ignore[union-attr, assignment]
+        self.pod_role: str = pod.role.value  # type: ignore[union-attr, assignment]
         self.pod_spine_switch_template: str | None = (
-            data.network_pod.edges[0].node.spine_switch_template.node.id
-            if data.network_pod.edges[0].node.spine_switch_template.node
+            pod.spine_switch_template.node.id  # type: ignore[union-attr]
+            if pod.spine_switch_template.node  # type: ignore[union-attr]
             else None
         )
-        self.fabric_id: str = data.network_pod.edges[0].node.parent.node.id
-        self.fabric_name: str = data.network_pod.edges[0].node.parent.node.name.value.lower()
-        self.amount_of_spines: int = data.network_pod.edges[0].node.amount_of_spines.value
-        self.fabric_amount_of_super_spines: int = data.network_pod.edges[
-            0
-        ].node.parent.node.amount_of_super_spines.value
+        self.fabric_id: str = pod.parent.node.id  # type: ignore[union-attr, assignment]
+        self.fabric_name: str = pod.parent.node.name.value.lower()  # type: ignore[union-attr, assignment]
+        self.amount_of_spines: int = pod.amount_of_spines.value  # type: ignore[union-attr, assignment]
+        self.fabric_amount_of_super_spines: int = pod.parent.node.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
 
         self.spine_switches = []
 
@@ -76,15 +76,11 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: no spine switch template defined!"
             raise RuntimeError(msg)
 
-        fabric_interface_sorting_method: str = data.network_pod.edges[
-            0
-        ].node.parent.node.fabric_interface_sorting_method.value
-        spine_interface_sorting_method: str = data.network_pod.edges[
-            0
-        ].node.parent.node.spine_interface_sorting_method.value
+        fabric_interface_sorting_method: str = pod.parent.node.fabric_interface_sorting_method.value  # type: ignore[union-attr, assignment]
+        spine_interface_sorting_method: str = pod.parent.node.spine_interface_sorting_method.value  # type: ignore[union-attr, assignment]
 
-        self.fabric_interface_sorting_function = getattr(solution_ai_dc_sorting, fabric_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(solution_ai_dc_sorting, spine_interface_sorting_method)
+        self.fabric_interface_sorting_function = getattr(sorting, fabric_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
 
         await self.allocate_resource_pools()
 

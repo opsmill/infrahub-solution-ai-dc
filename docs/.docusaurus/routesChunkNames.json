@@ -1,0 +1,39 @@
+{
+  "/solution-ai-dc-5f2": {
+    "__comp": "5e95c892",
+    "__context": {
+      "plugin": "aba21aa0"
+    }
+  },
+  "/solution-ai-dc-740": {
+    "__comp": "a7bd4aaa",
+    "__props": "77140d38"
+  },
+  "/solution-ai-dc-2bf": {
+    "__comp": "a94703ab"
+  },
+  "/solution-ai-dc/demo-guide-6e2": {
+    "__comp": "17896441",
+    "content": "e047ee90"
+  },
+  "/solution-ai-dc/design-driven-automation-511": {
+    "__comp": "17896441",
+    "content": "f6217fd4"
+  },
+  "/solution-ai-dc/generator-patterns-6e2": {
+    "__comp": "17896441",
+    "content": "34bafbb9"
+  },
+  "/solution-ai-dc/installation-setup-33f": {
+    "__comp": "17896441",
+    "content": "ec8fb272"
+  },
+  "/solution-ai-dc/modular-generator-architecture-e50": {
+    "__comp": "17896441",
+    "content": "25470f93"
+  },
+  "/solution-ai-dc/overview-ffb": {
+    "__comp": "17896441",
+    "content": "a09514ee"
+  }
+}

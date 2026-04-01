@@ -3,20 +3,20 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+from infrahub_sdk.generator import InfrahubGenerator  # type: ignore[import-not-found]
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: ignore[import-not-found]
 
-from solution_ai_dc import sorting as solution_ai_dc_sorting
-from solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
-from solution_ai_dc.protocols import NetworkDevice, NetworkInterface
+from infrahub_solution_ai_dc import sorting
+from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
+from infrahub_solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
+from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkInterface
 
 from .rack_generator_query import RackGeneratorQuery
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-EXCLUDED_RACK_TYPES = []
+EXCLUDED_RACK_TYPES: list[str] = []
 
 
 class RackGenerator(InfrahubGenerator):
@@ -43,23 +43,25 @@ class RackGenerator(InfrahubGenerator):
     logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        data: RackGeneratorQuery = RackGeneratorQuery(**data)
+        parsed = RackGeneratorQuery(**data)
+        rack = parsed.location_rack.edges[0].node
+        assert rack is not None
 
-        self.rack_id: str = data.location_rack.edges[0].node.id
-        self.rack_index: int = data.location_rack.edges[0].node.index.value
-        self.rack_name: str = data.location_rack.edges[0].node.name.value
-        self.rack_type: str = data.location_rack.edges[0].node.rack_type.value
-        self.rack_leaf_switch_template: str = data.location_rack.edges[0].node.leaf_switch_template.node.id
-        self.rack_amount_of_leafs: int = data.location_rack.edges[0].node.amount_of_leafs.value
+        self.rack_id: str = rack.id
+        self.rack_index: int = rack.index.value  # type: ignore[union-attr, assignment]
+        self.rack_name: str = rack.name.value  # type: ignore[union-attr, assignment]
+        self.rack_type: str = rack.rack_type.value  # type: ignore[union-attr, assignment]
+        self.rack_leaf_switch_template: str = rack.leaf_switch_template.node.id  # type: ignore[union-attr, assignment]
+        self.rack_amount_of_leafs: int = rack.amount_of_leafs.value  # type: ignore[union-attr, assignment]
         self.leaf_switches = []
 
-        self.pod_id: str = data.location_rack.edges[0].node.pod.node.id
-        self.pod_index: int = data.location_rack.edges[0].node.pod.node.index.value
-        self.pod_name: str = data.location_rack.edges[0].node.pod.node.name.value.lower()
-        self.pod_amount_of_spines: int = data.location_rack.edges[0].node.pod.node.amount_of_spines.value
+        self.pod_id: str = rack.pod.node.id  # type: ignore[union-attr]
+        self.pod_index: int = rack.pod.node.index.value  # type: ignore[union-attr, assignment]
+        self.pod_name: str = rack.pod.node.name.value.lower()  # type: ignore[union-attr]
+        self.pod_amount_of_spines: int = rack.pod.node.amount_of_spines.value  # type: ignore[union-attr, assignment]
 
-        self.loopback_pool_id: str = data.location_rack.edges[0].node.pod.node.loopback_pool.node.id
-        self.prefix_pool_id: str = data.location_rack.edges[0].node.pod.node.prefix_pool.node.id
+        self.loopback_pool_id: str = rack.pod.node.loopback_pool.node.id  # type: ignore[union-attr]
+        self.prefix_pool_id: str = rack.pod.node.prefix_pool.node.id  # type: ignore[union-attr]
 
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
@@ -74,15 +76,11 @@ class RackGenerator(InfrahubGenerator):
             msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
             raise RuntimeError(msg)
 
-        leaf_interface_sorting_method: str = data.location_rack.edges[
-            0
-        ].node.pod.node.leaf_interface_sorting_method.value
-        spine_interface_sorting_method: str = data.location_rack.edges[
-            0
-        ].node.pod.node.spine_interface_sorting_method.value
+        leaf_interface_sorting_method: str = rack.pod.node.leaf_interface_sorting_method.value  # type: ignore[union-attr, assignment]
+        spine_interface_sorting_method: str = rack.pod.node.spine_interface_sorting_method.value  # type: ignore[union-attr, assignment]
 
-        self.leaf_interface_sorting_function = getattr(solution_ai_dc_sorting, leaf_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(solution_ai_dc_sorting, spine_interface_sorting_method)
+        self.leaf_interface_sorting_function = getattr(sorting, leaf_interface_sorting_method)
+        self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
 
         await self.create_leaf_switches()
 

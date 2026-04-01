@@ -1,0 +1,64 @@
+---
+extends: capitalization
+message: "'%s' should use sentence case"
+level: warning
+scope:
+  - heading.h1
+  - heading.h2
+  - heading.h3
+  - heading.h4
+  - heading.h5
+  - heading.h6
+match: $sentence
+exceptions:
+  - AGENTS.md
+  - API
+  - ASN
+  - BGP
+  - Build Commands
+  - CI/CD
+  - Code Style Guidelines
+  - Colo
+  - Colocation
+  - Common Markdownlint Rules
+  - Common Pitfalls
+  - Common Vale Issues
+  - Containerlab
+  - Core Infrahub
+  - Data Center
+  - DC
+  - Diataxis
+  - Directory Structure
+  - DNS
+  - Docusaurus
+  - Documentation Site
+  - Documentation Writing Guidelines
+  - Enterprise
+  - For How-to Guides
+  - For Topics/Explanations
+  - GitHub
+  - GraphQL
+  - Infrahub
+  - Integration with CI/CD
+  - IP
+  - Jinja
+  - Key Files
+  - Linting Requirements
+  - Local Development
+  - Markdownlint
+  - MDX Content
+  - Mermaid
+  - Mermaid Diagrams
+  - Netbox
+  - OpenConfig
+  - OSPF
+  - POP
+  - Pydantic
+  - Service Catalog
+  - Streamlit
+  - Switching to Enterprise
+  - Tech Stack
+  - UI
+  - VLAN
+  - VLANs
+  - VXLAN

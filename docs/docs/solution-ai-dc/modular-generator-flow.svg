@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 680" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.1"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#333"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#4a90d9"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="10" y="10" width="1040" height="660" rx="12" fill="#f5f5f5" stroke="#d0d0d0" stroke-width="1.5"/>
+
+  <!-- Title -->
+  <text x="530" y="42" text-anchor="middle" font-size="16" font-weight="700" fill="#333">Modular Generator execution flow</text>
+
+  <!-- ===== TIER 1: FabricGenerator ===== -->
+  <!-- Design input -->
+  <rect x="40" y="70" width="160" height="50" rx="8" fill="#e8e8e8" stroke="#bbb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="120" y="92" text-anchor="middle" font-size="13" font-weight="600" fill="#333">NetworkFabric</text>
+  <text x="120" y="107" text-anchor="middle" font-size="10" fill="#333">design input</text>
+
+  <!-- Arrow: design → generator -->
+  <line x1="200" y1="95" x2="240" y2="95" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- FabricGenerator -->
+  <rect x="248" y="65" width="220" height="60" rx="8" fill="#4a90d9" filter="url(#shadow)"/>
+  <text x="358" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#333">FabricGenerator</text>
+  <text x="358" y="110" text-anchor="middle" font-size="11" fill="#333">targets: fabrics group</text>
+
+  <!-- Arrow: generator → output -->
+  <line x1="468" y1="95" x2="508" y2="95" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- FabricGenerator output -->
+  <rect x="516" y="60" width="280" height="70" rx="8" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+  <text x="656" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#333">Creates:</text>
+  <text x="656" y="98" text-anchor="middle" font-size="11" fill="#333">Fabric supernet + prefix pool</text>
+  <text x="656" y="113" text-anchor="middle" font-size="11" fill="#333">Super spine loopback pool + 6 devices</text>
+
+  <!-- Validation badge -->
+  <rect x="850" y="73" width="160" height="44" rx="6" fill="#fff3e0" stroke="#f5a623" stroke-width="1"/>
+  <text x="930" y="92" text-anchor="middle" font-size="11" font-weight="600" fill="#333">No validation</text>
+  <text x="930" y="106" text-anchor="middle" font-size="10" fill="#333">(root tier)</text>
+
+  <!-- ===== CHECKSUM SIGNAL 1 ===== -->
+  <line x1="358" y1="125" x2="358" y2="175" stroke="#4a90d9" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-blue)"/>
+  <rect x="370" y="138" width="200" height="24" rx="4" fill="#e8f0fe" stroke="#4a90d9" stroke-width="1"/>
+  <text x="470" y="155" text-anchor="middle" font-size="11" font-weight="600" fill="#4a90d9">writes checksum → Pods</text>
+
+  <!-- Trigger rule -->
+  <rect x="600" y="138" width="220" height="24" rx="4" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <text x="710" y="155" text-anchor="middle" font-size="10" fill="#333">CoreNodeTriggerRule on NetworkPod</text>
+
+  <!-- ===== TIER 2: PodGenerator ===== -->
+  <!-- Design input -->
+  <rect x="40" y="190" width="160" height="50" rx="8" fill="#e8e8e8" stroke="#bbb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="120" y="212" text-anchor="middle" font-size="13" font-weight="600" fill="#333">NetworkPod</text>
+  <text x="120" y="227" text-anchor="middle" font-size="10" fill="#333">design input</text>
+
+  <!-- Arrow: design → generator -->
+  <line x1="200" y1="215" x2="240" y2="215" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- PodGenerator -->
+  <rect x="248" y="185" width="220" height="60" rx="8" fill="#f5a623" filter="url(#shadow)"/>
+  <text x="358" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="#333">PodGenerator</text>
+  <text x="358" y="230" text-anchor="middle" font-size="11" fill="#333">targets: pods group</text>
+
+  <!-- Arrow: generator → output -->
+  <line x1="468" y1="215" x2="508" y2="215" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- PodGenerator output -->
+  <rect x="516" y="180" width="280" height="70" rx="8" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+  <text x="656" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="#333">Creates:</text>
+  <text x="656" y="218" text-anchor="middle" font-size="11" fill="#333">Pod supernet + loopback pool</text>
+  <text x="656" y="233" text-anchor="middle" font-size="11" fill="#333">4 spine devices + spine-to-SS links + IPs</text>
+
+  <!-- Validation badge -->
+  <rect x="850" y="185" width="160" height="56" rx="6" fill="#fff3e0" stroke="#f5a623" stroke-width="1"/>
+  <text x="930" y="204" text-anchor="middle" font-size="11" font-weight="600" fill="#333">Validates:</text>
+  <text x="930" y="218" text-anchor="middle" font-size="10" fill="#333">role != fabric</text>
+  <text x="930" y="232" text-anchor="middle" font-size="10" fill="#333">super spine count matches</text>
+
+  <!-- ===== CHECKSUM SIGNAL 2 ===== -->
+  <line x1="358" y1="245" x2="358" y2="295" stroke="#4a90d9" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-blue)"/>
+  <rect x="370" y="258" width="200" height="24" rx="4" fill="#e8f0fe" stroke="#4a90d9" stroke-width="1"/>
+  <text x="470" y="275" text-anchor="middle" font-size="11" font-weight="600" fill="#4a90d9">writes checksum → Racks</text>
+
+  <!-- Trigger rule -->
+  <rect x="600" y="258" width="230" height="24" rx="4" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <text x="715" y="275" text-anchor="middle" font-size="10" fill="#333">CoreNodeTriggerRule on LocationRack</text>
+
+  <!-- ===== TIER 3: RackGenerator ===== -->
+  <!-- Design input -->
+  <rect x="40" y="310" width="160" height="50" rx="8" fill="#e8e8e8" stroke="#bbb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="120" y="332" text-anchor="middle" font-size="13" font-weight="600" fill="#333">LocationRack</text>
+  <text x="120" y="347" text-anchor="middle" font-size="10" fill="#333">design input</text>
+
+  <!-- Arrow: design → generator -->
+  <line x1="200" y1="335" x2="240" y2="335" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- RackGenerator -->
+  <rect x="248" y="305" width="220" height="60" rx="8" fill="#7ed321" filter="url(#shadow)"/>
+  <text x="358" y="330" text-anchor="middle" font-size="14" font-weight="700" fill="#333">RackGenerator</text>
+  <text x="358" y="350" text-anchor="middle" font-size="11" fill="#333">targets: racks group</text>
+
+  <!-- Arrow: generator → output -->
+  <line x1="468" y1="335" x2="508" y2="335" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- RackGenerator output -->
+  <rect x="516" y="300" width="280" height="70" rx="8" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+  <text x="656" y="322" text-anchor="middle" font-size="12" font-weight="600" fill="#333">Creates:</text>
+  <text x="656" y="338" text-anchor="middle" font-size="11" fill="#333">1–2 leaf devices per rack</text>
+  <text x="656" y="353" text-anchor="middle" font-size="11" fill="#333">Leaf-to-spine links + IPs</text>
+
+  <!-- Validation badge -->
+  <rect x="850" y="305" width="160" height="56" rx="6" fill="#fff3e0" stroke="#f5a623" stroke-width="1"/>
+  <text x="930" y="324" text-anchor="middle" font-size="11" font-weight="600" fill="#333">Validates:</text>
+  <text x="930" y="338" text-anchor="middle" font-size="10" fill="#333">spine count matches</text>
+  <text x="930" y="352" text-anchor="middle" font-size="10" fill="#333">leaf template defined</text>
+
+  <!-- ===== PARALLELISM NOTE ===== -->
+  <rect x="40" y="400" width="970" height="70" rx="8" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+  <text x="530" y="425" text-anchor="middle" font-size="13" font-weight="600" fill="#333">Parallel execution</text>
+  <text x="530" y="445" text-anchor="middle" font-size="12" fill="#333">FabricGenerator runs once (1 fabric) → PodGenerator runs per pod in parallel (2–3 pods) → RackGenerator runs per rack in parallel (8+ racks)</text>
+  <text x="530" y="460" text-anchor="middle" font-size="11" fill="#333">Each Generator run is independent — scoped to one target with no shared state</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="40" y="490" width="160" height="50" rx="8" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="120" y="512" text-anchor="middle" font-size="11" fill="#333">Design input</text>
+  <text x="120" y="527" text-anchor="middle" font-size="10" fill="#333">(defined by operator)</text>
+
+  <rect x="230" y="490" width="160" height="50" rx="8" fill="#4a90d9"/>
+  <text x="310" y="520" text-anchor="middle" font-size="11" fill="#333">Generator</text>
+
+  <rect x="420" y="490" width="160" height="50" rx="8" fill="#fff" stroke="#ddd" stroke-width="1.5"/>
+  <text x="500" y="520" text-anchor="middle" font-size="11" fill="#333">Generated output</text>
+
+  <rect x="610" y="490" width="160" height="50" rx="6" fill="#fff3e0" stroke="#f5a623" stroke-width="1"/>
+  <text x="690" y="520" text-anchor="middle" font-size="11" fill="#333">Validation gate</text>
+
+  <line x1="800" y1="515" x2="860" y2="515" stroke="#4a90d9" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-blue)"/>
+  <text x="890" y="519" font-size="11" fill="#333">Checksum signal</text>
+
+  <!-- ===== IDEMPOTENCY NOTE ===== -->
+  <text x="530" y="575" text-anchor="middle" font-size="12" fill="#333">All Generators are idempotent — re-running produces the same result. If the checksum does not change, no downstream triggers fire.</text>
+  <text x="530" y="595" text-anchor="middle" font-size="12" fill="#333">Devices are created with allow_upsert=True, matched by human_friendly_id. IP allocations use deterministic identifiers.</text>
+</svg>

@@ -1,0 +1,106 @@
+---
+title: AI/DC solution
+description: Design-driven automation for large-scale AI data center fabrics using Infrahub Generators.
+---
+
+# AI/DC solution
+
+The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Three modular Generators (Fabric → Pod → Rack) connect automatically via event-driven triggers, so triggering one Generator at the fabric level causes the entire data center to build itself. The solution is fully functional today and is positioned as a demo and reference implementation.
+
+## The problem this solves
+
+- Large-scale data center operators must deploy standardized environments rapidly, repeatedly, and without deviation — while extending those environments over time without disrupting what is already running.
+- The capital cost of AI hardware means time-to-production directly affects ROI. Inconsistency between environments introduces risk at every layer.
+- Traditional scripted automation discards design intent after the run. Day-two operations require rebuilding from scratch. There is no parallelism, and no stored relationship between the configuration produced and the design that produced it.
+- Infrahub's design-driven approach solves this: operators define what infrastructure should look like, and Generators produce it — consistently, in parallel, and with surgical day-two change support.
+- The pattern is not AI-specific. It applies to any standardized, layered infrastructure domain.
+
+## What the AI/DC solution is
+
+The AI/DC solution builds a 5-stage Clos data center fabric from minimal design inputs. The hierarchy follows a three-level structure:
+
+- **Fabric** — the top level, containing super spine switches
+- **Pod** — the middle level, containing spine switches connected to the super spines above
+- **Rack** — the bottom level, containing leaf switches connected to the spines above
+
+Three Generators each own one layer of this hierarchy and connect automatically via checksum-triggered events:
+
+1. **FabricGenerator** allocates IP pools and creates super spine switches, then signals child Pods to run.
+2. **PodGenerator** creates spine switches, connects them to super spines, and signals child Racks to run.
+3. **RackGenerator** creates leaf switches and connects them to spines.
+
+Trigger once at the fabric level — the entire data center builds itself.
+
+The demo data includes two complete fabrics:
+
+- **Fabric-A** — 6 super spines, 3 pods, 8 racks
+- **Fabric-B** — 4 super spines, 3 pods, 8 racks (using Dell equipment)
+
+The solution generates IP pool allocations, interface-level cabling plans, OSPF configuration data, and computed interface descriptions.
+
+## Who this is for
+
+:::tip Choose your path
+**Running a demo or evaluating Infrahub?** Start with the [Demo Guide](./demo-guide) — it walks through the solution end to end with no code modifications required.
+
+**Building your own Generators or adapting the patterns?** Start with the [Reference Guide: Generator Patterns](./generator-patterns) — it covers the implementation patterns in detail.
+:::
+
+**Persona 1 — Evaluator / Learner**
+
+You want to see design-driven automation in action. You do not need to modify code. Your path: run the demo, understand what happened, and connect it to your own use case.
+
+→ [Demo Guide](./demo-guide)
+
+**Persona 2 — Advanced Implementer**
+
+You are already working with Infrahub. You want a production-quality reference for modular Generator patterns, checksum-triggered cascades, and IP space delegation. You will read and adapt the code.
+
+→ [Reference Guide: Generator Patterns](./generator-patterns)
+
+**Broader audience:** The patterns demonstrated here apply to any standardized, layered infrastructure at scale — edge deployments, service provider networks, enterprise campuses. The Fabric → Pod → Rack hierarchy is illustrative, not prescriptive.
+
+## What's included
+
+### Schema
+
+Five schema files define the data model:
+
+| File | Contents |
+|------|----------|
+| `logical_design.yml` | NetworkFabric and NetworkPod — the design hierarchy with Generator signaling attributes |
+| `physical_location.yml` | LocationHall and LocationRack — physical locations with Generator target support |
+| `device.yml` | NetworkDevice, NetworkInterface, and NetworkLink — devices with computed attributes |
+| `ipam.yml` | IpamIPPrefix with role-based allocation and IpamIPAddress |
+| `generator.yml` | GeneratorTarget generic with checksum attribute enabling trigger-based cascades |
+
+### Generators
+
+Three Generators, each owning one layer of the hierarchy:
+
+| Generator | Responsibility |
+|-----------|---------------|
+| FabricGenerator | IP pool allocation, super spine switch creation |
+| PodGenerator | Spine switch creation, spine-to-super-spine cabling |
+| RackGenerator | Leaf switch creation, leaf-to-spine cabling |
+
+### Transforms and artifacts
+
+- **Startup configuration** — Jinja2 template producing a text/plain artifact per device
+- **Cabling plan** — Python Transformation producing a CSV artifact per fabric
+- **Computed interface descriptions** — Python Transformation applied as a computed attribute on each interface
+
+### Demo data
+
+- Two complete fabrics with pods, racks, device templates, and IP pools
+- Manufacturer and device type definitions
+- Event trigger rules (`CoreNodeTriggerRule` and `CoreGeneratorAction`) for automatic modular Generator execution
+
+### Tooling
+
+- Docker Compose environment for local development
+- Invoke tasks for setup, loading, and testing
+- Python package management via `uv`
+
+→ [Installation & Setup](./installation-setup)
+→ [GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc)

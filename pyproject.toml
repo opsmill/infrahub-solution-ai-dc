@@ -1,9 +1,9 @@
 [project]
-name = "solution-ai-dc"
+name = "infrahub-solution-ai-dc"
 version = "0.1.0"
-description = "Infrahub Repository"
-authors = []
+description = "Infrahub Solution AI DC"
 readme = "README.md"
+authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "httpx>=0.28.1",
@@ -78,7 +78,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["solution_ai_dc"]
+known-first-party = ["infrahub_solution_ai_dc"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150

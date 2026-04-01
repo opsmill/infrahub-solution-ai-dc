@@ -71,11 +71,11 @@ async def connect_interface_maps(
         )
         await network_link.save(allow_upsert=True)
 
-        src_interface = await client.get(NetworkInterface, id=src_interface.id, include=["link"])
-        dst_interface = await client.get(NetworkInterface, id=dst_interface.id, include=["link"])
+        src_intf = await client.get(NetworkInterface, id=src_interface.id, include=["link"])
+        dst_intf = await client.get(NetworkInterface, id=dst_interface.id, include=["link"])
 
-        src_interface.status.value = "active"
-        dst_interface.status.value = "active"
-        await src_interface.save(allow_upsert=True)
-        await dst_interface.save(allow_upsert=True)
+        src_intf.status.value = "active"
+        dst_intf.status.value = "active"
+        await src_intf.save(allow_upsert=True)
+        await dst_intf.save(allow_upsert=True)
         logger.info(f"Connected {name}")
