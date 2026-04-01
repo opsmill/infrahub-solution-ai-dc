@@ -106,7 +106,7 @@ def download_compose_file(ctx: Context, infrahub_version: str = "", override: bo
 
     compose_file_url = BASE_COMPOSE_FILE_URL
 
-    if infrahub_version != "":
+    if infrahub_version:
         compose_file_url = f"{compose_file_url}/{infrahub_version}"
 
     if compose_file.exists() and not override:
@@ -115,8 +115,7 @@ def download_compose_file(ctx: Context, infrahub_version: str = "", override: bo
     response = httpx.get(compose_file_url)
     response.raise_for_status()
 
-    with compose_file.open("w", encoding="utf-8") as f:
-        f.write(response.content.decode())
+    compose_file.write_text(response.content.decode(), encoding="utf-8")
 
     return compose_file
 
