@@ -17,16 +17,9 @@
             git
             stdenv.cc.cc.lib
             nodejs_24
+            markdownlint-cli2
           ];
 
-          shellHook = ''
-            echo "Infrahub development environment"
-            echo "Available tools:"
-            echo "  - git: $(git --version)"
-            echo "  - gh (GitHub CLI): $(gh --version | head -n1)"
-            echo "  - lychee (link checker): $(lychee --version)"
-            echo "  - vale (prose linter): $(vale --version)"
-          '';
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
             pkgs.stdenv.cc.cc.lib
           ];
