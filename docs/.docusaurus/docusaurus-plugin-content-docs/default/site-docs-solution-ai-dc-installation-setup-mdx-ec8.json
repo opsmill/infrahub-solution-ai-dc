@@ -1,19 +1,19 @@
 {
   "id": "installation-setup",
   "title": "Installation & Setup",
-  "description": "Prerequisites, environment setup, and repository structure for the AI/DC solution bundle.",
+  "description": "Prerequisites, environment setup, and repository structure for the AI/DC solution.",
   "source": "@site/docs/solution-ai-dc/installation-setup.mdx",
   "sourceDirName": ".",
   "slug": "/installation-setup",
   "permalink": "/solution-ai-dc/installation-setup",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/installation-setup.mdx",
+  "editUrl": "https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs/docs/solution-ai-dc/installation-setup.mdx",
   "tags": [],
   "version": "current",
   "frontMatter": {
     "title": "Installation & Setup",
-    "description": "Prerequisites, environment setup, and repository structure for the AI/DC solution bundle."
+    "description": "Prerequisites, environment setup, and repository structure for the AI/DC solution."
   },
   "sidebar": "solutionAiDcSidebar",
   "previous": {
@@ -21,7 +21,7 @@
     "permalink": "/solution-ai-dc/overview"
   },
   "next": {
-    "title": "Demo guide",
-    "permalink": "/solution-ai-dc/demo-guide"
+    "title": "Design-driven automation",
+    "permalink": "/solution-ai-dc/design-driven-automation"
   }
 }

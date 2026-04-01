@@ -10,7 +10,7 @@ export default {
   "url": "https://docs.infrahub.app",
   "baseUrl": "/",
   "organizationName": "opsmill",
-  "projectName": "infrahub-bundle-dc-ai",
+  "projectName": "infrahub-solution-ai-dc",
   "onBrokenLinks": "throw",
   "onDuplicateRoutes": "throw",
   "i18n": {
@@ -26,7 +26,7 @@ export default {
       "classic",
       {
         "docs": {
-          "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs",
+          "editUrl": "https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs",
           "path": "docs/solution-ai-dc",
           "routeBasePath": "solution-ai-dc",
           "sidebarPath": "./sidebars/sidebars-solution-ai-dc.ts",
@@ -58,7 +58,7 @@ export default {
           "position": "left"
         },
         {
-          "href": "https://github.com/opsmill/infrahub-bundle-dc-ai",
+          "href": "https://github.com/opsmill/infrahub-solution-ai-dc",
           "position": "right",
           "className": "header-github-link",
           "aria-label": "GitHub repository"

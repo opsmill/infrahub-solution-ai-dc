@@ -11,8 +11,8 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'installation-setup',
-        'demo-guide',
         'design-driven-automation',
+        'demo-guide',
         'modular-generator-architecture',
         'generator-patterns',
       ],

@@ -8,7 +8,7 @@
   "permalink": "/solution-ai-dc/modular-generator-architecture",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/modular-generator-architecture.mdx",
+  "editUrl": "https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs/docs/solution-ai-dc/modular-generator-architecture.mdx",
   "tags": [],
   "version": "current",
   "frontMatter": {
@@ -17,8 +17,8 @@
   },
   "sidebar": "solutionAiDcSidebar",
   "previous": {
-    "title": "Design-driven automation",
-    "permalink": "/solution-ai-dc/design-driven-automation"
+    "title": "Demo guide",
+    "permalink": "/solution-ai-dc/demo-guide"
   },
   "next": {
     "title": "Generator patterns",

@@ -8,7 +8,7 @@
   "permalink": "/solution-ai-dc/design-driven-automation",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/opsmill/infrahub-bundle-dc-ai/tree/stable/docs/docs/solution-ai-dc/design-driven-automation.mdx",
+  "editUrl": "https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs/docs/solution-ai-dc/design-driven-automation.mdx",
   "tags": [],
   "version": "current",
   "frontMatter": {
@@ -17,11 +17,11 @@
   },
   "sidebar": "solutionAiDcSidebar",
   "previous": {
-    "title": "Demo guide",
-    "permalink": "/solution-ai-dc/demo-guide"
+    "title": "Installation & Setup",
+    "permalink": "/solution-ai-dc/installation-setup"
   },
   "next": {
-    "title": "Modular Generator architecture",
-    "permalink": "/solution-ai-dc/modular-generator-architecture"
+    "title": "Demo guide",
+    "permalink": "/solution-ai-dc/demo-guide"
   }
 }
