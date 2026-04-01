@@ -27,7 +27,7 @@ const config: Config = {
         docs: {
           editUrl: 'https://github.com/opsmill/infrahub-solution-ai-dc/tree/stable/docs',
           path: 'docs',
-          routeBasePath: 'solution-ai-dc',
+          routeBasePath: '/',
           sidebarPath: './sidebars/sidebars-solution-ai-dc.ts',
           sidebarCollapsed: true,
         },
