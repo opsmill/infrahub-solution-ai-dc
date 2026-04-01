@@ -5,7 +5,7 @@ name: Sync Folders
 on:
   push:
     branches:
-      - stable
+      - main
     paths:
       - 'docs/docs/**'
       - 'docs/sidebars/sidebars-solution-ai-dc.ts'
