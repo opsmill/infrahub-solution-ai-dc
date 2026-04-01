@@ -1,0 +1,9 @@
+---
+extends: spelling
+message: "Did you really mean '%s'?"
+level: error
+filters:
+  - '[pP]y.*\b'
+  - '\bimport_.*\b'
+  - '\b\w+_\w+\b'  # Ignore snake_case identifiers (function/variable names)
+ignore: spelling-exceptions.txt

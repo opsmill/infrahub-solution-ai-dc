@@ -28,9 +28,9 @@ jobs:
 
       - name: Sync folders
         run: |
-          rm -rf target-repo/docs/docs-solution-ai-dc/*
+          rm -rf target-repo/docs/docs-infrahub-solution-ai-dc/*
           rm -f target-repo/docs/sidebars-solution-ai-dc.ts
-          cp -r source-repo/docs/docs/* target-repo/docs/docs-solution-ai-dc/
+          cp -r source-repo/docs/docs/* target-repo/docs/docs-infrahub-solution-ai-dc/
           cp source-repo/docs/sidebars/sidebars-solution-ai-dc.ts target-repo/docs/
           cd target-repo
           git config user.name github-actions
