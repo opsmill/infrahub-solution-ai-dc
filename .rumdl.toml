@@ -1,0 +1,37 @@
+# rumdl configuration
+# https://github.com/rvben/rumdl
+
+[global]
+# Disable rules that were disabled in markdownlint
+disable = [
+    "MD013",  # Line length - disabled for readability in prose
+    "MD029",  # Ordered list item prefix - disabled for manual numbering
+    "MD033",  # Inline HTML - disabled for MDX React components
+]
+
+# Exclude directories and files
+exclude = [
+    ".claude/",
+    ".git/",
+    ".kiro/",
+    ".mypy_cache/",
+    ".ruff_cache/",
+    ".venv/",
+    "docs/.docusaurus/",
+    "docs/build/",
+    "docs/node_modules/",
+    "docs/README.md",
+    "node_modules/",
+]
+
+# Respect .gitignore by default
+respect_gitignore = true
+
+# MD024 (Multiple headings) - markdownlint had siblings_only: true
+# rumdl doesn't support siblings_only, so we keep it enabled for stricter checking
+
+# MD025 (Single title) - markdownlint had front_matter_title: ""
+# rumdl doesn't have this option, keeping enabled for proper document structure
+
+# MD060 (Table format) - was disabled in markdownlint
+# In rumdl this is an opt-in rule, so not enabling it is equivalent to disabled
