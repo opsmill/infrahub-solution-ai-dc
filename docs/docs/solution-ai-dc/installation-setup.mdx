@@ -47,10 +47,18 @@ export INFRAHUB_PASSWORD="infrahub"
 
 Alternatively, you can use [direnv](https://direnv.net) and define the environment variables in a `.envrc` file at the root of the project.
 
+### Build container image
+
+```bash
+uv run inv build
+```
+
+This will build a custom Infrahub container image, this is needed because this solution is using a custom Python package `src/infrahub_solution_ai_dc` that we want to use in our Generators. This makes importing classes and functions from this package easier and more reliable.
+
 ### Start Infrahub
 
 ```bash
-inv start
+uv run inv start
 ```
 
 This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
@@ -74,7 +82,7 @@ Open `http://localhost:8000` in a browser and log in with username `admin`, pass
 ### Load data
 
 ```bash
-inv load
+uv run inv load
 ```
 
 This runs four steps in sequence:
@@ -92,7 +100,7 @@ After `inv load`, Infrahub imports the repository and reads `.infrahub.yml` to r
 
 ```bash
 cp objects/20_triggers.yml.save triggers.yml
-infrahubctl object load triggers.yml
+uv run infrahubctl object load triggers.yml
 ```
 
 This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects for the automatic modular Generator execution. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
@@ -181,7 +189,7 @@ Loaded in numbered order by `infrahubctl object load objects/`:
 - Check Docker is running: `docker info`
 - Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687
 - View logs: `docker compose logs infrahub-server` or `docker compose logs task-worker`
-- Full reset: `inv destroy && inv start`
+- Full reset: `uv run inv destroy && uv run inv start`
 
 ### Repository not syncing
 
