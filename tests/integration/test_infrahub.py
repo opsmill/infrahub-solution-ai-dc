@@ -30,7 +30,7 @@ class TestInfrahub(TestInfrahubDockerClient):
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, interval=10, retries=30)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)
