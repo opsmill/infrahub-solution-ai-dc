@@ -96,7 +96,7 @@ jobs:
     timeout-minutes: 60
     env:
       INFRAHUB_DB_TYPE: neo4j
-      INFRAHUB_TESTING_IMAGE_VER: "1.16.0"
+      INFRAHUB_TESTING_IMAGE_VERSION: "1.8.2"
       INFRAHUB_TIMEOUT: 600
       INFRAHUB_TESTING_LOG_LEVEL: INFO
     steps:
