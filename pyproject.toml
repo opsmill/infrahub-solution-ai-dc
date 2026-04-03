@@ -18,6 +18,7 @@ dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     "ruff>=0.12.0",
+    "rumdl>=0.1.20",
     "yamllint>=1.37.1",
 ]
 
@@ -87,6 +88,29 @@ max-line-length = 150
 # Target max-complexity=10
 max-complexity = 17
 
+
+[tool.rumdl]
+extend = true
+MD013 = false
+MD025 = false
+MD029 = false
+MD033 = false
+MD036 = false
+MD041 = false
+exclude = [
+    ".claude/",
+    ".git/",
+    ".kiro/",
+    ".mypy_cache/",
+    ".ruff_cache/",
+    ".venv/",
+    "docs/.docusaurus/",
+    "docs/build/",
+    "docs/node_modules/",
+    "docs/README.md",
+    "node_modules/",
+]
+respect_gitignore = true
 
 [build-system]
 requires = ["hatchling"]
