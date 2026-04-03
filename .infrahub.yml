@@ -1,6 +1,6 @@
 ---
-#schemas:
-#  - schemas
+# schemas:
+#   - schemas
 
 menus:
   - menus/menu.yml
