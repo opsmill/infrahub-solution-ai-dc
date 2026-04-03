@@ -98,6 +98,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       INFRAHUB_TIMEOUT: 600
       INFRAHUB_TESTING_LOG_LEVEL: INFO
+      INFRAHUB_TESTING_DOCKER_PULL: "false"
     steps:
       - uses: actions/checkout@v6
       - name: Install tini
@@ -105,6 +106,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - run: uv sync
+      - name: Build custom Infrahub image
+        run: >
+          docker build
+          --build-arg INFRAHUB_BASE_VERSION=1.8.2
+          -t registry.opsmill.io/opsmill/infrahub:1.8.2
+          .
       - name: Set environment variables
         run: |
           RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
