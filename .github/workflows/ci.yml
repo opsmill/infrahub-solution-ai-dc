@@ -81,7 +81,9 @@ jobs:
       - name: Run rumdl
         uses: rvben/rumdl@v0
         with:
+          config: pyproject.toml
           report-type: annotations
+          fail-on-error: true
 
   integration-test:
     if: |

@@ -5,6 +5,8 @@ ignore: |
   /.git
   /.github
   /.venv
+  /docs/node_modules
+  /docs/pnpm-lock.yaml
 
 rules:
   new-lines: disable

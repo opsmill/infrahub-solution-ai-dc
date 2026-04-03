@@ -90,13 +90,7 @@ max-complexity = 17
 
 
 [tool.rumdl]
-extend = true
-MD013 = false
-MD025 = false
-MD029 = false
-MD033 = false
-MD036 = false
-MD041 = false
+disable = ["MD013", "MD025", "MD029", "MD033", "MD036", "MD041"]
 exclude = [
     ".claude/",
     ".git/",

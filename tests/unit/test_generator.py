@@ -6,9 +6,7 @@ from infrahub_solution_ai_dc.generator import GeneratorMixin
 
 
 class TestCalculateChecksum:
-    def _create_mixin(
-        self, related_group_ids: list[str], related_node_ids: list[str]
-    ) -> GeneratorMixin:
+    def _create_mixin(self, related_group_ids: list[str], related_node_ids: list[str]) -> GeneratorMixin:
         mixin = GeneratorMixin()
         mixin.client = MagicMock()
         mixin.client.group_context.related_group_ids = related_group_ids
