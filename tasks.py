@@ -143,7 +143,7 @@ def lint_yaml(ctx: Context) -> None:
 def lint_mypy(ctx: Context) -> None:
     """Run Linter to check all Python files."""
     print(" - Check code with mypy")
-    exec_cmd = "mypy --show-error-codes infrahub_sdk"
+    exec_cmd = "mypy --show-error-codes ."
     with ctx.cd(MAIN_DIRECTORY_PATH):
         ctx.run(exec_cmd, pty=True)
 
@@ -157,9 +157,19 @@ def lint_ruff(ctx: Context) -> None:
         ctx.run(exec_cmd, pty=True)
 
 
+@task
+def lint_markdown(ctx: Context) -> None:
+    """Run rumdl to check all Markdown files."""
+    print(" - Check code with rumdl")
+    exec_cmd = "rumdl check ."
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(exec_cmd, pty=True)
+
+
 @task(name="lint")
 def lint_all(ctx: Context) -> None:
     """Run all linters."""
+    lint_markdown(ctx)
     lint_yaml(ctx)
     lint_ruff(ctx)
     lint_mypy(ctx)

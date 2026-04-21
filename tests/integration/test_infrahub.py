@@ -6,6 +6,8 @@ from infrahub_sdk.protocols import CoreGenericRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
+REQUIRED_GROUPS = ["halls", "racks", "fabrics", "pods", "devices"]
+
 
 class TestInfrahub(TestInfrahubDockerClient):
     @pytest.mark.asyncio
@@ -14,6 +16,13 @@ class TestInfrahub(TestInfrahubDockerClient):
 
         resp = await client.schema.load(schemas=schemas, branch=default_branch, wait_until_converged=True)
         assert resp.errors == {}
+
+    @pytest.mark.asyncio
+    async def test_create_groups(self, client: InfrahubClient) -> None:
+        """Create CoreStandardGroup objects required by generator definitions."""
+        for group_name in REQUIRED_GROUPS:
+            group = await client.create(kind="CoreStandardGroup", name=group_name)
+            await group.save()
 
     @pytest.mark.asyncio
     async def test_load_repository(
@@ -30,7 +39,7 @@ class TestInfrahub(TestInfrahubDockerClient):
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, interval=10, retries=30)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)

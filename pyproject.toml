@@ -12,12 +12,13 @@ dependencies = [
 [dependency-groups]
 dev = [
     "infrahub-sdk[all]==1.16.0",
-    "infrahub-testcontainers>=1.3.0",
+    "infrahub-testcontainers==1.8.2",
     "invoke>=2.2.0",
     "mypy>=1.17.1",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     "ruff>=0.12.0",
+    "rumdl>=0.1.20",
     "yamllint>=1.37.1",
 ]
 
@@ -87,6 +88,23 @@ max-line-length = 150
 # Target max-complexity=10
 max-complexity = 17
 
+
+[tool.rumdl]
+disable = ["MD013", "MD025", "MD029", "MD033", "MD036", "MD041"]
+exclude = [
+    ".claude/",
+    ".git/",
+    ".kiro/",
+    ".mypy_cache/",
+    ".ruff_cache/",
+    ".venv/",
+    "docs/.docusaurus/",
+    "docs/build/",
+    "docs/node_modules/",
+    "docs/README.md",
+    "node_modules/",
+]
+respect_gitignore = true
 
 [build-system]
 requires = ["hatchling"]
