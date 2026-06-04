@@ -9,7 +9,7 @@ from invoke import Context, task
 VERSION = os.getenv("INFRAHUB_IMAGE_VER", None)
 CURRENT_DIRECTORY = Path(__file__).resolve()
 MAIN_DIRECTORY_PATH = Path(__file__).parent
-BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
+BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io/enterprise"
 
 
 @task
@@ -30,7 +30,7 @@ def start(ctx: Context) -> None:
     Start the services using docker-compose in detached mode.
     """
     download_compose_file(ctx, override=False)
-    ctx.run("docker compose up -d", pty=True)
+    ctx.run("docker compose up -d --wait --wait-timeout 300", pty=True)
 
 
 @task

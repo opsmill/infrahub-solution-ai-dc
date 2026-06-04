@@ -1,5 +1,21 @@
 ---
-# yamllint disable rule:line-length
+# yamllint disable rule:line-length rule:anchors
+x-infrahub-config-preset:
+  INFRAHUB_TASK_WORKER_REPLICAS: &task_worker_replicas ${INFRAHUB_TASK_WORKER_REPLICAS:-2}
+  INFRAHUB_TASK_WORKER_PAGINATION: &task_worker_pagination ${INFRAHUB_TASK_WORKER_PAGINATION:-50}
+  INFRAHUB_TASKMANAGER_API_WORKERS: &task_manager_api_workers ${INFRAHUB_TASKMANAGER_API_WORKERS:-1}
+  INFRAHUB_TASKMANAGER_BACKGROUND_WORKERS: &task_manager_background_workers ${INFRAHUB_TASKMANAGER_BACKGROUND_WORKERS:-1}
+  INFRAHUB_TASKMANAGER_DB_COMMAND: &task_manager_db_command postgres -c 'max_connections=${INFRAHUB_TASKMANAGER_DB_MAX_CONNECTIONS:-100}'
+  INFRAHUB_TASKMANAGER_PUBLISHER_BATCH_SIZE: &task_manager_publisher_batch_size ${INFRAHUB_TASKMANAGER_PUBLISHER_BATCH_SIZE:-5}
+  INFRAHUB_TASKMANAGER_EVENT_PERSISTER_READ_BATCH_SIZE: &task_manager_event_persister_read_batch_size ${INFRAHUB_TASKMANAGER_EVENT_PERSISTER_READ_BATCH_SIZE:-1}
+  INFRAHUB_TASKMANAGER_EVENT_PERSISTER_BATCH_SIZE: &task_manager_event_persister_batch_size ${INFRAHUB_TASKMANAGER_EVENT_PERSISTER_BATCH_SIZE:-20}
+  INFRAHUB_TASKMANAGER_TASK_RUN_RECORDER_READ_BATCH_SIZE: &task_manager_task_run_recorder_read_batch_size ${INFRAHUB_TASKMANAGER_TASK_RUN_RECORDER_READ_BATCH_SIZE:-1}
+  INFRAHUB_TASKMANAGER_TASK_RUN_RECORDER_BATCH_SIZE: &task_manager_task_run_recorder_batch_size ${INFRAHUB_TASKMANAGER_TASK_RUN_RECORDER_BATCH_SIZE:-1}
+  INFRAHUB_TASKMANAGER_TRIGGERS_READ_BATCH_SIZE: &task_manager_triggers_read_batch_size ${INFRAHUB_TASKMANAGER_TRIGGERS_READ_BATCH_SIZE:-1}
+  NEO4J_server_memory_heap_initial__size: &neo4j_initial_heapsize ${NEO4J_server_memory_heap_initial__size:-}
+  NEO4J_server_memory_heap_max__size: &neo4j_max_heapsize ${NEO4J_server_memory_heap_max__size:-}
+  NEO4J_server_memory_pagecache_size: &neo4j_pagecache_size ${NEO4J_server_memory_pagecache_size:-}
+# -- preset marker
 # The following environment variables are part of the Infrahub configuration options.
 # For detailed information on these configuration options, please refer to the Infrahub documentation:
 # https://docs.infrahub.app/reference/configuration
@@ -25,6 +41,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_API_CORS_ALLOW_ORIGINS:
   INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-localhost}
   INFRAHUB_BROKER_DRIVER: ${INFRAHUB_BROKER_DRIVER:-rabbitmq}
+  INFRAHUB_BROKER_ENABLE:
   INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES: ${INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES:-2}
   INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES: ${INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES:-10}
   INFRAHUB_BROKER_NAMESPACE: ${INFRAHUB_BROKER_NAMESPACE:-infrahub}
@@ -40,6 +57,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS: ${INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS:-15}
   INFRAHUB_CACHE_DATABASE: ${INFRAHUB_CACHE_DATABASE:-0}
   INFRAHUB_CACHE_DRIVER: ${INFRAHUB_CACHE_DRIVER:-redis}
+  INFRAHUB_CACHE_ENABLE:
   INFRAHUB_CACHE_PASSWORD: &cache_password ${INFRAHUB_CACHE_PASSWORD:-}
   INFRAHUB_CACHE_PORT:
   INFRAHUB_CACHE_TLS_CA_FILE:
@@ -57,17 +75,22 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_PORT: ${INFRAHUB_DB_PORT:-7687}
   INFRAHUB_DB_PROTOCOL: ${INFRAHUB_DB_PROTOCOL:-bolt}
   INFRAHUB_DB_QUERY_SIZE_LIMIT: ${INFRAHUB_DB_QUERY_SIZE_LIMIT:-5000}
+  INFRAHUB_DB_RETRY_BASE_DELAY: ${INFRAHUB_DB_RETRY_BASE_DELAY:-0.1}
+  INFRAHUB_DB_RETRY_JITTER_MAX: ${INFRAHUB_DB_RETRY_JITTER_MAX:-0.1}
   INFRAHUB_DB_RETRY_LIMIT: ${INFRAHUB_DB_RETRY_LIMIT:-3}
+  INFRAHUB_DB_RETRY_MAX_DELAY: ${INFRAHUB_DB_RETRY_MAX_DELAY:-2.0}
   INFRAHUB_DB_TLS_CA_FILE:
   INFRAHUB_DB_TLS_ENABLED: ${INFRAHUB_DB_TLS_ENABLED:-false}
   INFRAHUB_DB_TLS_INSECURE: ${INFRAHUB_DB_TLS_INSECURE:-false}
   INFRAHUB_DB_TYPE: ${INFRAHUB_DB_TYPE:-neo4j}
   INFRAHUB_DB_USERNAME: ${INFRAHUB_DB_USERNAME:-neo4j}
+  INFRAHUB_DELETE_BRANCH_AFTER_MERGE: ${INFRAHUB_DELETE_BRANCH_AFTER_MERGE:-false}
   INFRAHUB_DIFF_UPDATE_AFTER_MERGE: ${INFRAHUB_DIFF_UPDATE_AFTER_MERGE:-true}
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
   INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX: ${INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:-false}
   INFRAHUB_GIT_APPEND_GIT_SUFFIX:
+  INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE: ${INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE:-false}
   INFRAHUB_GIT_GLOBAL_CONFIG_FILE: ${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}
   INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
@@ -88,6 +111,9 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_LOGGING_REMOTE_ENABLE: ${INFRAHUB_LOGGING_REMOTE_ENABLE:-false}
   INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN:
   INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN:
+  INFRAHUB_LOG_FORWARDING_DESTINATIONS:
+  INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES:
+  INFRAHUB_LOG_FORWARDING_HOSTNAME:
   INFRAHUB_LOG_LEVEL:
   INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME: ${INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME:-1800}
   INFRAHUB_MISC_PRINT_QUERY_DETAILS: ${INFRAHUB_MISC_PRINT_QUERY_DETAILS:-false}
@@ -122,8 +148,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
   INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
   INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-localhost}
-  INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE: ${INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE:-infrahubasync}
   INFRAHUB_WORKFLOW_DRIVER: ${INFRAHUB_WORKFLOW_DRIVER:-worker}
+  INFRAHUB_WORKFLOW_ENABLE:
   INFRAHUB_WORKFLOW_EXTRA_LOGGERS:
   INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL: ${INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL:-INFO}
   INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD: ${INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD:-100000}
@@ -132,6 +158,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL: ${INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL:-2}
   OTEL_RESOURCE_ATTRIBUTES:
 
+
+# These settings are related to Single Sign-On (SSO) configuration for the API servers
 x-infrahub-sso: &infrahub_sso
   INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP:
   INFRAHUB_SECURITY_OAUTH2_PROVIDERS:
@@ -153,6 +181,11 @@ x-infrahub-sso: &infrahub_sso
   INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL:
   INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL:
   INFRAHUB_OIDC_PROVIDER1_ICON:
+
+x-infrahub-config-enterprise: &infrahub_config_enterprise
+  INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE: ${INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE:-infrahubentasync}
+  INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS:
+  INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS:
 
 x-task-manager-config:
   INFRAHUB_TASKMANAGER_DB_USER: ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}
@@ -185,15 +218,30 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-community}
+    deploy:
+      resources:
+        limits:
+          cpus: ${INFRAHUB_DB_CPU_LIMIT:-0.0}
+          memory: ${INFRAHUB_DB_MEMORY_LIMIT:-0}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: ${NEO4J_ACCEPT_LICENSE_AGREEMENT:-yes}
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
+      NEO4J_server_backup_enabled: ${NEO4J_BACKUP_ENABLED:-true}
+      NEO4J_server_backup_listen__address: ${NEO4J_BACKUP_IP:-0.0.0.0}:${NEO4J_BACKUP_PORT:-6362}
+      NEO4J_server_metrics_prometheus_enabled: ${NEO4J_PROMETHEUS_ENABLED:-true}
+      NEO4J_server_metrics_prometheus_endpoint: ${NEO4J_PROMETHEUS_IP:-0.0.0.0}:${NEO4J_PROMETHEUS_PORT:-2004}
+      NEO4J_server_memory_heap_initial__size: *neo4j_initial_heapsize
+      NEO4J_server_memory_heap_max__size: *neo4j_max_heapsize
+      NEO4J_server_memory_pagecache_size: *neo4j_pagecache_size
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
+    labels:
+      infrahub_role: "database"
     healthcheck:
       test: wget -O /dev/null http://localhost:7474 || exit 1
       interval: 2s
@@ -205,14 +253,34 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.2}"
-    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.9.6}"
+    command: gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:4200 'infrahub.prefect_server.app:create_infrahub_prefect()'
     restart: unless-stopped
     depends_on:
       task-manager-db:
         condition: service_healthy
     environment:
+      <<: [*infrahub_config, *infrahub_config_enterprise]
+      PREFECT_UI_ENABLED: "false" # enabling UI requires permissions, run container as root to enable UI
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
+      PREFECT__SERVER_WEBSERVER_ONLY: "true"
+
+      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "false"
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "false"
+      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "false"
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "false"
+
+      PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
+      PREFECT_API_BLOCKS_REGISTER_ON_START: "false"
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: prefect_redis.ordering
+      PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE: prefect_redis.lease_storage
+      PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      PREFECT_REDIS_MESSAGING_DB: "1"
+      PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: *task_manager_publisher_batch_size
+      WEB_CONCURRENCY: *task_manager_api_workers
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
@@ -220,8 +288,45 @@ services:
       retries: 20
       start_period: 10s
 
+  task-manager-background-svc:
+    deploy:
+      mode: replicated
+      replicas: *task_manager_background_workers
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.9.6}"
+    command: prefect server services start
+    restart: unless-stopped
+    depends_on:
+      task-manager:
+        condition: service_healthy
+    environment:
+      <<: [*infrahub_config, *infrahub_config_enterprise]
+      PREFECT_UI_ENABLED: "false" # This is required because triggers actions service depends on an in-memory API server
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
+
+      PREFECT_API_DATABASE_MIGRATE_ON_START: "false"
+      PREFECT_API_BLOCKS_REGISTER_ON_START: "false"
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: prefect_redis.ordering
+      PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE: prefect_redis.lease_storage
+      PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_CACHE_ADDRESS:-cache}"
+      PREFECT_REDIS_MESSAGING_DB: "1"
+
+      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
+
+      PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: *task_manager_publisher_batch_size
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_READ_BATCH_SIZE: *task_manager_event_persister_read_batch_size
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_BATCH_SIZE: *task_manager_event_persister_batch_size
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_READ_BATCH_SIZE: *task_manager_task_run_recorder_read_batch_size
+      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_BATCH_SIZE: *task_manager_task_run_recorder_batch_size
+      PREFECT_SERVER_SERVICES_TRIGGERS_READ_BATCH_SIZE: *task_manager_triggers_read_batch_size
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
+    command: *task_manager_db_command
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${INFRAHUB_TASKMANAGER_DB_USER:-postgres}
@@ -238,13 +343,13 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.9.6}"
     restart: unless-stopped
     command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      gunicorn --config community/backend/infrahub/serve/gunicorn_config.py
       -w ${WEB_CONCURRENCY:-4}
       --logger-class infrahub.serve.log.GunicornLogger
-      infrahub.server:app
+      infrahub_enterprise.server:app
     depends_on:
       database:
         condition: service_healthy
@@ -255,7 +360,7 @@ services:
       task-manager:
         condition: service_healthy
     environment:
-      <<: [*infrahub_config, *infrahub_sso]
+      <<: [*infrahub_config, *infrahub_sso, *infrahub_config_enterprise]
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-INFO}
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
@@ -283,14 +388,14 @@ services:
   task-worker:
     deploy:
       mode: replicated
-      replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.8.2}"
-    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
+      replicas: *task_worker_replicas
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-enterprise}:${VERSION:-1.9.6}"
+    command: prefect worker start --type infrahubentasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
       - infrahub-server
     environment:
-      <<: *infrahub_config
+      <<: [*infrahub_config, *infrahub_config_enterprise]
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-DEBUG}
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-/opt/infrahub/git}
@@ -304,6 +409,7 @@ services:
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
       INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
       INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
+      INFRAHUB_PAGINATION_SIZE: *task_worker_pagination
       PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     tty: true
 

@@ -1,5 +1,6 @@
-ARG INFRAHUB_BASE_VERSION=1.8.2
-FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_BASE_VERSION}
+ARG INFRAHUB_BASE_VERSION=1.9.6
+FROM registry.opsmill.io/opsmill/infrahub-enterprise:${INFRAHUB_BASE_VERSION}
+USER root
 
 # Use the system Python environment
 ENV UV_PROJECT_ENVIRONMENT="/.venv"
