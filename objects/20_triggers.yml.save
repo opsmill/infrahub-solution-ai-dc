@@ -8,6 +8,8 @@ spec:
       generator: generate-pod
     - name: run-rack-generator
       generator: generate-rack
+    - name: run-tenant-generator
+      generator: generate-tenant
 
 ---
 apiVersion: infrahub.app/v1
@@ -92,3 +94,33 @@ spec:
         data:
           - attribute_name: rack_type
             value_match: any
+
+    # Overlay (OverlayGenerator) — re-run on tenant checksum changes and on tenant VRF/segment day-two edits.
+    - name: trigger-tenant-generator-update-checksum
+      branch_scope: "other_branches"
+      node_kind: NetworkTenant
+      mutation_action: "updated"
+      action: run-tenant-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
+
+    - name: trigger-tenant-generator-vrf-updated
+      branch_scope: "other_branches"
+      node_kind: NetworkVrf
+      mutation_action: "updated"
+      action: run-tenant-generator
+
+    - name: trigger-tenant-generator-segment-updated
+      branch_scope: "other_branches"
+      node_kind: NetworkSegment
+      mutation_action: "updated"
+      action: run-tenant-generator
+
+    - name: trigger-tenant-generator-segment-created
+      branch_scope: "other_branches"
+      node_kind: NetworkSegment
+      mutation_action: "created"
+      action: run-tenant-generator

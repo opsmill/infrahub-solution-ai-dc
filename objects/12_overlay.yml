@@ -1,0 +1,40 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkTenant
+  data:
+    - name: "Blue"
+      fabric: "Fabric-A"
+      member_of_groups: ["tenants"]
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkVrf
+  data:
+    - name: "blue-prod"
+      tenant: "Blue"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkSegment
+  data:
+    # Two routed (IRB) segments; placement left empty -> advertise-all (every leaf in Fabric-A).
+    # vlan_id / l2vni / route_target / subnet / gateway are allocated by the OverlayGenerator.
+    - name: "blue-web"
+      vrf: ["Blue", "blue-prod"]
+      routed: true
+    - name: "blue-app"
+      vrf: ["Blue", "blue-prod"]
+      routed: true
+    # US3 — rack-scoped IRB segment: rendered only on the leafs of Rack-A2-1.
+    - name: "blue-dmz"
+      vrf: ["Blue", "blue-prod"]
+      routed: true
+      racks: ["Rack-A2-1"]
+    # US3 — L2-only segment (no gateway): bridged everywhere, no anycast SVI anywhere.
+    - name: "blue-l2"
+      vrf: ["Blue", "blue-prod"]
+      routed: false

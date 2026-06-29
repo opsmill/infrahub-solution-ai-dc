@@ -15,6 +15,9 @@ queries:
   - name: generate_rack
     file_path: "./generators/generate_rack.gql"
 
+  - name: generate_tenant
+    file_path: "./generators/generate_tenant.gql"
+
   - name: network_device_startup_config
     file_path: "./transforms/startup_config.gql"
 
@@ -55,6 +58,17 @@ generator_definitions:
     parameters:
       rack_name: name__value
     class_name: RackGenerator
+    convert_query_response: false
+    execute_in_proposed_change: false
+    execute_after_merge: false
+
+  - name: generate-tenant
+    file_path: "./generators/generate_tenant.py"
+    query: generate_tenant
+    targets: tenants
+    parameters:
+      name: name__value
+    class_name: OverlayGenerator
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
