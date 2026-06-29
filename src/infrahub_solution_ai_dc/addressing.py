@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .protocols import NetworkInterface
+from .protocols import NetworkDevice, NetworkInterface
 
 if TYPE_CHECKING:
     import logging
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ipaddress import IPv4Address
 
     from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.protocols import CoreIPPrefixPool
+    from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 
 async def assign_ip_address_to_interface(
@@ -54,3 +54,38 @@ async def assign_ip_addresses_to_p2p_connections(
 
         for interface in [src_interface, dst_interface]:
             await assign_ip_address_to_interface(client, interface, logger, host_addresses, prefix_len)
+
+
+async def assign_vtep_loopback_to_device(
+    client: InfrahubClient,
+    logger: logging.Logger,
+    device: NetworkDevice,
+    vtep_pool: CoreIPAddressPool,
+    interface_name: str = "Loopback1",
+) -> None:
+    """Allocate a VTEP loopback IP from the per-pod VTEP pool and bind it to a vtep-role loopback interface.
+
+    The VTEP loopback (loopback1) is the NVE source on a leaf. It is distinct from loopback0 which stays the
+    router-id / iBGP source. The same IpamIPAddress is referenced by ``NetworkDevice.vtep_ip`` and by the
+    created interface, mirroring the loopback0 convention used for the underlay.
+    """
+    # Re-fetch the device fresh: the object the caller created still holds loopback_ip as the *pool* reference
+    # (not the allocated address). A plain get resolves every relationship to its real peer, so setting vtep_ip
+    # and saving neither sends an invalid reference nor clears loopback_ip (mirrors the ASN-stamping pattern).
+    fresh = await client.get(kind=NetworkDevice, id=device.id)
+    fresh.vtep_ip = vtep_pool  # type: ignore[assignment]  # pool object -> server-side from_pool allocation
+    await fresh.save(allow_upsert=True)
+
+    # FIX: the id of a related node assigned from a pool is not immediately accessible on the returned node
+    fresh = await client.get(kind=NetworkDevice, id=device.id, include=["vtep_ip"])
+
+    vtep_interface = await client.create(
+        kind=NetworkInterface,
+        name=interface_name,
+        device=fresh,
+        role="vtep",
+        status="active",
+        ip_address=fresh.vtep_ip.id,
+    )
+    await vtep_interface.save(allow_upsert=True)
+    logger.info(f"Assigned VTEP loopback {fresh.vtep_ip.display_label} to {fresh.hostname.value}")
