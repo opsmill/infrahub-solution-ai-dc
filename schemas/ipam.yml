@@ -28,6 +28,12 @@ nodes:
             label: Pod Super Spine Spine
           - name: pod_leaf_spine
             label: Pod Leaf Spine
+          - name: pod_vtep_loopback
+            label: Pod VTEP Loopback
+          - name: overlay_supernet
+            label: Overlay Supernet
+          - name: tenant_subnet
+            label: Tenant Subnet
   - name: IPAddress
     namespace: Ipam
     inherit_from:

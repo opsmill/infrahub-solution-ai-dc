@@ -57,6 +57,31 @@ nodes:
             color: "#004E64"
         default_value: create_sorted_device_interface_map
         order_weight: 3000
+      - name: overlay_asn
+        label: Overlay ASN
+        kind: Number
+        branch: aware
+        optional: true
+        order_weight: 3500
+      - name: routing_design
+        label: Routing Design
+        kind: Dropdown
+        branch: aware
+        choices:
+          - name: ibgp_evpn_ospf_underlay
+            label: iBGP EVPN / OSPF underlay
+            color: "#869FB3"
+          - name: ebgp_evpn
+            label: eBGP EVPN
+            color: "#004E64"
+        default_value: ibgp_evpn_ospf_underlay
+        order_weight: 3600
+      - name: anycast_gateway_mac
+        label: Anycast Gateway MAC
+        kind: Text
+        branch: aware
+        optional: true
+        order_weight: 3700
     relationships:
       - name: super_spine_switch_template
         branch: aware
@@ -152,3 +177,11 @@ nodes:
         optional: true
         identifier: "pod__prefix_pool"
         order_weight: 7000
+      - name: vtep_pool
+        peer: CoreIPAddressPool
+        branch: aware
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__vtep_pool"
+        order_weight: 8000

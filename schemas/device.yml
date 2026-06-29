@@ -83,6 +83,10 @@ nodes:
             label: Spine
           - name: leaf
             label: Leaf
+      - name: asn
+        label: ASN
+        kind: Number
+        optional: true
     relationships:
       - name: device_type
         kind: Attribute
@@ -114,6 +118,20 @@ nodes:
         cardinality: many
         optional: true
         identifier: "device__interface"
+      - name: vtep_ip
+        label: VTEP IP
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "device__vtep_ip"
+      - name: segments
+        label: Segments
+        peer: NetworkSegment
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: "device__segment"
 
   - name: Interface
     namespace: Network
@@ -162,6 +180,10 @@ nodes:
             label: Leaf
           - name: loopback
             label: Loopback
+          - name: vtep
+            label: VTEP
+          - name: svi
+            label: SVI
           - name: server
             label: Server
           - name: storage

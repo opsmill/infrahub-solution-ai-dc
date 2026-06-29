@@ -1,0 +1,183 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: Tenant
+    namespace: Network
+    label: Tenant
+    inherit_from:
+      - GeneratorTarget
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+        order_weight: 1000
+    relationships:
+      - name: fabric
+        label: Fabric
+        peer: NetworkFabric
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "fabric__tenant"
+        order_weight: 2000
+      - name: vrfs
+        label: VRFs
+        peer: NetworkVrf
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "tenant__vrf"
+        order_weight: 3000
+      - name: ip_namespace
+        label: IP Namespace
+        peer: BuiltinIPNamespace
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "tenant__ip_namespace"
+        order_weight: 4000
+
+  - name: Vrf
+    namespace: Network
+    label: VRF
+    uniqueness_constraints:
+      - [tenant, name__value]
+    human_friendly_id:
+      - tenant__name__value
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        order_weight: 1000
+      - name: l3vni
+        label: L3VNI
+        kind: Number
+        optional: true
+        order_weight: 2000
+      - name: l3_vlan_id
+        label: L3 Transit VLAN
+        kind: Number
+        optional: true
+        order_weight: 3000
+      - name: route_target
+        label: Route Target
+        kind: Text
+        optional: true
+        order_weight: 4000
+      - name: import_rt
+        label: Import Route Target
+        kind: Text
+        optional: true
+        order_weight: 5000
+      - name: export_rt
+        label: Export Route Target
+        kind: Text
+        optional: true
+        order_weight: 6000
+    relationships:
+      - name: tenant
+        label: Tenant
+        peer: NetworkTenant
+        kind: Parent
+        cardinality: one
+        optional: false
+        identifier: "tenant__vrf"
+        order_weight: 7000
+      - name: segments
+        label: Segments
+        peer: NetworkSegment
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "vrf__segment"
+        order_weight: 8000
+      - name: ip_namespace
+        label: IP Namespace
+        peer: BuiltinIPNamespace
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "vrf__ip_namespace"
+        order_weight: 9000
+
+  - name: Segment
+    namespace: Network
+    label: Segment
+    uniqueness_constraints:
+      - [vrf, name__value]
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        order_weight: 1000
+      - name: vlan_id
+        label: VLAN ID
+        kind: Number
+        optional: true
+        order_weight: 2000
+      - name: l2vni
+        label: L2VNI
+        kind: Number
+        optional: true
+        order_weight: 3000
+      - name: route_target
+        label: Route Target
+        kind: Text
+        optional: true
+        order_weight: 4000
+      - name: routed
+        label: Routed (IRB)
+        kind: Boolean
+        default_value: true
+        optional: true
+        order_weight: 4500
+    relationships:
+      - name: vrf
+        label: VRF
+        peer: NetworkVrf
+        kind: Parent
+        cardinality: one
+        optional: false
+        identifier: "vrf__segment"
+        order_weight: 5000
+      - name: subnet
+        label: Subnet
+        peer: IpamIPPrefix
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "segment__subnet"
+        order_weight: 6000
+      - name: gateway
+        label: Anycast Gateway
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "segment__gateway"
+        order_weight: 7000
+      - name: racks
+        label: Racks
+        peer: LocationRack
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: "segment__rack"
+        order_weight: 8000
