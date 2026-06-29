@@ -10,7 +10,7 @@ from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.generator import GeneratorMixin
-from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
 
 from .pod_generator_query import PodGeneratorQuery
 
@@ -34,6 +34,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_name: str
 
     loopback_pool: CoreIPAddressPool
+    vtep_pool: CoreIPAddressPool
 
     pod_prefix_pool: CoreIPPrefixPool
     spine_switches: list[NetworkDevice]
@@ -89,6 +90,9 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         await self.connect_spine_to_super_spine()
 
         await self.update_checksum()
+
+        # Stamp the overlay ASN on the spines after the checksum so it never re-triggers the rack cascade.
+        await self.configure_overlay()
 
     async def create_spine_switches(self) -> None:
         """Create the spine switches"""
@@ -162,10 +166,49 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
         await self.loopback_pool.save(allow_upsert=True)
 
+        # Dedicated per-pod VTEP loopback (loopback1) pool — NVE source on leafs (mirrors loopback_pool).
+        pod_vtep_prefix = await self.client.allocate_next_ip_prefix(
+            resource_pool=self.pod_prefix_pool,
+            identifier=f"{self.pod_id}-vtep",
+            member_type="address",
+            prefix_length=27,
+            data={"role": "pod_vtep_loopback"},
+        )
+
+        self.vtep_pool = await self.client.create(
+            kind=CoreIPAddressPool,
+            name=f"{self.fabric_name}-{self.pod_name}-vtep-pool",
+            default_address_type="IpamIPAddress",
+            default_prefix_length=32,
+            ip_namespace={"hfid": ["default"]},
+            resources=[pod_vtep_prefix],
+        )
+        await self.vtep_pool.save(allow_upsert=True)
+
         pod = await self.client.get(kind=NetworkPod, id=self.pod_id)
         pod.loopback_pool = self.loopback_pool  # type: ignore[assignment]
         pod.prefix_pool = self.pod_prefix_pool  # type: ignore[assignment]
+        pod.vtep_pool = self.vtep_pool  # type: ignore[assignment]
         await pod.save(allow_upsert=True)
+
+    async def configure_overlay(self) -> None:
+        """Stamp the fabric overlay ASN on every spine (iBGP: device.asn == fabric.overlay_asn).
+
+        Best-effort: if the FabricGenerator has not allocated overlay_asn yet, skip — the config template falls
+        back to the fabric overlay_asn so rendering stays correct regardless of generator timing.
+        """
+        fabric = await self.client.get(kind=NetworkFabric, id=self.fabric_id)
+        overlay_asn = fabric.overlay_asn.value
+        if overlay_asn is None:
+            self.logger.warning(f"overlay_asn not yet allocated for {self.fabric_name}; skipping spine ASN stamping")
+            return
+
+        for spine in self.spine_switches:
+            device = await self.client.get(kind=NetworkDevice, id=spine.id)
+            if device.asn.value != overlay_asn:
+                device.asn.value = overlay_asn
+                await device.save(allow_upsert=True)
+                self.logger.info(f"Stamped ASN {overlay_asn} on {device.hostname.value}")
 
     async def get_super_spine_switches_for_fabric(self) -> tuple[NetworkPod, list[NetworkDevice]]:
         self.fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
