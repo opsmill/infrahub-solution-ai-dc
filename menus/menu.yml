@@ -40,6 +40,28 @@ spec:
             kind: NetworkLink
             icon: "material-symbols:cable"
 
+          - namespace: Network
+            name: Overlay
+            label: Overlay
+            icon: "mdi:lan"
+            children:
+              data:
+                - namespace: Network
+                  name: Tenant
+                  label: Tenants
+                  kind: NetworkTenant
+                  icon: "mdi:account-group"
+                - namespace: Network
+                  name: Vrf
+                  label: VRFs
+                  kind: NetworkVrf
+                  icon: "mdi:router-network"
+                - namespace: Network
+                  name: Segment
+                  label: Segments
+                  kind: NetworkSegment
+                  icon: "mdi:vector-polyline"
+
     - namespace: Location
       name: Menu
       label: Location
