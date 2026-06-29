@@ -6,6 +6,8 @@ spec:
   data:
     - prefix: 10.0.0.0/8
       role: supernet
+    - prefix: 172.16.0.0/16
+      role: overlay_supernet
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -19,3 +21,16 @@ spec:
       ip_namespace: "default"
       resources:
         - "10.0.0.0/8"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreIPPrefixPool
+  data:
+    - name: TenantSubnetPool
+      default_member_type: prefix
+      default_prefix_type: "IpamIPPrefix"
+      default_prefix_length: 24
+      ip_namespace: "default"
+      resources:
+        - "172.16.0.0/16"

@@ -1,0 +1,31 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreNumberPool
+  data:
+    - name: "Overlay ASN Pool"
+      node: NetworkFabric
+      node_attribute: overlay_asn
+      start_range: 64512
+      end_range: 65534
+    - name: "L2VNI Pool"
+      node: NetworkSegment
+      node_attribute: l2vni
+      start_range: 10000
+      end_range: 19999
+    - name: "L3VNI Pool"
+      node: NetworkVrf
+      node_attribute: l3vni
+      start_range: 50000
+      end_range: 59999
+    - name: "VLAN L2 Pool"
+      node: NetworkSegment
+      node_attribute: vlan_id
+      start_range: 100
+      end_range: 3899
+    - name: "VLAN L3 Pool"
+      node: NetworkVrf
+      node_attribute: l3_vlan_id
+      start_range: 3900
+      end_range: 4094
