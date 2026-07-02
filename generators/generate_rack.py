@@ -60,6 +60,13 @@ class RackGenerator(InfrahubGenerator):
         self.pod_name: str = rack.pod.node.name.value.lower()  # type: ignore[union-attr]
         self.pod_amount_of_spines: int = rack.pod.node.amount_of_spines.value  # type: ignore[union-attr, assignment]
 
+        if rack.pod.node.loopback_pool.node is None or rack.pod.node.prefix_pool.node is None:  # type: ignore[union-attr]
+            msg = (
+                f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: "
+                f"pod '{self.pod_name}' has no IP pools assigned yet — run the pod generator (generate-pod) first"
+            )
+            raise RuntimeError(msg)
+
         self.loopback_pool_id: str = rack.pod.node.loopback_pool.node.id  # type: ignore[union-attr]
         self.prefix_pool_id: str = rack.pod.node.prefix_pool.node.id  # type: ignore[union-attr]
 
