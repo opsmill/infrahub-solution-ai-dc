@@ -36,16 +36,16 @@ class CablingPlan(InfrahubTransform):
 
             csv_data.append(
                 [
-                    src_interface.peer.device.peer.rack.peer.name.value
-                    if src_interface.peer.device.peer.rack.initialized
+                    src_interface.peer.device.peer.rack.peer.name.value  # type: ignore[union-attr]
+                    if src_interface.peer.device.peer.rack.initialized  # type: ignore[union-attr]
                     else "",
-                    src_interface.peer.device.peer.hostname.value,
-                    src_interface.peer.name.value,
-                    dst_interface.peer.device.peer.rack.peer.name.value
-                    if dst_interface.peer.device.peer.rack.initialized
+                    src_interface.peer.device.peer.hostname.value,  # type: ignore[union-attr]
+                    src_interface.peer.name.value,  # type: ignore[union-attr]
+                    dst_interface.peer.device.peer.rack.peer.name.value  # type: ignore[union-attr]
+                    if dst_interface.peer.device.peer.rack.initialized  # type: ignore[union-attr]
                     else "",
-                    dst_interface.peer.device.peer.hostname.value,
-                    dst_interface.peer.name.value,
+                    dst_interface.peer.device.peer.hostname.value,  # type: ignore[union-attr]
+                    dst_interface.peer.name.value,  # type: ignore[union-attr]
                 ]
             )
 

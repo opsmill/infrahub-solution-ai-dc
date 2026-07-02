@@ -26,7 +26,7 @@ def create_sorted_device_interface_map(
         sorted_interface_names = sort_interface_list(list(interface_map.keys()))
         device_interface_map[device] = [interface_map[interface] for interface in sorted_interface_names]
 
-    return device_interface_map
+    return device_interface_map  # type: ignore[return-value]
 
 
 def create_reverse_sorted_device_interface_map(
@@ -43,4 +43,4 @@ def create_reverse_sorted_device_interface_map(
         sorted_interface_names.reverse()
         device_interface_map[device] = [interface_map[interface] for interface in sorted_interface_names]
 
-    return device_interface_map
+    return device_interface_map  # type: ignore[return-value]
