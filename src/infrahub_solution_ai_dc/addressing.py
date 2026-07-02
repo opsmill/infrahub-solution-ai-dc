@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 from .protocols import NetworkInterface
@@ -24,9 +23,9 @@ async def assign_ip_address_to_interface(
     ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
     await ip_address.save(allow_upsert=True)
     interface = await client.get(NetworkInterface, id=interface.id, include=["link"])
-    interface.ip_address = ip_address
+    interface.ip_address = ip_address  # type: ignore[assignment]
     await interface.save(allow_upsert=True)
-    logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")
+    logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")  # type: ignore[union-attr]
 
 
 async def assign_ip_addresses_to_p2p_connections(
@@ -48,10 +47,10 @@ async def assign_ip_addresses_to_p2p_connections(
         )
 
         logger.info(
-            f"Allocated prefix {prefix.prefix.value} for connection between {src_interface.display_label}-{dst_interface.display_label}"
+            f"Allocated prefix {prefix.prefix.value} for connection between {src_interface.display_label}-{dst_interface.display_label}"  # type: ignore[union-attr]
         )
 
-        host_addresses = prefix.prefix.value.hosts()
+        host_addresses = prefix.prefix.value.hosts()  # type: ignore[union-attr]
 
         for interface in [src_interface, dst_interface]:
             await assign_ip_address_to_interface(client, interface, logger, host_addresses, prefix_len)

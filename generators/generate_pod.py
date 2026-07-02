@@ -116,7 +116,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
                 NetworkInterface, device__ids=[device.id], role__value="loopback"
             )
             loopback_interface.status.value = "active"
-            loopback_interface.ip_address = device.loopback_ip.id
+            loopback_interface.ip_address = device.loopback_ip.id  # type: ignore[assignment]
             await loopback_interface.save(allow_upsert=True)
 
             self.spine_switches.append(device)
@@ -163,8 +163,8 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         await self.loopback_pool.save(allow_upsert=True)
 
         pod = await self.client.get(kind=NetworkPod, id=self.pod_id)
-        pod.loopback_pool = self.loopback_pool
-        pod.prefix_pool = self.pod_prefix_pool
+        pod.loopback_pool = self.loopback_pool  # type: ignore[assignment]
+        pod.prefix_pool = self.pod_prefix_pool  # type: ignore[assignment]
         await pod.save(allow_upsert=True)
 
     async def get_super_spine_switches_for_fabric(self) -> tuple[NetworkPod, list[NetworkDevice]]:

@@ -63,7 +63,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 NetworkInterface, device__ids=[device.id], role__value="loopback"
             )
             loopback_interface.status.value = "active"
-            loopback_interface.ip_address = device.loopback_ip.id
+            loopback_interface.ip_address = device.loopback_ip.id  # type: ignore[assignment]
             await loopback_interface.save(allow_upsert=True)
 
     async def allocate_resource_pools(self) -> None:

@@ -109,8 +109,8 @@ jobs:
       - name: Build custom Infrahub image
         run: >
           docker build
-          --build-arg INFRAHUB_BASE_VERSION=1.8.2
-          -t registry.opsmill.io/opsmill/infrahub:1.8.2
+          --build-arg INFRAHUB_BASE_VERSION=1.10.0
+          -t registry.opsmill.io/opsmill/infrahub:1.10.0
           .
       - name: Set environment variables
         run: |
