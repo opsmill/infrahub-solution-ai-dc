@@ -93,9 +93,11 @@ max-complexity = 17
 [tool.rumdl]
 disable = ["MD013", "MD025", "MD029", "MD033", "MD036", "MD041"]
 exclude = [
+    ".agents/",  # installed skills are vendored from upstream skill repos; lint upstream
     ".claude/",
     ".git/",
     ".kiro/",
+    ".specify/",  # spec-kit scaffolding managed by the spec-kit installer
     ".mypy_cache/",
     ".ruff_cache/",
     ".venv/",
