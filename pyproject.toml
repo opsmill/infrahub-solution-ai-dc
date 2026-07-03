@@ -35,6 +35,7 @@ disallow_untyped_defs = true
 line-length = 120
 
 exclude = [
+    ".agents",  # installed skills are vendored from opsmill/infrahub-skills; lint upstream
     ".git",
     ".tox",
     ".venv",
