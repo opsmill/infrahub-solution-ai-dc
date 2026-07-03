@@ -63,6 +63,13 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 - `menus/` — UI menu definitions
 - `.infrahub.yml` — Registers all generators, transforms, queries, and artifact definitions
 
+### Agentic Layout
+
+- `.agents/skills/` — vendor-neutral source of truth for AI agent skills: the `infrahub-*` skills (installed from `opsmill/infrahub-skills`, pinned in `skills-lock.json`) and the `speckit-*` skills
+- `.claude/skills` — committed symlink view of `.agents/skills` for Claude Code discovery
+- `.specify/` — spec-kit workflow engine (constitution, templates, scripts)
+- `dev/` — human-facing reference: `adr/` (MADR decision records), `guides/`, `guidelines/`, `knowledge/`
+
 ## Code Style
 
 - Python >=3.11, target 3.12
