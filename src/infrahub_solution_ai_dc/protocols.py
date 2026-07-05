@@ -20,6 +20,7 @@ from infrahub_sdk.protocols import (
 if TYPE_CHECKING:
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     from infrahub_sdk.protocols_base import (
+        Boolean,
         BooleanOptional,
         Dropdown,
         DropdownOptional,
@@ -187,9 +188,9 @@ class IpamIPPrefix(BuiltinIPPrefix):
     broadcast_address: StringOptional
     description: StringOptional
     hostmask: StringOptional
-    is_pool: BooleanOptional
+    is_pool: Boolean
     is_top_level: BooleanOptional
-    member_type: DropdownOptional
+    member_type: Dropdown
     netmask: StringOptional
     network_address: StringOptional
     prefix: IPNetwork

@@ -72,6 +72,7 @@ router bgp <device.asn>
 ```
 
 ## Invariants
+
 - A device with no materialized `segments` renders **no** NVE/VLAN/VRF/SVI (guarantees spine/super-spine
   carry no tenant state — FR-007, SC-006).
 - An L2-only segment (no `gateway`) renders its `vlan`/`vn-segment`/NVE `member vni` but **no** anycast SVI

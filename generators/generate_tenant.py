@@ -125,17 +125,17 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
         vrf = await self.client.get(kind=NetworkVrf, id=vrf_node.id)
         changed = False
         if vrf.l3vni.value is None:
-            vrf.l3vni.value = await self.client.get(kind=CoreNumberPool, name__value=L3VNI_POOL)
+            vrf.l3vni.value = await self.client.get(kind=CoreNumberPool, name__value=L3VNI_POOL)  # type: ignore[assignment]
             changed = True
         if vrf.l3_vlan_id.value is None:
-            vrf.l3_vlan_id.value = await self.client.get(kind=CoreNumberPool, name__value=VLAN_L3_POOL)
+            vrf.l3_vlan_id.value = await self.client.get(kind=CoreNumberPool, name__value=VLAN_L3_POOL)  # type: ignore[assignment]
             changed = True
         if changed:
             await vrf.save(allow_upsert=True, update_group_context=False)
             # FIX: pool-allocated values are not readable on the returned node; re-fetch to read them
             vrf = await self.client.get(kind=NetworkVrf, id=vrf_node.id)
 
-        rt = route_target(overlay_asn, vrf.l3vni.value)
+        rt = route_target(overlay_asn, vrf.l3vni.value)  # type: ignore[arg-type]
         if vrf.route_target.value != rt:
             vrf.route_target.value = rt
             await vrf.save(allow_upsert=True, update_group_context=False)
@@ -145,17 +145,17 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
         segment = await self.client.get(kind=NetworkSegment, id=segment_node.id)
         changed = False
         if segment.vlan_id.value is None:
-            segment.vlan_id.value = await self.client.get(kind=CoreNumberPool, name__value=VLAN_L2_POOL)
+            segment.vlan_id.value = await self.client.get(kind=CoreNumberPool, name__value=VLAN_L2_POOL)  # type: ignore[assignment]
             changed = True
         if segment.l2vni.value is None:
-            segment.l2vni.value = await self.client.get(kind=CoreNumberPool, name__value=L2VNI_POOL)
+            segment.l2vni.value = await self.client.get(kind=CoreNumberPool, name__value=L2VNI_POOL)  # type: ignore[assignment]
             changed = True
         if changed:
             await segment.save(allow_upsert=True, update_group_context=False)
             # FIX: pool-allocated values are not readable on the returned node; re-fetch to read them
             segment = await self.client.get(kind=NetworkSegment, id=segment_node.id)
 
-        rt = route_target(overlay_asn, segment.l2vni.value)
+        rt = route_target(overlay_asn, segment.l2vni.value)  # type: ignore[arg-type]
         if segment.route_target.value != rt:
             segment.route_target.value = rt
             await segment.save(allow_upsert=True, update_group_context=False)
@@ -175,13 +175,13 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
             data={"role": "tenant_subnet"},
         )
 
-        network = subnet.prefix.value
+        network = subnet.prefix.value  # type: ignore[union-attr]
         gateway_ip = list(network.hosts())[GATEWAY_HOST_INDEX - 1]
         gateway = await self.client.create(kind="IpamIPAddress", address=f"{gateway_ip}/{network.prefixlen}")
         await gateway.save(allow_upsert=True, update_group_context=False)
 
-        segment.subnet = subnet
-        segment.gateway = gateway
+        segment.subnet = subnet  # type: ignore[assignment]
+        segment.gateway = gateway  # type: ignore[assignment]
         await segment.save(allow_upsert=True, update_group_context=False)
         self.logger.info(f"Allocated subnet {network} (gw {gateway_ip}) for segment {segment.name.value}")
 

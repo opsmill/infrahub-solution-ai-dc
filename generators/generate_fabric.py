@@ -87,7 +87,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
 
         if fabric.overlay_asn.value is None:
             asn_pool = await self.client.get(kind=CoreNumberPool, name__value=ASN_POOL_NAME)
-            fabric.overlay_asn.value = asn_pool  # number pool -> server-side from_pool allocation
+            fabric.overlay_asn.value = asn_pool  # type: ignore[assignment]  # number pool -> server-side from_pool allocation
             if not fabric.routing_design.value:
                 fabric.routing_design.value = DEFAULT_ROUTING_DESIGN
             await fabric.save(allow_upsert=True)

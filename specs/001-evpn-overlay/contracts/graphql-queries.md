@@ -60,6 +60,7 @@ NetworkDevice(hostname__value: $name)
 ```
 
 **Notes**:
+
 - iBGP peers = the directly-connected neighbors surfaced via `interfaces → link → endpoints → … on
   NetworkInterface → device` (filter out self). RR-client toward lower tiers is derived in the template.
 - Spine/super-spine renders have no `segments` (none materialized) → no NVE/VRF/SVI.

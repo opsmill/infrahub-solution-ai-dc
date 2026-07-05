@@ -8,6 +8,7 @@ schema changes.
 ## New nodes (`schemas/overlay.yml`)
 
 ### NetworkTenant
+
 Owner of overlay services, scoped to one fabric. `inherit_from: [GeneratorTarget]` (checksum drives the
 OverlayGenerator; the checksum must cover its VRFs/Segments/placement).
 
@@ -22,6 +23,7 @@ OverlayGenerator; the checksum must cover its VRFs/Segments/placement).
 | `ip_namespace` | CoreIPNamespace | one | Attribute | optional; **reserved** for future overlapping-tenant space (D10) |
 
 ### NetworkVrf
+
 A tenant's L3 routing instance (IP-VRF / L3VNI). Parent = Tenant.
 
 | Attribute | Kind | Notes |
@@ -40,6 +42,7 @@ A tenant's L3 routing instance (IP-VRF / L3VNI). Parent = Tenant.
 | `ip_namespace` | CoreIPNamespace | one | Attribute | optional; reserved (D10) |
 
 ### NetworkSegment
+
 A tenant L2 service (MAC-VRF / L2VNI). One VLAN ↔ one L2VNI (D7). Parent = VRF. Optional gateway ⇒ IRB vs
 L2-only (D5).
 
@@ -60,6 +63,7 @@ L2-only (D5).
 ## Edits to existing nodes
 
 ### NetworkFabric (`schemas/logical_design.yml`)
+
 | New attribute | Kind | Notes |
 |---------------|------|-------|
 | `overlay_asn` | Number | optional; **allocated by FabricGenerator from the global ASN pool** (D8) |
@@ -67,11 +71,13 @@ L2-only (D5).
 | `anycast_gateway_mac` | Text | optional override; template constant default (D10) |
 
 ### NetworkPod (`schemas/logical_design.yml`)
+
 | New relationship | Peer | Card. | Kind | Notes |
 |------------------|------|-------|------|-------|
 | `vtep_pool` | CoreIPAddressPool | one | Attribute | optional; mirrors `loopback_pool`; created by PodGenerator (D4) |
 
 ### NetworkDevice (`schemas/device.yml`)
+
 | New attribute | Kind | Notes |
 |---------------|------|-------|
 | `asn` | Number | optional; stamped `= fabric.overlay_asn` (iBGP); per-device unique under eBGP later (D8) |
@@ -85,10 +91,12 @@ L2-only (D5).
 the template (D13).
 
 ### NetworkInterface (`schemas/device.yml`)
+
 - Add roles to the `role` dropdown: `vtep` (leaf loopback1 / NVE source) and `svi` (anycast gateway + L3
   transit SVIs).
 
 ### IpamIPPrefix (`schemas/ipam.yml`)
+
 - Add `role` choices: `pod_vtep_loopback` (per-pod VTEP loopback pool), `overlay_supernet` (tenant address
   space root), `tenant_subnet` (per-segment anycast-gateway subnet).
 

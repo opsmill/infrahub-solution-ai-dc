@@ -36,6 +36,7 @@ inv start           # bring up the stack; generators run via triggers
 ```
 
 **Expected after generators settle**:
+
 - Every device has `asn == its fabric.overlay_asn` (allocated once from the global ASN pool).
 - Each **leaf** has a `vtep_ip` and a `vtep`-role loopback interface; **spines/super-spines** do not.
 - The seed tenant (e.g. "Blue") has a VRF with an allocated `l3vni` + `l3_vlan_id` + `route_target`, and its
@@ -50,6 +51,7 @@ allocated ids + `route_target`; query a leaf `NetworkDevice` and confirm `segmen
 ## 4. Inspect the rendered config artifact (the core proof — User Story 1)
 
 Open the `startup_configuration` artifact for a **leaf** and confirm (per `contracts/config-artifact.md`):
+
 - OSPF underlay intact, now advertising the vtep loopback.
 - `router bgp <asn>` with iBGP L2VPN-EVPN neighbors to its cabled spines.
 - `interface nve1` (source = loopback1), per-segment `member vni <l2vni>`, per-VRF `member vni <l3vni>

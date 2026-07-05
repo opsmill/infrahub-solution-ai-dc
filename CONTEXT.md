@@ -10,12 +10,12 @@ they are used consistently in code, schema, and conversation.
 ### Design model
 
 **Design object**:
-An object that records *intent* — what infrastructure should look like — and persists in Infrahub
+An object that records _intent_ — what infrastructure should look like — and persists in Infrahub
 independent of whether Generators have run (e.g. a Fabric, Pod, Rack, or Tenant).
 _Avoid_: input, spec, template (a "device template" is a distinct supporting object).
 
 **Implementation object**:
-An object a Generator *produces* from design intent — devices, interfaces, links, IP allocations, VNI/RT
+An object a Generator _produces_ from design intent — devices, interfaces, links, IP allocations, VNI/RT
 allocations, materialized relationships.
 _Avoid_: output, artifact (an "artifact" is specifically a rendered file like a startup config or cabling CSV).
 

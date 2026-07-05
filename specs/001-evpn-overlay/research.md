@@ -8,12 +8,14 @@ remain.**
 ## Architecture & control plane
 
 ### D1 — Overlay scope is per-fabric
+
 - **Decision**: A Tenant and its VRFs/Segments belong to exactly one Fabric; each Fabric is an independent
   EVPN domain with its own ASN and VNI/RT space.
 - **Rationale**: Two independent Clos fabrics; fabric-local numbering is simplest and collision-free.
 - **Alternatives**: Cross-fabric tenants (rejected — requires DCI: inter-fabric gateways, RT stitching).
 
 ### D2 — Standalone OverlayGenerator beside the physical cascade
+
 - **Decision**: Tenant is a first-class design object with a dedicated OverlayGenerator (triggered by
   `NetworkTenant` checksum); physical generators get only small device-attribute extensions.
 - **Rationale**: Tenancy is orthogonal to the physical hierarchy and has its own lifecycle; preserves
@@ -21,12 +23,14 @@ remain.**
 - **Alternatives**: Fold overlay into the Rack generator (rejected — conflates lifecycles, forces rebuilds).
 
 ### D3 — Hierarchical route reflection, leaf-only VTEPs
+
 - **Decision**: leafs = RR clients of their spines; spines = RR for leafs **and** clients of super-spines;
   super-spines = top RR. Only leafs are VTEPs.
 - **Rationale**: Canonical 5-stage design; sessions follow topology; low per-leaf session count.
 - **Alternatives**: Super-spines-only RR (rejected — more sessions/leaf, spine tier carries no EVPN).
 
 ### D8 — ASN from a global NumberPool, stamped to devices
+
 - **Decision**: A global `CoreNumberPool` → `NetworkFabric.overlay_asn`; FabricGenerator stamps
   `device.asn = overlay_asn`. Template renders `router bgp {{ device.asn }}`.
 - **Rationale**: ASN-as-allocated-resource fits the Resource Manager showcase; control-plane-agnostic value
@@ -37,17 +41,20 @@ remain.**
 ## Services & data model
 
 ### D5 — Anycast gateway optional on Segment
+
 - **Decision**: Segment is always an L2VNI bridge; subnet + anycast gateway are optional (present ⇒ IRB,
   absent ⇒ L2-only). Segment always nests under a VRF.
 - **Rationale**: Near-free flexibility; reflects real tenants with mixed routed/bridge-only segments.
 - **Alternatives**: Always-IRB (rejected — no L2-only support).
 
 ### D7 — VLAN-based service model, fabric-global VLANs
+
 - **Decision**: 1 VLAN ↔ 1 L2VNI ↔ 1 Segment; NX-OS `feature vn-segment-vlan-based`; VLAN ID is a
   fabric-consistent handle, L2VNI is the global id.
 - **Alternatives**: VLAN-aware bundle / multi-VLAN EVI (rejected — unnecessary complexity for the demo).
 
 ### D13 — Schema shape & simplifications
+
 - **Decision**: Tenant/VRF/Segment are plain `Network`-namespace nodes with `kind: Parent` relationships
   (not `NetworkBuildingBlock`). **No `route_reflector` boolean** (derived from tier ordering in the template).
   Materialize **only `Device↔Segment`** (VRF presence derived via `segment.vrf`).
@@ -55,6 +62,7 @@ remain.**
   for eBGP-future; one materialized relationship is enough.
 
 ### D14 — L3VNI transit VLAN + two VLAN pools
+
 - **Decision**: Add `NetworkVrf.l3_vlan_id` for the L3VNI transit/core SVI. Two VLAN pools over disjoint
   ranges: L2 `100–3899` → `Segment.vlan_id`, L3 `3900–4094` → `Vrf.l3_vlan_id`.
 - **Rationale**: Symmetric IRB needs a transit VLAN per VRF on each carrying leaf; a NumberPool binds to one
@@ -64,12 +72,14 @@ remain.**
 ## Allocation, addressing, placement, triggering
 
 ### D6 — VLAN/L2VNI/L3VNI from per-fabric NumberPools
+
 - **Decision**: NumberPools (Resource Manager), not deterministic compute. Ranges: VLAN-L2 100–3899,
   VLAN-L3 3900–4094, L2VNI 10000–19999, L3VNI 50000–59999.
 - **Rationale**: On-brand with the solution's RM teaching point; queryable, collision-free.
 - **Alternatives**: `VNI = base + VLAN` (noted as the simpler documented alternative).
 
 ### D9 — RT stored (generator-set, queryable); RD template-rendered
+
 - **Decision**: OverlayGenerator stores `route_target = "<asn>:<vni>"` on VRF/Segment; RD is per-device →
   rendered in template `<loopback0>:<id>`. Optional `import_rt`/`export_rt` overrides reserved.
 - **Rationale**: Queryable source of truth without computed-attr relationship-traversal risk; RD has no
@@ -77,6 +87,7 @@ remain.**
 - **Alternatives**: Computed-attribute RT (traversal uncertain); NX-OS `auto` (hides RD/RT from Infrahub).
 
 ### D10 — Separate overlay supernet; default IP namespace first
+
 - **Decision**: New IPPrefix roles `overlay_supernet` + `tenant_subnet`; segment subnets from an overlay
   supernet distinct from underlay `10.0.0.0/8`. Anycast GW = `.1`, distributed; fabric-wide
   `anycast-gateway-mac` (template constant + optional Fabric override). Default namespace initially;
@@ -84,11 +95,13 @@ remain.**
 - **Alternatives**: Per-VRF namespaces now (deferred — heavier generator bookkeeping for a phase-2 toggle).
 
 ### D4 — Dedicated VTEP loopback1 on leafs
+
 - **Decision**: Leaf loopback1 (role `vtep`) as NVE source; advertised in OSPF; allocated from a per-pod
   VTEP pool (role `pod_vtep_loopback`). loopback0 stays router-id/iBGP source. Spines/super-spines: none.
 - **Rationale**: Standard best practice; keeps anycast-VTEP/MLAG open; role-based IPAM consistency.
 
 ### D11/D12 — Placement (advertise-all default) via materialized relationship (Design Y)
+
 - **Decision**: Optional `Segment↔Rack` placement intent (empty ⇒ every leaf in fabric). OverlayGenerator
   materializes `Device↔Segment` onto carrying leafs; leaf-device change rides the existing
   device→artifact regeneration path.
