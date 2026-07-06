@@ -42,7 +42,7 @@ The terms used here — tenant, VRF, segment, anycast gateway, VTEP, leaf/spine/
 
 ## How it works
 
-A new **OverlayGenerator** turns tenant intent into implementation objects, and the per-device configuration transform renders those objects into device config.
+A new **OverlayGenerator** turns tenant intent into implementation objects, and the per-device configuration transform renders those objects into device configuration.
 
 ### Allocation and materialization (OverlayGenerator)
 
@@ -70,7 +70,7 @@ The sections rendered depend on the device's role:
 | L3VNI routing (`vrf context`, transit SVI) | yes | — | — |
 | Anycast gateway SVI | yes (routed segments) | — | — |
 
-The leaf overlay block follows NX-OS-style syntax. The shape (see the [config-artifact contract](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/contracts/config-artifact.md) for the full definition):
+The leaf overlay block follows NX-OS-style syntax. The shape (see the [configuration artifact contract](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/contracts/config-artifact.md) for the full definition):
 
 ```text
 router bgp <asn>
