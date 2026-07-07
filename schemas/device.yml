@@ -87,6 +87,12 @@ nodes:
         label: ASN
         kind: Number
         optional: true
+      - name: route_reflector
+        label: Route Reflector
+        kind: Boolean
+        description: This device reflects EVPN routes to its iBGP clients (set by the generators on spines and super-spines).
+        default_value: false
+        optional: true
     relationships:
       - name: device_type
         kind: Attribute
@@ -132,6 +138,13 @@ nodes:
         cardinality: many
         optional: true
         identifier: "device__segment"
+      - name: bgp_sessions
+        label: BGP Sessions
+        peer: NetworkBGPSession
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "device__bgp_session"
 
   - name: Interface
     namespace: Network

@@ -76,8 +76,14 @@ host's gateway is always local. Optional per Segment (absent ⇒ L2-only Segment
 
 **Route reflector (RR)**:
 A switch that reflects EVPN routes to its iBGP clients. Reflection is **hierarchical**: spines reflect for
-their leafs and are themselves clients of the super-spines, which reflect for the spines. RR role is derived
-from tier ordering, not stored.
+their leafs and are themselves clients of the super-spines, which reflect for the spines. The RR role is
+stored: `NetworkDevice.route_reflector` marks spines/super-spines, and each **BGP session** carries an
+`rr_client` flag set by the generators from tier ordering (ADR-0005).
+
+**BGP session**:
+A directional `NetworkBGPSession` from a device toward a peer (local/remote AS, address family,
+`rr_client`). Populated by the fabric/pod/rack generators along the actual cabling; the config transform
+renders `router bgp` neighbors from these sessions.
 
 ## Relationships
 
@@ -109,7 +115,8 @@ from tier ordering, not stored.
   is a **Segment**; "VLAN" refers only to its `vlan_id` attribute (and a VRF's `l3_vlan_id` transit VLAN).
 - "Loopback" was ambiguous between the routing loopback and the tunnel source — resolved: **loopback0** is
   the router-id / iBGP source; **loopback1** (role `vtep`) is the VTEP source.
-- "Route reflector" was treated as a stored device flag — resolved: it is **derived from tier ordering**
-  (super-spine → spine → leaf), not a stored attribute.
+- "Route reflector" was initially derived from tier ordering at render time — revised (ADR-0005): it is now
+  **stored** as `NetworkDevice.route_reflector` plus a per-session `rr_client` flag; the tier ordering
+  (super-spine → spine → leaf) is applied once by the generators when populating sessions.
 - "Tenant" vs "Organization" — resolved: **Tenant** is an overlay-services owner; **Organization** is the
   existing manufacturer namespace. They are unrelated.

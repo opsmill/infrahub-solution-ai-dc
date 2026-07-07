@@ -60,6 +60,26 @@ L2-only (D5).
 | `gateway` | IpamIPAddress | one | Attribute | **optional**; anycast SVI virtual IP (`.1` of subnet) |
 | `racks` | LocationRack | many | Generic | **optional** placement intent; empty ⇒ advertise-all (D11) |
 
+### NetworkBGPSession (`schemas/routing.yml`, ADR-0005)
+
+A directional iBGP L2VPN-EVPN session from a device toward a peer. Two sessions per cabled adjacency
+(one per direction), populated by the pod generator (spine↔super-spine) and the rack generator
+(leaf↔spine) along the actual cabling plan. The startup-config transform renders `router bgp` neighbors
+from these sessions.
+
+| Attribute | Kind | Notes |
+|-----------|------|-------|
+| `name` | Text | unique; `<device>__<peer>` (the generators' upsert key) |
+| `local_as` | Number | = fabric `overlay_asn` (iBGP); per-device under eBGP later |
+| `remote_as` | Number | = fabric `overlay_asn` (iBGP) |
+| `address_family` | Dropdown | `l2vpn_evpn` (default), `ipv4_unicast` reserved |
+| `rr_client` | Boolean | render `route-reflector-client` toward the peer; **generator-set** from tier ordering |
+
+| Relationship | Peer | Card. | Kind | Notes |
+|--------------|------|-------|------|-------|
+| `device` | NetworkDevice | one | Parent | owning side (`NetworkDevice.bgp_sessions`) |
+| `peer_device` | NetworkDevice | one | Attribute | the neighbor; loopback0 rendered as the neighbor address |
+
 ## Edits to existing nodes
 
 ### NetworkFabric (`schemas/logical_design.yml`)
@@ -87,8 +107,10 @@ L2-only (D5).
 | `vtep_ip` | IpamIPAddress | one | Attribute | optional; **new** identifier `device__vtep_ip`; leafs only (D4) |
 | `segments` | NetworkSegment | many | — | **materialized by OverlayGenerator** (Design Y — D12); leafs only |
 
-**Removed from earlier draft**: no `route_reflector` boolean — RR-client is derived from tier ordering in
-the template (D13).
+**Revised by ADR-0005**: `route_reflector` (Boolean, default false) is stored after all — set true on
+spines/super-spines by the fabric/pod generators. It marks the RR role for operators; rendering is driven
+by the per-session `rr_client` flag (see NetworkBGPSession below), since a device flag alone cannot
+express hierarchical RR (a spine is both reflector and client).
 
 ### NetworkInterface (`schemas/device.yml`)
 
@@ -121,7 +143,8 @@ the template (D13).
   of the listed racks. OverlayGenerator writes `Device.segments` accordingly.
 - **VRF presence on a leaf**: derived — a leaf renders a VRF iff it carries ≥1 of that VRF's segments (via
   `segment.vrf`); a leaf renders a `vrf context` for the distinct VRFs of its **gateway-bearing** segments.
-- **RR role**: derived from tier ordering (super-spine > spine > leaf) at render time; not stored.
+- **RR role**: stored (ADR-0005) — the generators apply tier ordering (super-spine > spine > leaf) once at
+  population time, setting `NetworkDevice.route_reflector` and each session's `rr_client`.
 - **ASN allocation idempotency**: allocate `overlay_asn` only if unset; exclude `overlay_asn` from the
   fabric checksum to avoid self-retrigger (see research.md open item 1).
 

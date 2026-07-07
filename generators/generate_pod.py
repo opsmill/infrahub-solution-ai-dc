@@ -10,6 +10,7 @@ from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
 
 from .pod_generator_query import PodGeneratorQuery
@@ -39,6 +40,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_prefix_pool: CoreIPPrefixPool
     spine_switches: list[NetworkDevice]
     super_spine_switches: list[NetworkDevice]
+    spine_super_spine_ids: dict[str, set[str]]
 
     logger = logging.getLogger("infrahub.tasks")
 
@@ -192,7 +194,10 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         await pod.save(allow_upsert=True)
 
     async def configure_overlay(self) -> None:
-        """Stamp the fabric overlay ASN on every spine (iBGP: device.asn == fabric.overlay_asn).
+        """Stamp ASN + RR role on every spine and materialize the spine<->super-spine EVPN sessions.
+
+        Spines reflect EVPN routes for their leafs and are themselves clients of the super-spines
+        (hierarchical RR, ADR-0005). Sessions follow the cabling recorded in connect_spine_to_super_spine.
 
         Best-effort: if the FabricGenerator has not allocated overlay_asn yet, skip — the config template falls
         back to the fabric overlay_asn so rendering stays correct regardless of generator timing.
@@ -203,12 +208,33 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
             self.logger.warning(f"overlay_asn not yet allocated for {self.fabric_name}; skipping spine ASN stamping")
             return
 
+        super_spines_by_id = {ss.id: ss for ss in self.super_spine_switches}
         for spine in self.spine_switches:
             device = await self.client.get(kind=NetworkDevice, id=spine.id)
-            if device.asn.value != overlay_asn:
+            if device.asn.value != overlay_asn or not device.route_reflector.value:
                 device.asn.value = overlay_asn
+                device.route_reflector.value = True
                 await device.save(allow_upsert=True)
-                self.logger.info(f"Stamped ASN {overlay_asn} on {device.hostname.value}")
+                self.logger.info(f"Stamped ASN {overlay_asn} (route reflector) on {device.hostname.value}")
+
+            for super_spine_id in sorted(self.spine_super_spine_ids.get(spine.id, set())):
+                super_spine = super_spines_by_id[super_spine_id]
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=device,
+                    peer=super_spine,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("spine", "super_spine"),
+                )
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=super_spine,
+                    peer=device,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("super_spine", "spine"),
+                )
 
     async def get_super_spine_switches_for_fabric(self) -> tuple[NetworkPod, list[NetworkDevice]]:
         self.fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
@@ -235,6 +261,14 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
 
         await connect_interface_maps(client=self.client, logger=self.logger, cabling_plan=created_cabling_plan)
+
+        # Remember the spine -> super-spine adjacencies: the EVPN sessions in configure_overlay follow the
+        # actual cabling (tiers are not a full mesh).
+        self.spine_super_spine_ids = {}
+        for src_interface, dst_interface in created_cabling_plan:
+            spine_id, super_spine_id = src_interface.device.id, dst_interface.device.id
+            if spine_id is not None and super_spine_id is not None:
+                self.spine_super_spine_ids.setdefault(spine_id, set()).add(super_spine_id)
 
         await assign_ip_addresses_to_p2p_connections(
             client=self.client,

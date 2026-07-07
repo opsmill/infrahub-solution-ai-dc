@@ -12,6 +12,7 @@ from infrahub_solution_ai_dc.addressing import (
     assign_vtep_loopback_to_device,
 )
 from infrahub_solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
+from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
 
 from .rack_generator_query import RackGeneratorQuery
@@ -39,6 +40,7 @@ class RackGenerator(InfrahubGenerator):
     spine_switches: list[NetworkDevice]
 
     leaf_switches: list[NetworkDevice]
+    leaf_spine_ids: dict[str, set[str]]
 
     loopback_pool: CoreIPAddressPool
     prefix_pool: CoreIPPrefixPool
@@ -114,12 +116,34 @@ class RackGenerator(InfrahubGenerator):
             self.logger.warning(f"overlay_asn not yet allocated for pod {self.pod_name}; skipping leaf ASN stamping")
             return
 
+        spines_by_id = {spine.id: spine for spine in self.spine_switches}
         for leaf in self.leaf_switches:
             device = await self.client.get(kind=NetworkDevice, id=leaf.id)
             if device.asn.value != overlay_asn:
                 device.asn.value = overlay_asn
                 await device.save(allow_upsert=True)
                 self.logger.info(f"Stamped ASN {overlay_asn} on {device.hostname.value}")
+
+            # Materialize the leaf<->spine EVPN sessions along the cabling: the leaf is an RR client of its
+            # spines; the spines reflect for the leaf (hierarchical RR, ADR-0005).
+            for spine_id in sorted(self.leaf_spine_ids.get(leaf.id, set())):
+                spine = spines_by_id[spine_id]
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=device,
+                    peer=spine,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("leaf", "spine"),
+                )
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=spine,
+                    peer=device,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("spine", "leaf"),
+                )
 
     async def create_leaf_switches(self) -> None:
         for index in range(1, self.rack_amount_of_leafs + 1):
@@ -171,6 +195,14 @@ class RackGenerator(InfrahubGenerator):
         )
 
         await connect_interface_maps(client=self.client, logger=self.logger, cabling_plan=created_cabling_plan)
+
+        # Remember the leaf -> spine adjacencies: the EVPN sessions in configure_overlay follow the
+        # actual cabling (tiers are not a full mesh).
+        self.leaf_spine_ids = {}
+        for src_interface, dst_interface in created_cabling_plan:
+            leaf_id, spine_id = src_interface.device.id, dst_interface.device.id
+            if leaf_id is not None and spine_id is not None:
+                self.leaf_spine_ids.setdefault(leaf_id, set()).add(spine_id)
 
         await assign_ip_addresses_to_p2p_connections(
             client=self.client,

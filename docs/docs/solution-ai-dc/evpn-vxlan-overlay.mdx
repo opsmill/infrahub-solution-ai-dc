@@ -52,7 +52,7 @@ Triggered by changes to a tenant's design, the OverlayGenerator:
 2. **Allocates the addressing** for routed segments: a tenant subnet from the overlay address space, and the segment's **anycast gateway** as the first usable host in that subnet.
 3. **Materializes placement** — it writes the relationship that records *which leaf switches carry which segments*. Empty placement means every leaf in the tenant's fabric; otherwise only the leaves in the listed racks.
 
-All of these allocations are retained as **queryable data** in Infrahub — the system of record — inspectable independently of the generated configuration. The supporting fabric/pod/rack Generators are extended to allocate the per-fabric ASN, stamp each device's ASN, and give every leaf a dedicated **VTEP loopback** address.
+All of these allocations are retained as **queryable data** in Infrahub — the system of record — inspectable independently of the generated configuration. The supporting fabric/pod/rack Generators are extended to allocate the per-fabric ASN, stamp each device's ASN and route-reflector role, give every leaf a dedicated **VTEP loopback** address, and materialize the iBGP **BGP sessions** along the cabling — so the whole control plane is queryable data, not just rendered text.
 
 ### Rendering the configuration (per-device transform)
 
@@ -113,5 +113,5 @@ The [overlay quickstart](https://github.com/opsmill/infrahub-solution-ai-dc/blob
 ## Learn more
 
 - [`CONTEXT.md`](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/CONTEXT.md) — the domain language for the overlay (tenant, VRF, segment, VTEP, anycast gateway, route reflector).
-- Architecture Decision Records [`docs/adr/0001`–`0004`](https://github.com/opsmill/infrahub-solution-ai-dc/tree/main/docs/adr) — the rationale behind the design split, the OverlayGenerator's ownership, hierarchical route reflection, and derived (not stored) route-reflector roles.
+- Architecture Decision Records [`dev/adr/0001`–`0005`](https://github.com/opsmill/infrahub-solution-ai-dc/tree/main/dev/adr) — the rationale behind the design split, the OverlayGenerator's ownership, hierarchical route reflection, and the stored BGP-session and route-reflector model.
 - The feature [specification](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/spec.md) and [implementation plan](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/plan.md) for the full requirements and design.

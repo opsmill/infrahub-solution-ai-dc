@@ -2,7 +2,6 @@ feature ospf
 {% set device = data.NetworkDevice.edges[0].node %}
 {% set fabric = device.pod.node.parent.node %}
 {% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
-{% set tier_rank = {"super_spine": 2, "spine": 1, "leaf": 0} %}
 hostname {{ device.hostname.value }}
 
 {% for interface_edge in device.interfaces.edges %}
@@ -30,22 +29,7 @@ interface {{ interface.name.value }}
 router ospf UNDERLAY
   router-id {{ device.loopback_ip.node.address.ip }}
 
-{# --- EVPN control plane: iBGP L2VPN-EVPN with hierarchical route reflection (RR-client derived from tier) --- #}
-{% set ns = namespace(neighbors=[], seen=[]) %}
-{% for interface_edge in device.interfaces.edges %}
-  {% set interface = interface_edge.node %}
-  {% if interface.link.node %}
-    {% for endpoint_edge in interface.link.node.endpoints.edges %}
-      {% set endpoint = endpoint_edge.node %}
-      {% if endpoint.device is defined and endpoint.device and endpoint.device.node
-            and endpoint.device.node.hostname.value != device.hostname.value
-            and endpoint.device.node.hostname.value not in ns.seen %}
-        {% set ns.seen = ns.seen + [endpoint.device.node.hostname.value] %}
-        {% set ns.neighbors = ns.neighbors + [endpoint.device.node] %}
-      {% endif %}
-    {% endfor %}
-  {% endif %}
-{% endfor %}
+{# --- EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) --- #}
 {% if overlay_asn is not none %}
 feature bgp
 feature nv overlay
@@ -54,12 +38,13 @@ nv overlay evpn
 
 router bgp {{ overlay_asn }}
   router-id {{ device.loopback_ip.node.address.ip }}
-{% for neighbor in ns.neighbors %}
-  neighbor {{ neighbor.loopback_ip.node.address.ip }} remote-as {{ overlay_asn }}
+{% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
     update-source loopback0
     address-family l2vpn evpn
       send-community extended
-{% if tier_rank.get(device.role.value, -1) > tier_rank.get(neighbor.role.value, -1) %}
+{% if session.rr_client.value %}
       route-reflector-client
 {% endif %}
 {% endfor %}

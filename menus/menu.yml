@@ -61,6 +61,11 @@ spec:
                   label: Segments
                   kind: NetworkSegment
                   icon: "mdi:vector-polyline"
+                - namespace: Network
+                  name: BGPSession
+                  label: BGP Sessions
+                  kind: NetworkBGPSession
+                  icon: "mdi:swap-horizontal"
 
     - namespace: Location
       name: Menu

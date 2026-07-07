@@ -43,13 +43,9 @@ NetworkDevice(hostname__value: $name)
   asn
   vtep_ip { node { address } }                         # leafs only
   pod { node { parent { ... on NetworkFabric { overlay_asn, anycast_gateway_mac } } } }
-  interfaces { edges { node {
-    role
-    link { node { endpoints { edges { node {
-      ... on NetworkInterface {                          # validated pattern (computed_interface_description.gql)
-        device { node { hostname, role, loopback_ip { node { address { ip } } } } }
-      }
-    }}}}}
+  bgp_sessions { edges { node {                           # ADR-0005: sessions modeled as data
+    name, remote_as, rr_client
+    peer_device { node { hostname, loopback_ip { node { address { ip } } } } }
   }}}
   segments { edges { node {                              # materialized; leafs only
     name, vlan_id, l2vni, route_target
@@ -61,7 +57,8 @@ NetworkDevice(hostname__value: $name)
 
 **Notes**:
 
-- iBGP peers = the directly-connected neighbors surfaced via `interfaces → link → endpoints → … on
-  NetworkInterface → device` (filter out self). RR-client toward lower tiers is derived in the template.
+- iBGP peers = the device's `bgp_sessions` (populated by the pod/rack generators along the cabling,
+  ADR-0005); `route-reflector-client` renders from each session's `rr_client` flag. The template sorts
+  sessions by peer hostname for deterministic artifacts.
 - Spine/super-spine renders have no `segments` (none materialized) → no NVE/VRF/SVI.
 - `vrf` data is reached via `segment.vrf` (no separate Device↔VRF relationship).

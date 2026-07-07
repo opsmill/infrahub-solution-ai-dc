@@ -109,12 +109,27 @@ class GeneratorTarget(CoreNode):
     subscriber_of_groups: RelationshipManager
 
 
+class NetworkBGPSession(CoreNode):
+    address_family: DropdownOptional
+    local_as: IntegerOptional
+    name: String
+    remote_as: IntegerOptional
+    rr_client: BooleanOptional
+    device: RelatedNode
+    member_of_groups: RelationshipManager
+    peer_device: RelatedNode
+    profiles: RelationshipManager
+    subscriber_of_groups: RelationshipManager
+
+
 class NetworkDevice(CoreArtifactTarget):
     asn: IntegerOptional
     hostname: String
     index: IntegerOptional
     role: Dropdown
+    route_reflector: BooleanOptional
     artifacts: RelationshipManager
+    bgp_sessions: RelationshipManager
     device_type: RelatedNode
     interfaces: RelationshipManager
     loopback_ip: RelatedNode
@@ -434,6 +449,19 @@ class ProfileLocationRack(LineageSource, CoreProfile, CoreNode):
     subscriber_of_groups: RelationshipManager
 
 
+class ProfileNetworkBGPSession(LineageSource, CoreProfile, CoreNode):
+    address_family: DropdownOptional
+    local_as: IntegerOptional
+    profile_name: String
+    profile_priority: IntegerOptional
+    remote_as: IntegerOptional
+    rr_client: BooleanOptional
+    member_of_groups: RelationshipManager
+    peer_device: RelatedNode
+    related_nodes: RelationshipManager
+    subscriber_of_groups: RelationshipManager
+
+
 class ProfileNetworkBuildingBlock(LineageSource, CoreProfile, CoreNode):
     index: IntegerOptional
     profile_name: String
@@ -449,6 +477,7 @@ class ProfileNetworkDevice(LineageSource, CoreProfile, CoreNode):
     profile_name: String
     profile_priority: IntegerOptional
     role: DropdownOptional
+    route_reflector: BooleanOptional
     artifacts: RelationshipManager
     device_type: RelatedNode
     loopback_ip: RelatedNode
@@ -591,13 +620,34 @@ class ProfileOrganizationManufacturer(LineageSource, CoreProfile, CoreNode):
     subscriber_of_groups: RelationshipManager
 
 
+class TemplateNetworkBGPSession(LineageSource, CoreObjectComponentTemplate, CoreNode):
+    address_family: DropdownOptional
+    local_as: IntegerOptional
+    name: String
+    remote_as: IntegerOptional
+    rr_client: BooleanOptional
+    template_name: String
+    device: RelatedNode
+    local_as_from_resource_pool: RelatedNode
+    member_of_groups: RelationshipManager
+    member_of_groups_for_instances: RelationshipManager
+    peer_device: RelatedNode
+    profiles: RelationshipManager
+    related_nodes: RelationshipManager
+    remote_as_from_resource_pool: RelatedNode
+    subscriber_of_groups: RelationshipManager
+    subscriber_of_groups_for_instances: RelationshipManager
+
+
 class TemplateNetworkDevice(LineageSource, TemplateCoreArtifactTarget, CoreObjectTemplate, CoreNode):
     asn: IntegerOptional
     index: IntegerOptional
     role: DropdownOptional
+    route_reflector: BooleanOptional
     template_name: String
     artifacts: RelationshipManager
     asn_from_resource_pool: RelatedNode
+    bgp_sessions: RelationshipManager
     device_type: RelatedNode
     index_from_resource_pool: RelatedNode
     interfaces: RelationshipManager

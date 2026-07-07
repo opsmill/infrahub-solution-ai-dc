@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: BGPSession
+    namespace: Network
+    label: BGP Session
+    description: A directional BGP session from a fabric device toward a peer (EVPN overlay control plane).
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    uniqueness_constraints:
+      - [device, peer_device]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+        order_weight: 1000
+      - name: local_as
+        kind: Number
+        label: Local AS
+        optional: true
+        order_weight: 2000
+      - name: remote_as
+        kind: Number
+        label: Remote AS
+        optional: true
+        order_weight: 3000
+      - name: address_family
+        kind: Dropdown
+        label: Address Family
+        choices:
+          - name: l2vpn_evpn
+            label: L2VPN EVPN
+          - name: ipv4_unicast
+            label: IPv4 Unicast
+        default_value: l2vpn_evpn
+        optional: true
+        order_weight: 4000
+      - name: rr_client
+        kind: Boolean
+        label: Peer Is RR Client
+        description: Render route-reflector-client toward the peer (set by the generators from tier ordering).
+        default_value: false
+        optional: true
+        order_weight: 5000
+    relationships:
+      - name: device
+        label: Device
+        peer: NetworkDevice
+        kind: Parent
+        cardinality: one
+        optional: false
+        identifier: "device__bgp_session"
+        order_weight: 6000
+      - name: peer_device
+        label: Peer Device
+        peer: NetworkDevice
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "bgp_session__peer_device"
+        order_weight: 7000

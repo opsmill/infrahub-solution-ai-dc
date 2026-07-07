@@ -70,37 +70,33 @@ query StartupConfigQuery($name: String!){
                   }
                 }
               }
-              link {
+            }
+          }
+        }
+        bgp_sessions {
+          edges {
+            node {
+              __typename
+              name {
+                value
+              }
+              remote_as {
+                value
+              }
+              rr_client {
+                value
+              }
+              peer_device {
                 node {
                   __typename
-                  endpoints {
-                    edges {
-                      node {
-                        __typename
-                        ... on NetworkInterface {
-                          name {
-                            value
-                          }
-                          device {
-                            node {
-                              __typename
-                              hostname {
-                                value
-                              }
-                              role {
-                                value
-                              }
-                              loopback_ip {
-                                node {
-                                  __typename
-                                  address {
-                                    ip
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
+                  hostname {
+                    value
+                  }
+                  loopback_ip {
+                    node {
+                      __typename
+                      address {
+                        ip
                       }
                     }
                   }

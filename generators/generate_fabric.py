@@ -104,10 +104,11 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
 
         for super_spine in self.super_spine_switches:
             device = await self.client.get(kind=NetworkDevice, id=super_spine.id)
-            if device.asn.value != overlay_asn:
+            if device.asn.value != overlay_asn or not device.route_reflector.value:
                 device.asn.value = overlay_asn
+                device.route_reflector.value = True
                 await device.save(allow_upsert=True)
-                self.logger.info(f"Stamped ASN {overlay_asn} on {device.hostname.value}")
+                self.logger.info(f"Stamped ASN {overlay_asn} (route reflector) on {device.hostname.value}")
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")
