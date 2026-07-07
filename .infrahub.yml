@@ -72,6 +72,13 @@ python_transforms:
   - name: cabling_plan
     class_name: CablingPlan
     file_path: "./transforms/cabling_plan.py"
+    # cabling_plan.py imports from the src package (protocols), which the transform's
+    # auto-detected closure (its own directory) cannot follow. Declaring it here closes
+    # that gap and marks the closure complete, so the artifact only regenerates when a
+    # real dependency changes instead of on every unrelated commit.
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/protocols.py
 
 artifact_definitions:
   - name: "startup_configuration"
