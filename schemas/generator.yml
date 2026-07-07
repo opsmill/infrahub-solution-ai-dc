@@ -9,3 +9,5 @@ generics:
       - name: checksum
         kind: Text
         optional: true
+        # Internal generator bookkeeping (change detection) — keep out of the default frontend view.
+        display: extra
