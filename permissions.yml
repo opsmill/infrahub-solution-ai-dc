@@ -1,0 +1,74 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreObjectPermission
+  data:
+    - namespace: "Organization"
+      name: "Provider"
+      action: "any"
+      decision: 6
+      description: "Allow creating organization Provider"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccountRole
+  data:
+    - name: "operator-role-object"
+      permissions:
+        kind: CoreObjectPermission
+        data:
+          - namespace: "*"
+            name: "*"
+            action: "any"
+            decision: 4
+          - namespace: "*"
+            name: "*"
+            action: "view"
+            decision: 6
+          - namespace: "Core"
+            name: "ProposedChange"
+            action: "any"
+            decision: 6
+    - name: "operator-role-global"
+      permissions:
+        kind: CoreGlobalPermission
+        data:
+          # - decision: 6
+          #   action: "edit_default_branch"
+          # - decision: 6
+          #   action: "manage_accounts"
+          # - decision: 6
+          #   action: "manage_permissions"
+          - decision: 6
+            action: "manage_repositories"
+          # - decision: 6
+          #   action: "manage_schema"
+          - decision: 6
+            action: "merge_branch"
+          - decision: 6
+            action: "merge_proposed_change"
+          - decision: 6
+            action: "review_proposed_change"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccountGroup
+  data:
+    - name: "operator-group"
+      roles:
+        - operator-role-object
+        - operator-role-global
+      description: "Group for operators with permissions to manage objects and repositories"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccount
+  data:
+    - name: "john"
+      password: "infrahub"
+      member_of_groups:
+        - operator-group
