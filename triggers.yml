@@ -107,20 +107,3 @@ spec:
           - attribute_name: checksum
             value_match: any
 
-    - name: trigger-tenant-generator-vrf-updated
-      branch_scope: "other_branches"
-      node_kind: NetworkVrf
-      mutation_action: "updated"
-      action: run-tenant-generator
-
-    - name: trigger-tenant-generator-segment-updated
-      branch_scope: "other_branches"
-      node_kind: NetworkSegment
-      mutation_action: "updated"
-      action: run-tenant-generator
-
-    - name: trigger-tenant-generator-segment-created
-      branch_scope: "other_branches"
-      node_kind: NetworkSegment
-      mutation_action: "created"
-      action: run-tenant-generator
