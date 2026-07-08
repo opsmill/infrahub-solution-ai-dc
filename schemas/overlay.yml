@@ -119,7 +119,6 @@ nodes:
     uniqueness_constraints:
       - [vrf, name__value]
     human_friendly_id:
-      - vrf__name__value
       - name__value
     display_label: name__value
     include_in_menu: false
@@ -129,6 +128,7 @@ nodes:
         kind: Text
         label: Name
         optional: false
+        unique: true
         order_weight: 1000
       - name: vlan_id
         label: VLAN ID
