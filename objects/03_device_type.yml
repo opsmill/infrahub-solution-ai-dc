@@ -8,3 +8,11 @@ spec:
       manufacturer: ["Dell"]
     - name: "PowerSwitch S5232F-ON"
       manufacturer: ["Dell"]
+    - name: "Nexus 93400LD-H1"
+      manufacturer: ["Cisco"]
+    - name: "Nexus 9364D-GX2"
+      manufacturer: ["Cisco"]
+    - name: "7060DX5-64S"
+      manufacturer: ["Arista"]
+    - name: "7050X4-48Y-4DF"
+      manufacturer: ["Arista"]

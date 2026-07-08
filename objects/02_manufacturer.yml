@@ -5,3 +5,5 @@ spec:
   kind: OrganizationManufacturer
   data:
     - name: Dell
+    - name: Cisco
+    - name: Arista
