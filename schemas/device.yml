@@ -163,10 +163,11 @@ nodes:
         order_weight: 1000
       - name: description
         kind: Text
-        computed_attribute:
-          kind: TransformPython
-          transform: computed_interface_description
-        read_only: true
+        # Disable for now
+        # computed_attribute:
+        #   kind: TransformPython
+        #   transform: computed_interface_description
+        # read_only: true
         optional: true
         order_weight: 4000
       - name: status
