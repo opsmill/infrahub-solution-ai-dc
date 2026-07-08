@@ -39,10 +39,11 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
     onto the carrying leafs (placement intent resolved via ``overlay.resolve_segment_devices``). Spines and
     super-spines never receive ``segments`` and therefore render no tenant state.
 
-    Every mutation is done with ``update_group_context=False``: the operator-owned tenancy nodes and the
-    physical leafs this generator modifies must never be pruned by the generator group's ``delete_unused_nodes``
-    cleanup. The generator is purely additive/idempotent; releasing identifiers on removal is handled
-    explicitly (US2).
+    Tenancy-node mutations (VRF/segment allocation) are done with ``update_group_context=False`` so the
+    operator-owned nodes are never pruned by the generator group's ``delete_unused_nodes`` cleanup. Leaf
+    placement uses edge-scoped relationship mutations (``add_relationships``/``remove_relationships``), which
+    do not register the leaf in the group context at all. The generator is purely additive/idempotent;
+    releasing identifiers on removal is handled explicitly (US2).
     """
 
     tenant_id: str
@@ -191,24 +192,32 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
         desired: dict[str, set[str]],
         tenant_segment_ids: set[str],
     ) -> None:
-        """Reconcile ``Device.segments`` on every fabric leaf, merging this tenant's placement with others'.
+        """Reconcile ``Device.segments`` on every fabric leaf using edge-scoped relationship mutations.
 
-        Only leafs whose segment set actually changes are saved, so unrelated devices' artifacts stay byte
-        identical (scoped regeneration — US2). Segments belonging to other tenants are preserved.
+        Each change is applied with ``add_relationships``/``remove_relationships``, so it touches only the
+        individual ``(device, segment)`` edges this tenant owns — other tenants' segments are never rewritten,
+        so concurrent tenant generators cannot clobber one another (no read-modify-write of the full set). Only
+        leafs whose edge set actually changes are mutated, so unrelated devices' artifacts stay byte identical
+        (scoped regeneration — US2).
         """
         for leafs in leafs_by_rack.values():
             for leaf in leafs:
                 device = await self.client.get(kind=NetworkDevice, id=leaf.id, include=["segments"])
                 current = {peer.id for peer in device.segments.peers if peer.id is not None}
-                keep_other_tenants = current - tenant_segment_ids
-                new_set = keep_other_tenants | desired.get(leaf.id, set())
-                if new_set != current:
-                    for segment_id in new_set - current:
-                        device.segments.add(segment_id)
-                    for segment_id in current - new_set:
-                        device.segments.remove(segment_id)
-                    await device.save(allow_upsert=True, update_group_context=False)
-                    self.logger.info(f"Updated segments on {device.hostname.value}: {len(new_set)} segment(s)")
+                # Reason only about this tenant's segments; every add/remove below is scoped to those edges,
+                # so other tenants' placements are left untouched by construction.
+                current_tenant = current & tenant_segment_ids
+                want = desired.get(leaf.id, set())
+                to_add = want - current_tenant
+                to_remove = current_tenant - want
+                if to_add:
+                    await device.add_relationships("segments", list(to_add))
+                if to_remove:
+                    await device.remove_relationships("segments", list(to_remove))
+                if to_add or to_remove:
+                    self.logger.info(
+                        f"Updated segments on {device.hostname.value}: +{len(to_add)} -{len(to_remove)}"
+                    )
 
     async def update_checksum(self, tenant_segment_ids: set[str]) -> None:
         """Stamp a content checksum (over the tenant's segment set) on the tenant for change visibility.
