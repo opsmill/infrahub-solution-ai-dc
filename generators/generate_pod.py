@@ -66,8 +66,11 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.spine_switches = []
 
         if self.pod_role in EXCLUDED_POD_ROLES:
-            msg = f"Cannot run pod generator on {self.pod_name}-{self.pod_id}: {self.pod_role} is not supported by the generator!"
-            raise ValueError(msg)
+            self.logger.info(
+                f"Skipping pod generator on {self.pod_name}-{self.pod_id}: "
+                f"role {self.pod_role!r} is not managed by this generator"
+            )
+            return
 
         await self.get_super_spine_switches_for_fabric()
 
