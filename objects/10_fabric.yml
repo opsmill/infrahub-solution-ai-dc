@@ -7,7 +7,7 @@ spec:
     - name: "Fabric-A"
       index: 1
       amount_of_super_spines: 6
-      super_spine_switch_template: "super-spine-switch"
+      super_spine_switch_template: "cisco-9364d-gx2-super-spine-switch"
       fabric_interface_sorting_method: "create_reverse_sorted_device_interface_map"
       member_of_groups: ["fabrics"]
       children:
@@ -19,16 +19,16 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-A2"
             index: 2
-            spine_switch_template: "spine-switch"
+            spine_switch_template: "cisco-9364d-gx2-spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-A3"
             index: 3
-            spine_switch_template: "spine-switch"
+            spine_switch_template: "cisco-9364d-gx2-spine-switch"
             member_of_groups: ["pods"]
     - name: "Fabric-B"
       index: 2
       member_of_groups: ["fabrics"]
-      super_spine_switch_template: "dell-z9864f-on-super-spine-switch"
+      super_spine_switch_template: "arista-7060dx5-64s-super-spine-switch"
       amount_of_super_spines: 4
       children:
         kind: NetworkPod
@@ -39,9 +39,30 @@ spec:
             member_of_groups: ["pods"]
           - name: "Pod-B2"
             index: 2
-            spine_switch_template: "dell-z9864f-on-spine-switch"
+            spine_switch_template: "arista-7060dx5-64s-spine-switch"
             member_of_groups: ["pods"]
           - name: "Pod-B3"
+            index: 3
+            spine_switch_template: "arista-7060dx5-64s-spine-switch"
+            member_of_groups: ["pods"]
+    # Fabric-C — Dell (mirrors Fabric-B's topology; the proven Dell demo relocated here).
+    - name: "Fabric-C"
+      index: 3
+      member_of_groups: ["fabrics"]
+      super_spine_switch_template: "dell-z9864f-on-super-spine-switch"
+      amount_of_super_spines: 4
+      children:
+        kind: NetworkPod
+        data:
+          - name: "Pod-C1"
+            index: 1
+            role: "fabric"
+            member_of_groups: ["pods"]
+          - name: "Pod-C2"
+            index: 2
+            spine_switch_template: "dell-z9864f-on-spine-switch"
+            member_of_groups: ["pods"]
+          - name: "Pod-C3"
             index: 3
             spine_switch_template: "dell-z9864f-on-spine-switch"
             member_of_groups: ["pods"]

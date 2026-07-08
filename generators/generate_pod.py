@@ -12,6 +12,7 @@ from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_inte
 from infrahub_solution_ai_dc.generator import GeneratorMixin
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .pod_generator_query import PodGeneratorQuery
 
@@ -27,6 +28,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_name: str
     pod_spine_switch_template: str | None
     pod_role: str
+    vendor_group: str
 
     fabric_interface_sorting_function: Callable
     spine_interface_sorting_function: Callable
@@ -88,6 +90,9 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.fabric_interface_sorting_function = getattr(sorting, fabric_interface_sorting_method)
         self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
 
+        # Resolve the vendor group once from the spine template (raises if unresolvable).
+        self.vendor_group = await vendor_group_for_template(self.client, self.pod_spine_switch_template)
+
         await self.allocate_resource_pools()
 
         await self.create_spine_switches()
@@ -110,7 +115,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
                 pod={"id": self.pod_id},
                 loopback_ip=self.loopback_pool,
                 role="spine",
-                member_of_groups=["devices"],
+                member_of_groups=["devices", self.vendor_group],
             )
             await device.save(allow_upsert=True)
 

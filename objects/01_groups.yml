@@ -10,3 +10,12 @@ spec:
     - name: pods
     - name: devices
     - name: tenants
+    # Per-vendor device groups (children of `devices`). Membership is stamped by the
+    # generators from each device's manufacturer; the per-vendor startup-config
+    # artifacts target these groups.
+    - name: cisco_devices
+      parent: devices
+    - name: arista_devices
+      parent: devices
+    - name: dell_devices
+      parent: devices

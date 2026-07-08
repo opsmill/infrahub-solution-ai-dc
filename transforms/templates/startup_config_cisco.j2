@@ -1,0 +1,115 @@
+feature ospf
+{% set device = data.NetworkDevice.edges[0].node %}
+{% set fabric = device.pod.node.parent.node %}
+{% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
+hostname {{ device.hostname.value }}
+
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+interface {{ interface.name.value }}
+{% if interface.description.value %}
+  description {{ interface.description.value }}
+{% endif %}
+{% if interface.status.value == "inactive" %}
+  shutdown
+{% else %}
+  no shutdown
+{% endif %}
+{% if interface.ip_address.node %}
+  ip address {{ interface.ip_address.node.address.value }}
+{% endif %}
+{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.status.value != "inactive" %}
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+{% elif interface.role.value in ["loopback", "vtep"] %}
+  ip router ospf UNDERLAY area 0.0.0.0
+{% endif %}
+
+{% endfor %}
+router ospf UNDERLAY
+  router-id {{ device.loopback_ip.node.address.ip }}
+
+{# --- EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) --- #}
+{% if overlay_asn is not none %}
+feature bgp
+feature nv overlay
+feature vn-segment-vlan-based
+nv overlay evpn
+
+router bgp {{ overlay_asn }}
+  router-id {{ device.loopback_ip.node.address.ip }}
+{% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
+    update-source loopback0
+    address-family l2vpn evpn
+      send-community extended
+{% if session.rr_client.value %}
+      route-reflector-client
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# --- Tenant overlay state: leaf-only (a device with no materialized segments renders none of this) --- #}
+{% if device.segments.edges %}
+{% set vns = namespace(vrf_names=[], vrfs=[]) %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
+    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
+    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
+  {% endif %}
+{% endfor %}
+interface nve1
+  no shutdown
+  source-interface loopback1
+  host-reachability protocol bgp
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  member vni {{ segment.l2vni.value }}
+    suppress-arp
+    ingress-replication protocol bgp
+{% endfor %}
+{% for vrf in vns.vrfs %}
+  member vni {{ vrf.l3vni.value }} associate-vrf
+{% endfor %}
+
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+vlan {{ segment.vlan_id.value }}
+  vn-segment {{ segment.l2vni.value }}
+{% endfor %}
+{% for vrf in vns.vrfs %}
+vlan {{ vrf.l3_vlan_id.value }}
+  vn-segment {{ vrf.l3vni.value }}
+{% endfor %}
+
+{% for vrf in vns.vrfs %}
+vrf context {{ vrf.name.value }}
+  vni {{ vrf.l3vni.value }}
+  rd {{ device.loopback_ip.node.address.ip }}:{{ vrf.l3vni.value }}
+  address-family ipv4 unicast
+    route-target both {{ vrf.route_target.value }} evpn
+{% endfor %}
+
+{% for vrf in vns.vrfs %}
+interface Vlan{{ vrf.l3_vlan_id.value }}
+  description L3VNI transit SVI for {{ vrf.name.value }}
+  vrf member {{ vrf.name.value }}
+  ip forward
+  no shutdown
+{% endfor %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+{% if segment.gateway.node %}
+interface Vlan{{ segment.vlan_id.value }}
+  description Anycast gateway for {{ segment.name.value }}
+  vrf member {{ segment.vrf.node.name.value }}
+  ip address {{ segment.gateway.node.address.value }}
+  fabric forwarding mode anycast-gateway
+  no shutdown
+{% endif %}
+{% endfor %}
+
+fabric forwarding anycast-gateway-mac {{ fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001" }}
+{% endif %}

@@ -14,6 +14,7 @@ from infrahub_solution_ai_dc.addressing import (
 from infrahub_solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .rack_generator_query import RackGeneratorQuery
 
@@ -29,6 +30,7 @@ class RackGenerator(InfrahubGenerator):
     rack_name: str
     rack_leaf_switch_template: str
     rack_amount_of_leafs: int
+    vendor_group: str
 
     spine_interface_sorting_function: Callable
     leaf_interface_sorting_function: Callable
@@ -59,6 +61,9 @@ class RackGenerator(InfrahubGenerator):
         self.rack_leaf_switch_template: str = rack.leaf_switch_template.node.id  # type: ignore[union-attr, assignment]
         self.rack_amount_of_leafs: int = rack.amount_of_leafs.value  # type: ignore[union-attr, assignment]
         self.leaf_switches = []
+
+        # Resolve the vendor group once from the leaf template (raises if unresolvable).
+        self.vendor_group = await vendor_group_for_template(self.client, self.rack_leaf_switch_template)
 
         self.pod_id: str = rack.pod.node.id  # type: ignore[union-attr]
         self.pod_index: int = rack.pod.node.index.value  # type: ignore[union-attr, assignment]
@@ -156,7 +161,7 @@ class RackGenerator(InfrahubGenerator):
                 loopback_ip=self.loopback_pool,
                 index=index,
                 role="leaf",
-                member_of_groups=["devices"],
+                member_of_groups=["devices", self.vendor_group],
             )
             await leaf_switch.save(allow_upsert=True)
             self.leaf_switches.append(leaf_switch)

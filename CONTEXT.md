@@ -23,6 +23,13 @@ _Avoid_: output, artifact (an "artifact" is specifically a rendered file like a 
 Code that reads one design object via a GraphQL query and produces its implementation objects;
 idempotent and triggered by checksum changes.
 
+**Vendor group**:
+A `CoreStandardGroup` child of the `devices` group — one per **Manufacturer**
+(`cisco_devices` / `arista_devices` / `dell_devices`) — whose direct members are the generated devices
+of that make; the per-vendor startup-config artifacts target it. Membership is stamped by the generators
+from each device's `device_type` manufacturer. _"Vendor" is used interchangeably with **Manufacturer** in
+conversation; the stored entity is the Manufacturer._
+
 ### Physical hierarchy (5-stage Clos)
 
 **Fabric**:

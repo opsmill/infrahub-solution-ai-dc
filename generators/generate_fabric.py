@@ -7,6 +7,7 @@ from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumb
 
 from infrahub_solution_ai_dc.generator import GeneratorMixin
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .fabric_generator_query import FabricGeneratorQuery
 
@@ -19,6 +20,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_id: str
     fabric_super_spine_switch_template: str
     amount_of_super_spines: int
+    vendor_group: str
 
     loopback_pool: CoreIPAddressPool
     super_spine_switches: list[NetworkDevice]
@@ -35,6 +37,9 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
         self.fabric_super_spine_switch_template = fabric.super_spine_switch_template.node.id  # type: ignore[union-attr, assignment]
         self.amount_of_super_spines = fabric.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
         self.super_spine_switches = []
+
+        # Resolve the vendor group once from the super-spine template (raises if unresolvable).
+        self.vendor_group = await vendor_group_for_template(self.client, self.fabric_super_spine_switch_template)
 
         await self.allocate_resource_pools()
 
@@ -57,7 +62,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 loopback_ip=self.loopback_pool,
                 role="super_spine",
                 pod=fabric_pod,
-                member_of_groups=["devices"],
+                member_of_groups=["devices", self.vendor_group],
             )
             await device.save(allow_upsert=True)
 

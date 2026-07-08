@@ -19,7 +19,7 @@ spec:
       pod: Pod-A2
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-A2-2"
       index: 2
@@ -27,7 +27,7 @@ spec:
       pod: Pod-A2
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-A2-3"
       index: 3
@@ -35,7 +35,7 @@ spec:
       pod: Pod-A2
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-A2-4"
       index: 4
@@ -43,7 +43,7 @@ spec:
       pod: Pod-A2
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: leaf-switch-storage
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-storage
       member_of_groups: ["racks"]
     - name: "Rack-A3-1"
       index: 1
@@ -51,7 +51,7 @@ spec:
       pod: Pod-A3
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-A3-2"
       index: 2
@@ -59,7 +59,7 @@ spec:
       pod: Pod-A3
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-A3-3"
       index: 3
@@ -67,7 +67,7 @@ spec:
       pod: Pod-A3
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: leaf-switch-storage
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-storage
       member_of_groups: ["racks"]
     - name: "Rack-A3-4"
       index: 4
@@ -75,7 +75,7 @@ spec:
       pod: Pod-A3
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: leaf-switch-compute
+      leaf_switch_template: cisco-93400ld-h1-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B2-1"
       index: 1
@@ -83,7 +83,7 @@ spec:
       pod: Pod-B2
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B2-2"
       index: 2
@@ -91,7 +91,7 @@ spec:
       pod: Pod-B2
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B2-3"
       index: 3
@@ -99,7 +99,7 @@ spec:
       pod: Pod-B2
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B2-4"
       index: 4
@@ -107,7 +107,7 @@ spec:
       pod: Pod-B2
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B3-1"
       index: 1
@@ -115,7 +115,7 @@ spec:
       pod: Pod-B3
       parent: "Hall-A1"
       amount_of_leafs: 2
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B3-2"
       index: 2
@@ -123,7 +123,7 @@ spec:
       pod: Pod-B3
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-compute
       member_of_groups: ["racks"]
     - name: "Rack-B3-3"
       index: 3
@@ -131,12 +131,77 @@ spec:
       pod: Pod-B3
       parent: "Hall-A1"
       amount_of_leafs: 1
-      leaf_switch_template: dell-s5232f-on-leaf-switch-storage
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-storage
       member_of_groups: ["racks"]
     - name: "Rack-B3-4"
       index: 4
       rack_type: compute
       pod: Pod-B3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: arista-7050x4-48y-4df-leaf-switch-storage
+      member_of_groups: ["racks"]
+    # Fabric-C (Dell) racks — mirror Fabric-B's layout with the Dell leaf templates.
+    - name: "Rack-C2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-C2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-C2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-C2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-C2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C3-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-C3
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C3-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-C3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-C3-3"
+      index: 3
+      rack_type: storage
+      pod: Pod-C3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: dell-s5232f-on-leaf-switch-storage
+      member_of_groups: ["racks"]
+    - name: "Rack-C3-4"
+      index: 4
+      rack_type: compute
+      pod: Pod-C3
       parent: "Hall-A1"
       amount_of_leafs: 1
       leaf_switch_template: dell-s5232f-on-leaf-switch-storage
