@@ -2,6 +2,9 @@
 schemas:
   - schemas
 
+objects:
+  - objects
+
 menus:
   - menus/menu.yml
 
