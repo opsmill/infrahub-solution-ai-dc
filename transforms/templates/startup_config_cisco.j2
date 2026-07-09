@@ -1,9 +1,39 @@
-feature ospf
 {% set device = data.NetworkDevice.edges[0].node %}
 {% set fabric = device.pod.node.parent.node %}
 {% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
+{# Materialized VRFs (leaf-only): derived once so both the BGP and overlay sections can reference them. #}
+{% set vns = namespace(vrf_names=[], vrfs=[]) %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
+    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
+    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
+  {% endif %}
+{% endfor %}
+{% set is_rr = device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0 %}
 hostname {{ device.hostname.value }}
 
+{# --- System / base --- #}
+no ip domain-lookup
+spanning-tree mode rapid-pvst
+
+vrf context management
+
+feature ospf
+{% if overlay_asn is not none %}
+feature bgp
+feature interface-vlan
+feature vn-segment-vlan-based
+feature nv overlay
+nv overlay evpn
+{% endif %}
+
+interface mgmt0
+  vrf member management
+  ip address {{ device.loopback_ip.node.address.ip }}/32
+  no shutdown
+
+{# --- Underlay interfaces --- #}
 {% for interface_edge in device.interfaces.edges %}
   {% set interface = interface_edge.node %}
 interface {{ interface.name.value }}
@@ -31,13 +61,12 @@ router ospf UNDERLAY
 
 {# --- EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) --- #}
 {% if overlay_asn is not none %}
-feature bgp
-feature nv overlay
-feature vn-segment-vlan-based
-nv overlay evpn
-
 router bgp {{ overlay_asn }}
   router-id {{ device.loopback_ip.node.address.ip }}
+  address-family l2vpn evpn
+{% if is_rr %}
+    retain route-target all
+{% endif %}
 {% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
   {% set session = session_edge.node %}
   neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
@@ -48,31 +77,16 @@ router bgp {{ overlay_asn }}
       route-reflector-client
 {% endif %}
 {% endfor %}
+{% for vrf in vns.vrfs %}
+  vrf {{ vrf.name.value }}
+    address-family ipv4 unicast
+      advertise l2vpn evpn
+{% endfor %}
 {% endif %}
 
 {# --- Tenant overlay state: leaf-only (a device with no materialized segments renders none of this) --- #}
 {% if device.segments.edges %}
-{% set vns = namespace(vrf_names=[], vrfs=[]) %}
-{% for segment_edge in device.segments.edges %}
-  {% set segment = segment_edge.node %}
-  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
-    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
-    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
-  {% endif %}
-{% endfor %}
-interface nve1
-  no shutdown
-  source-interface loopback1
-  host-reachability protocol bgp
-{% for segment_edge in device.segments.edges %}
-  {% set segment = segment_edge.node %}
-  member vni {{ segment.l2vni.value }}
-    suppress-arp
-    ingress-replication protocol bgp
-{% endfor %}
-{% for vrf in vns.vrfs %}
-  member vni {{ vrf.l3vni.value }} associate-vrf
-{% endfor %}
+fabric forwarding anycast-gateway-mac {{ fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001" }}
 
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
@@ -92,6 +106,20 @@ vrf context {{ vrf.name.value }}
     route-target both {{ vrf.route_target.value }} evpn
 {% endfor %}
 
+interface nve1
+  no shutdown
+  source-interface loopback1
+  host-reachability protocol bgp
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  member vni {{ segment.l2vni.value }}
+    suppress-arp
+    ingress-replication protocol bgp
+{% endfor %}
+{% for vrf in vns.vrfs %}
+  member vni {{ vrf.l3vni.value }} associate-vrf
+{% endfor %}
+
 {% for vrf in vns.vrfs %}
 interface Vlan{{ vrf.l3_vlan_id.value }}
   description L3VNI transit SVI for {{ vrf.name.value }}
@@ -105,11 +133,10 @@ interface Vlan{{ vrf.l3_vlan_id.value }}
 interface Vlan{{ segment.vlan_id.value }}
   description Anycast gateway for {{ segment.name.value }}
   vrf member {{ segment.vrf.node.name.value }}
+  no ip redirects
   ip address {{ segment.gateway.node.address.value }}
   fabric forwarding mode anycast-gateway
   no shutdown
 {% endif %}
 {% endfor %}
-
-fabric forwarding anycast-gateway-mac {{ fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001" }}
 {% endif %}

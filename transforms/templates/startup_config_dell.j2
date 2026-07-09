@@ -1,57 +1,7 @@
-feature ospf
 {% set device = data.NetworkDevice.edges[0].node %}
 {% set fabric = device.pod.node.parent.node %}
 {% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
-hostname {{ device.hostname.value }}
-
-{% for interface_edge in device.interfaces.edges %}
-  {% set interface = interface_edge.node %}
-interface {{ interface.name.value }}
-{% if interface.description.value %}
-  description {{ interface.description.value }}
-{% endif %}
-{% if interface.status.value == "inactive" %}
-  shutdown
-{% else %}
-  no shutdown
-{% endif %}
-{% if interface.ip_address.node %}
-  ip address {{ interface.ip_address.node.address.value }}
-{% endif %}
-{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.status.value != "inactive" %}
-  ip ospf network point-to-point
-  ip router ospf UNDERLAY area 0.0.0.0
-{% elif interface.role.value in ["loopback", "vtep"] %}
-  ip router ospf UNDERLAY area 0.0.0.0
-{% endif %}
-
-{% endfor %}
-router ospf UNDERLAY
-  router-id {{ device.loopback_ip.node.address.ip }}
-
-{# --- EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) --- #}
-{% if overlay_asn is not none %}
-feature bgp
-feature nv overlay
-feature vn-segment-vlan-based
-nv overlay evpn
-
-router bgp {{ overlay_asn }}
-  router-id {{ device.loopback_ip.node.address.ip }}
-{% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
-  {% set session = session_edge.node %}
-  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
-    update-source loopback0
-    address-family l2vpn evpn
-      send-community extended
-{% if session.rr_client.value %}
-      route-reflector-client
-{% endif %}
-{% endfor %}
-{% endif %}
-
-{# --- Tenant overlay state: leaf-only (a device with no materialized segments renders none of this) --- #}
-{% if device.segments.edges %}
+{# Materialized VRFs (leaf-only): derived once so both the BGP and overlay sections can reference them. #}
 {% set vns = namespace(vrf_names=[], vrfs=[]) %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
@@ -60,56 +10,105 @@ router bgp {{ overlay_asn }}
     {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
   {% endif %}
 {% endfor %}
-interface nve1
+{# OS10 uses colon-delimited MACs; normalize whatever format the fabric stores. #}
+{% set raw_mac = (fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001") | replace('.', '') | replace(':', '') %}
+{% set anycast_mac = raw_mac | list | batch(2) | map('join') | join(':') %}
+hostname {{ device.hostname.value }}
+!
+interface mgmt1/1/1
   no shutdown
+  no ip address dhcp
+  ip address {{ device.loopback_ip.node.address.ip }}/32
+!
+{# --- Underlay interfaces --- #}
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+interface {{ interface.name.value }}
+{% if interface.description.value %}
+  description {{ interface.description.value }}
+{% endif %}
+{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.ip_address.node %}
+  no switchport
+{% endif %}
+{% if interface.ip_address.node %}
+  ip address {{ interface.ip_address.node.address.value }}
+{% endif %}
+{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.status.value != "inactive" %}
+  ip ospf 1 area 0.0.0.0
+  ip ospf network point-to-point
+{% elif interface.role.value in ["loopback", "vtep"] %}
+  ip ospf 1 area 0.0.0.0
+{% endif %}
+{% if interface.status.value == "inactive" %}
+  shutdown
+{% else %}
+  no shutdown
+{% endif %}
+!
+{% endfor %}
+router ospf 1
+  router-id {{ device.loopback_ip.node.address.ip }}
+!
+{# --- Tenant overlay state: leaf-only (a device with no materialized segments renders none of this) --- #}
+{% if device.segments.edges %}
+nve
   source-interface loopback1
-  host-reachability protocol bgp
+!
+ip virtual-router mac-address {{ anycast_mac }}
+!
+{% for vrf in vns.vrfs %}
+ip vrf {{ vrf.name.value }}
+!
+{% endfor %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
-  member vni {{ segment.l2vni.value }}
-    suppress-arp
-    ingress-replication protocol bgp
-{% endfor %}
-{% for vrf in vns.vrfs %}
-  member vni {{ vrf.l3vni.value }} associate-vrf
-{% endfor %}
-
-{% for segment_edge in device.segments.edges %}
-  {% set segment = segment_edge.node %}
-vlan {{ segment.vlan_id.value }}
-  vn-segment {{ segment.l2vni.value }}
-{% endfor %}
-{% for vrf in vns.vrfs %}
-vlan {{ vrf.l3_vlan_id.value }}
-  vn-segment {{ vrf.l3vni.value }}
-{% endfor %}
-
-{% for vrf in vns.vrfs %}
-vrf context {{ vrf.name.value }}
-  vni {{ vrf.l3vni.value }}
-  rd {{ device.loopback_ip.node.address.ip }}:{{ vrf.l3vni.value }}
-  address-family ipv4 unicast
-    route-target both {{ vrf.route_target.value }} evpn
-{% endfor %}
-
-{% for vrf in vns.vrfs %}
-interface Vlan{{ vrf.l3_vlan_id.value }}
-  description L3VNI transit SVI for {{ vrf.name.value }}
-  vrf member {{ vrf.name.value }}
-  ip forward
-  no shutdown
+virtual-network {{ segment.l2vni.value }}
+  vxlan-vni {{ segment.l2vni.value }}
+!
 {% endfor %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
 {% if segment.gateway.node %}
-interface Vlan{{ segment.vlan_id.value }}
+interface virtual-network {{ segment.l2vni.value }}
   description Anycast gateway for {{ segment.name.value }}
-  vrf member {{ segment.vrf.node.name.value }}
-  ip address {{ segment.gateway.node.address.value }}
-  fabric forwarding mode anycast-gateway
+  ip vrf forwarding {{ segment.vrf.node.name.value }}
+  ip virtual-router address {{ segment.gateway.node.address.value.split('/')[0] }}
   no shutdown
+!
 {% endif %}
 {% endfor %}
-
-fabric forwarding anycast-gateway-mac {{ fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001" }}
+evpn
+{% for vrf in vns.vrfs %}
+  vrf {{ vrf.name.value }}
+    vni {{ vrf.l3vni.value }}
+    route-target {{ vrf.route_target.value }} both
+    advertise ipv4 connected
+!
+{% endfor %}
+{% endif %}
+{# --- EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) --- #}
+{% if overlay_asn is not none %}
+router bgp {{ overlay_asn }}
+  router-id {{ device.loopback_ip.node.address.ip }}
+  address-family l2vpn evpn
+!
+{% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }}
+    remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
+    update-source loopback0
+    no shutdown
+    address-family l2vpn evpn
+      activate
+{% if session.rr_client.value %}
+      route-reflector-client
+{% endif %}
+!
+{% endfor %}
+{% for vrf in vns.vrfs %}
+  vrf {{ vrf.name.value }}
+    address-family ipv4 unicast
+      redistribute l2vpn evpn
+!
+{% endfor %}
 {% endif %}
