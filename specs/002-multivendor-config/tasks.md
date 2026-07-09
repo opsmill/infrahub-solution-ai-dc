@@ -113,7 +113,7 @@ zero-line diff.
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Verify per-vendor isolation (quickstart Scenario 5): make a visible edit to `transforms/templates/startup_config_dell.j2` only, reload the repository, re-render configs, and confirm Cisco and Arista device configs have a zero-line diff; revert the probe edit
+- [x] T021 [US3] Verify per-vendor isolation (quickstart Scenario 5): make a visible edit to `transforms/templates/startup_config_dell.j2` only, reload the repository, re-render configs, and confirm Cisco and Arista device configs have a zero-line diff; revert the probe edit
 
 **Checkpoint**: Each vendor's config can be iterated independently — the affordance for correct EOS/OS10
 syntax (deferred follow-up) is in place.
@@ -123,7 +123,7 @@ syntax (deferred follow-up) is in place.
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T022 [P] Add a "Vendor group" entry to `CONTEXT.md` (child of `devices`, one per Manufacturer; "vendor" used interchangeably with "Manufacturer") — the glossary follow-up recorded in the spec
-- [ ] T023 Run the full `quickstart.md` validation on a fresh stack (`inv destroy && inv start && inv load`, then generate Fabrics A/B/C) — confirms SC-005 (all templates typed), SC-006 (per-fabric vendor), SC-007 (0 vendor-resolution errors)
+- [x] T023 Run the full `quickstart.md` validation on a fresh stack (`inv destroy && inv start && inv load`, then generate Fabrics A/B/C) — confirms SC-005 (all templates typed), SC-006 (per-fabric vendor), SC-007 (0 vendor-resolution errors)
 - [x] T024 Run `inv lint` and `inv test` and resolve any findings
 
 ---
