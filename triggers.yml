@@ -106,4 +106,3 @@ spec:
         data:
           - attribute_name: checksum
             value_match: any
-

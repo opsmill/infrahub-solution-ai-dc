@@ -215,9 +215,7 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
                 if to_remove:
                     await device.remove_relationships("segments", list(to_remove))
                 if to_add or to_remove:
-                    self.logger.info(
-                        f"Updated segments on {device.hostname.value}: +{len(to_add)} -{len(to_remove)}"
-                    )
+                    self.logger.info(f"Updated segments on {device.hostname.value}: +{len(to_add)} -{len(to_remove)}")
 
     async def update_checksum(self, tenant_segment_ids: set[str]) -> None:
         """Stamp a content checksum (over the tenant's segment set) on the tenant for change visibility.
