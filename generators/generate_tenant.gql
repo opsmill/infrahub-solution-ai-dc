@@ -1,0 +1,102 @@
+query TenantGeneratorQuery($name: String!) {
+  NetworkTenant(name__value: $name) {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        checksum {
+          value
+        }
+        fabric {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            ... on NetworkFabric {
+              overlay_asn {
+                value
+              }
+            }
+          }
+        }
+        vrfs {
+          edges {
+            node {
+              __typename
+              id
+              name {
+                value
+              }
+              l3vni {
+                value
+              }
+              l3_vlan_id {
+                value
+              }
+              route_target {
+                value
+              }
+              segments {
+                edges {
+                  node {
+                    __typename
+                    id
+                    name {
+                      value
+                    }
+                    vlan_id {
+                      value
+                    }
+                    l2vni {
+                      value
+                    }
+                    route_target {
+                      value
+                    }
+                    routed {
+                      value
+                    }
+                    subnet {
+                      node {
+                        __typename
+                        id
+                        prefix {
+                          value
+                        }
+                      }
+                    }
+                    gateway {
+                      node {
+                        __typename
+                        id
+                        address {
+                          value
+                        }
+                      }
+                    }
+                    racks {
+                      edges {
+                        node {
+                          __typename
+                          id
+                          name {
+                            value
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

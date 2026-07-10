@@ -83,6 +83,16 @@ nodes:
             label: Spine
           - name: leaf
             label: Leaf
+      - name: asn
+        label: ASN
+        kind: Number
+        optional: true
+      - name: route_reflector
+        label: Route Reflector
+        kind: Boolean
+        description: This device reflects EVPN routes to its iBGP clients (set by the generators on spines and super-spines).
+        default_value: false
+        optional: true
     relationships:
       - name: device_type
         kind: Attribute
@@ -114,6 +124,27 @@ nodes:
         cardinality: many
         optional: true
         identifier: "device__interface"
+      - name: vtep_ip
+        label: VTEP IP
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "device__vtep_ip"
+      - name: segments
+        label: Segments
+        peer: NetworkSegment
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: "device__segment"
+      - name: bgp_sessions
+        label: BGP Sessions
+        peer: NetworkBGPSession
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "device__bgp_session"
 
   - name: Interface
     namespace: Network
@@ -132,10 +163,11 @@ nodes:
         order_weight: 1000
       - name: description
         kind: Text
-        computed_attribute:
-          kind: TransformPython
-          transform: computed_interface_description
-        read_only: true
+        # Disable for now
+        # computed_attribute:
+        #   kind: TransformPython
+        #   transform: computed_interface_description
+        # read_only: true
         optional: true
         order_weight: 4000
       - name: status
@@ -162,6 +194,10 @@ nodes:
             label: Leaf
           - name: loopback
             label: Loopback
+          - name: vtep
+            label: VTEP
+          - name: svi
+            label: SVI
           - name: server
             label: Server
           - name: storage

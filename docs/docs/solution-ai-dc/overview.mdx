@@ -5,7 +5,7 @@ description: Design-driven automation for large-scale AI data center fabrics usi
 
 # AI/DC solution
 
-The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Three modular Generators (Fabric → Pod → Rack) connect automatically via event-driven triggers, so triggering one Generator at the fabric level causes the entire data center to build itself. The solution is fully functional today and is positioned as a demo and reference implementation.
+The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Four modular Generators connect automatically via event-driven triggers: three build the physical fabric (Fabric → Pod → Rack), and a fourth layers multi-tenant EVPN/VXLAN overlay services on top. Triggering one Generator at the fabric level causes the entire data center to build itself, and the same design renders per-vendor (Cisco, Arista, Dell) device configuration. The solution is fully functional today and is positioned as a demo and reference implementation.
 
 All of the content provided in this solution can be found on the [`infrahub-solution-ai-dc` GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc).
 
@@ -33,12 +33,17 @@ Three Generators each own one layer of this hierarchy and connect automatically 
 
 Trigger once at the fabric level — the entire data center builds itself.
 
-The demo data includes two complete fabrics:
+On top of this physical fabric, a fourth Generator — the **OverlayGenerator** (registered as `generate-tenant`) — turns tenant intent into multi-tenant EVPN/VXLAN services. See [EVPN/VXLAN overlay](./evpn-vxlan-overlay).
 
-- **Fabric-A** — 6 super spines, 3 pods, 8 racks
-- **Fabric-B** — 4 super spines, 3 pods, 8 racks (using Dell equipment)
+The demo data includes three complete, single-vendor fabrics:
 
-The solution generates IP pool allocations, interface-level cabling plans, OSPF configuration data, and computed interface descriptions.
+- **Fabric-A** — Cisco equipment
+- **Fabric-B** — Arista equipment
+- **Fabric-C** — Dell equipment
+
+Each fabric is built entirely from one vendor's device templates, and each device's configuration is rendered from that vendor's template. See [Multivendor configuration](./multivendor-config).
+
+The solution generates IP pool allocations, interface-level cabling plans, OSPF underlay configuration, EVPN/VXLAN overlay configuration, and computed interface descriptions.
 
 ## Who this is for
 
@@ -66,36 +71,41 @@ You are already working with Infrahub. You want a production-quality reference f
 
 ### Schema
 
-Five schema files define the data model:
+Seven schema files define the data model:
 
 | File | Contents |
 |------|----------|
-| `logical_design.yml` | NetworkFabric and NetworkPod — the design hierarchy with Generator signaling attributes |
+| `logical_design.yml` | NetworkFabric and NetworkPod — the design hierarchy with Generator signaling attributes and the fabric overlay ASN |
 | `physical_location.yml` | LocationHall and LocationRack — physical locations with Generator target support |
-| `device.yml` | NetworkDevice, NetworkInterface, and NetworkLink — devices with computed attributes |
+| `device.yml` | NetworkDevice, NetworkInterface, and NetworkLink — devices with computed attributes, ASN, route-reflector role, and VTEP loopback |
 | `ipam.yml` | IpamIPPrefix with role-based allocation and IpamIPAddress |
+| `overlay.yml` | NetworkTenant, NetworkVrf, and NetworkSegment — the overlay intent model |
+| `routing.yml` | NetworkBGPSession — the stored iBGP EVPN control plane |
 | `generator.yml` | GeneratorTarget generic with checksum attribute enabling trigger-based cascades |
 
 ### Generators
 
-Three Generators, each owning one layer of the hierarchy:
+Four Generators — three own one layer of the physical hierarchy, and one materializes the overlay:
 
 | Generator | Responsibility |
 |-----------|---------------|
-| FabricGenerator | IP pool allocation, super spine switch creation |
-| PodGenerator | Spine switch creation, spine-to-super-spine cabling |
-| RackGenerator | Leaf switch creation, leaf-to-spine cabling |
+| FabricGenerator | IP pool and overlay ASN allocation, super spine switch creation |
+| PodGenerator | Spine switch creation, spine-to-super-spine cabling, iBGP EVPN sessions |
+| RackGenerator | Leaf switch creation, leaf-to-spine cabling, VTEP loopbacks |
+| OverlayGenerator (`generate-tenant`) | Allocates overlay identifiers (VNI/VLAN/ASN/route target), places segments on leaf switches, materializes tenant/VRF/segment state |
 
 ### Transforms and artifacts
 
-- **Startup configuration** — Jinja2 template producing a text/plain artifact per device
+- **Startup configuration** — three per-vendor Jinja2 templates (Cisco, Arista, Dell), each producing a text/plain artifact for the devices in its vendor group
 - **Cabling plan** — Python Transformation producing a CSV artifact per fabric
 - **Computed interface descriptions** — Python Transformation applied as a computed attribute on each interface
 
 ### Demo data
 
-- Two complete fabrics with pods, racks, device templates, and IP pools
+- Three complete single-vendor fabrics (Cisco, Arista, Dell) with pods, racks, device templates, and IP pools
+- A seed overlay tenant (`Blue` on Fabric-A) with VRFs and segments
 - Manufacturer and device type definitions
+- Overlay resource pools (ASN, L2VNI, L3VNI, VLAN)
 - Event trigger rules (`CoreNodeTriggerRule` and `CoreGeneratorAction`) for automatic modular Generator execution
 
 ### Tooling

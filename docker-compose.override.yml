@@ -6,6 +6,7 @@ x-infrahub-custom-build: &infrahub_custom_build
     INFRAHUB_GIT_EMAIL: "no-reply@opsmill.com"
     INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT: true
     INFRAHUB_TIMEOUT: 180
+    INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES: '["^demo/.*$"]'
   build:
     context: .
     dockerfile: Dockerfile

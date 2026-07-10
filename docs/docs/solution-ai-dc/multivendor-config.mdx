@@ -1,0 +1,101 @@
+---
+title: Multivendor configuration
+description: How the AI/DC solution renders per-vendor (Cisco, Arista, Dell) device configuration from a single design model using vendor device groups.
+---
+
+# Multivendor configuration
+
+The AI/DC solution is truly multivendor: the same design model produces **Cisco, Arista, and Dell** device configuration. A single set of Generators builds every fabric, and each device's startup configuration is rendered from a template owned by that device's vendor — not one template applied to every make. This page explains how a device's vendor is resolved, how per-vendor rendering is wired, and how the demo data is organized.
+
+For the fabric build itself, see [Design-driven automation](./design-driven-automation) and [Modular Generator architecture](./modular-generator-architecture).
+
+## What it does
+
+- **One design, per-vendor output.** Operators define fabrics, pods, and racks the same way regardless of vendor. When the Generators run, each device is placed into its manufacturer's device group and rendered from that vendor's configuration template.
+- **One Generator per layer, not per vendor.** The Generators are not forked per vendor. `generate-fabric`, `generate-pod`, and `generate-rack` each resolve a device's vendor from its template and route it to the right group — so adding a vendor does not mean adding Generators.
+- **Single-vendor fabrics in the demo.** The shipped dataset provides three clean single-vendor fabrics so you can exercise the solution on any of the three platforms.
+
+## Vendor resolution
+
+Every device is built from an object template that carries a `device_type`, and every device type carries a `manufacturer`. Vendor resolution walks that chain:
+
+```text
+TemplateNetworkDevice.device_type → NetworkDeviceType.manufacturer → OrganizationManufacturer.name
+```
+
+The manufacturer name is mapped to a vendor device group by `src/infrahub_solution_ai_dc/vendors.py`:
+
+- `SUPPORTED_VENDORS = ("cisco", "arista", "dell")`.
+- `vendor_group_for_manufacturer(name, ...)` returns `"{vendor}_devices"` for a supported manufacturer.
+- `vendor_group_for_template(client, template_id)` resolves the whole chain for a device template.
+
+Because every device built from a template shares that template's manufacturer, each Generator resolves the vendor group **once per run** and stamps it onto every device it creates via `member_of_groups=["devices", "<vendor>_devices"]`. Each device therefore belongs to the parent `devices` group **and** exactly one vendor group.
+
+:::warning Fail-loud resolution
+Resolution is deliberately fail-loud: a device whose manufacturer is missing or unsupported raises a `ValueError` that names the offending device. There is no silent skip and no default configuration — a data gap surfaces immediately rather than producing a device with no (or wrong) configuration.
+:::
+
+## Device groups
+
+`objects/01_groups.yml` defines three vendor groups as children of the existing `devices` group:
+
+| Group | Parent | Members |
+|-------|--------|---------|
+| `cisco_devices` | `devices` | Every device whose manufacturer is Cisco |
+| `arista_devices` | `devices` | Every device whose manufacturer is Arista |
+| `dell_devices` | `devices` | Every device whose manufacturer is Dell |
+
+Group membership is what drives per-vendor artifact targeting — the artifact definitions target these groups directly.
+
+## Per-vendor templates and wiring
+
+The single `startup_config.j2` template was replaced by three per-vendor templates. All three share one GraphQL query (`transforms/startup_config.gql`); `.infrahub.yml` wires a transform and an artifact definition per vendor:
+
+| Vendor | Template | Jinja2 transform | Artifact definition (targets) |
+|--------|----------|------------------|-------------------------------|
+| Cisco  | `transforms/templates/startup_config_cisco.j2`  | `cisco_device_startup_config`  | `cisco_startup_configuration` (`cisco_devices`) |
+| Arista | `transforms/templates/startup_config_arista.j2` | `arista_device_startup_config` | `arista_startup_configuration` (`arista_devices`) |
+| Dell   | `transforms/templates/startup_config_dell.j2`   | `dell_device_startup_config`   | `dell_startup_configuration` (`dell_devices`) |
+
+Because no artifact definition targets the parent `devices` group, each device renders **exactly one** startup configuration artifact — the one for its vendor. Every artifact uses the same `artifact_name` (`Startup configuration`), so the artifact reads consistently across vendors regardless of which template produced it.
+
+## Demo data
+
+The dataset is organized as three single-vendor fabrics:
+
+| Fabric | Vendor | Example switch templates |
+|--------|--------|--------------------------|
+| Fabric-A | Cisco  | `cisco-9364d-gx2-super-spine-switch`, `cisco-9364d-gx2-spine-switch`, `cisco-93400ld-h1-leaf-switch-compute` |
+| Fabric-B | Arista | `arista-7060dx5-64s-super-spine-switch`, `arista-7060dx5-64s-spine-switch` |
+| Fabric-C | Dell   | `dell-z9864f-on-super-spine-switch`, `dell-z9864f-on-spine-switch` |
+
+Supporting data:
+
+- `objects/02_manufacturer.yml` — Cisco, Arista, and Dell manufacturers.
+- `objects/03_device_type.yml` — device types, each declaring a manufacturer. No vendor-less device types remain.
+- `objects/06_device_template.yml` — per-vendor device templates for each device role (including per-vendor compute and storage leaf templates).
+
+## How to try it
+
+Because switching a fabric's vendor renames its interfaces, the multivendor dataset is meant to be applied to a **fresh stack** rather than in place:
+
+```bash
+uv sync --all-packages
+uv run inv destroy && uv run inv start
+uv run inv load
+```
+
+Then build a fabric (via the trigger pipeline, or by running `generate-fabric` for a target fabric — see the [Demo Guide](./demo-guide)). To verify:
+
+- Each device is a member of `devices` and exactly one `{vendor}_devices` group.
+- Fabric-A is 100% Cisco, Fabric-B 100% Arista, Fabric-C 100% Dell.
+- Each device yields exactly one `Startup configuration` artifact, rendered from its vendor's template.
+- Editing one vendor's template changes only that vendor's device configs; the other two are byte-identical.
+
+The three templates start near-identical (NX-OS-style) and are diverged toward correct per-vendor syntax over time — editing one in isolation is safe precisely because each vendor's devices render only from their own template.
+
+## Learn more
+
+- [EVPN/VXLAN overlay](./evpn-vxlan-overlay) — the overlay configuration is also rendered per vendor.
+- [Generator patterns](./generator-patterns) — how the Generators resolve and stamp the vendor group.
+- The feature [specification](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/002-multivendor-config/spec.md) and [quickstart](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/002-multivendor-config/quickstart.md).

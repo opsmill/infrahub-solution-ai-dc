@@ -3,12 +3,16 @@ from __future__ import annotations
 import logging
 
 from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumberPool
 
 from infrahub_solution_ai_dc.generator import GeneratorMixin
-from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .fabric_generator_query import FabricGeneratorQuery
+
+ASN_POOL_NAME = "Overlay ASN Pool"
+DEFAULT_ROUTING_DESIGN = "ibgp_evpn_ospf_underlay"
 
 
 class FabricGenerator(InfrahubGenerator, GeneratorMixin):
@@ -16,10 +20,12 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_id: str
     fabric_super_spine_switch_template: str
     amount_of_super_spines: int
+    vendor_group: str
 
     loopback_pool: CoreIPAddressPool
+    super_spine_switches: list[NetworkDevice]
 
-    log = logging.getLogger("infrahub.tasks")
+    logger = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
         parsed = FabricGeneratorQuery(**data)
@@ -30,12 +36,20 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
         self.fabric_id = fabric.id
         self.fabric_super_spine_switch_template = fabric.super_spine_switch_template.node.id  # type: ignore[union-attr, assignment]
         self.amount_of_super_spines = fabric.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
+        self.super_spine_switches = []
+
+        # Resolve the vendor group once from the super-spine template (raises if unresolvable).
+        self.vendor_group = await vendor_group_for_template(self.client, self.fabric_super_spine_switch_template)
 
         await self.allocate_resource_pools()
 
         await self.create_super_spine_switches()
 
         await self.update_checksum()
+
+        # Overlay device-attribute work runs AFTER the physical checksum so that allocating overlay_asn and
+        # stamping device.asn does not change the fabric checksum and re-trigger the pod/rack cascade (ADR-0004).
+        await self.configure_overlay()
 
     async def create_super_spine_switches(self) -> None:
         fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
@@ -48,7 +62,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
                 loopback_ip=self.loopback_pool,
                 role="super_spine",
                 pod=fabric_pod,
-                member_of_groups=["devices"],
+                member_of_groups=["devices", self.vendor_group],
             )
             await device.save(allow_upsert=True)
 
@@ -65,6 +79,41 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
             loopback_interface.status.value = "active"
             loopback_interface.ip_address = device.loopback_ip.id  # type: ignore[assignment]
             await loopback_interface.save(allow_upsert=True)
+
+            self.super_spine_switches.append(device)
+
+    async def configure_overlay(self) -> None:
+        """Allocate the fabric overlay ASN (once) and stamp it on every super-spine (iBGP: device.asn == overlay_asn).
+
+        Allocation is guarded ("only if unset") because ``from_pool`` is not guaranteed idempotent across re-runs,
+        and this runs after ``update_checksum`` so it never re-triggers the physical cascade.
+        """
+        fabric = await self.client.get(kind=NetworkFabric, id=self.fabric_id)
+
+        if fabric.overlay_asn.value is None:
+            asn_pool = await self.client.get(kind=CoreNumberPool, name__value=ASN_POOL_NAME)
+            fabric.overlay_asn.value = asn_pool  # type: ignore[assignment]  # number pool -> server-side from_pool allocation
+            if not fabric.routing_design.value:
+                fabric.routing_design.value = DEFAULT_ROUTING_DESIGN
+            await fabric.save(allow_upsert=True)
+            # FIX: a value allocated from a pool is not readable on the returned node; re-fetch to read it
+            fabric = await self.client.get(kind=NetworkFabric, id=self.fabric_id)
+        elif not fabric.routing_design.value:
+            fabric.routing_design.value = DEFAULT_ROUTING_DESIGN
+            await fabric.save(allow_upsert=True)
+
+        overlay_asn = fabric.overlay_asn.value
+        if overlay_asn is None:
+            self.logger.warning(f"Could not resolve overlay_asn for fabric {self.fabric_name}; skipping ASN stamping")
+            return
+
+        for super_spine in self.super_spine_switches:
+            device = await self.client.get(kind=NetworkDevice, id=super_spine.id)
+            if device.asn.value != overlay_asn or not device.route_reflector.value:
+                device.asn.value = overlay_asn
+                device.route_reflector.value = True
+                await device.save(allow_upsert=True)
+                self.logger.info(f"Stamped ASN {overlay_asn} (route reflector) on {device.hostname.value}")
 
     async def allocate_resource_pools(self) -> None:
         fabric_supernet_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="FabricSupernetPool")

@@ -1,6 +1,9 @@
 ---
-# schemas:
-#   - schemas
+schemas:
+  - schemas
+
+objects:
+  - objects
 
 menus:
   - menus/menu.yml
@@ -14,6 +17,9 @@ queries:
 
   - name: generate_rack
     file_path: "./generators/generate_rack.gql"
+
+  - name: generate_tenant
+    file_path: "./generators/generate_tenant.gql"
 
   - name: network_device_startup_config
     file_path: "./transforms/startup_config.gql"
@@ -59,11 +65,30 @@ generator_definitions:
     execute_in_proposed_change: false
     execute_after_merge: false
 
+  - name: generate-tenant
+    file_path: "./generators/generate_tenant.py"
+    query: generate_tenant
+    targets: tenants
+    parameters:
+      name: name__value
+    class_name: OverlayGenerator
+    convert_query_response: false
+    execute_in_proposed_change: false
+    execute_after_merge: false
+
 jinja2_transforms:
-  - name: device_startup_config
-    description: "device config transform"
+  - name: cisco_device_startup_config
+    description: "Cisco device config transform"
     query: "network_device_startup_config"
-    template_path: "./transforms/templates/startup_config.j2"
+    template_path: "./transforms/templates/startup_config_cisco.j2"
+  - name: arista_device_startup_config
+    description: "Arista device config transform"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_arista.j2"
+  - name: dell_device_startup_config
+    description: "Dell device config transform"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_dell.j2"
 
 python_transforms:
   - name: computed_interface_description
@@ -81,13 +106,27 @@ python_transforms:
         - src/infrahub_solution_ai_dc/protocols.py
 
 artifact_definitions:
-  - name: "startup_configuration"
+  - name: "cisco_startup_configuration"
     artifact_name: "Startup configuration"
     parameters:
       name: "hostname__value"
     content_type: "text/plain"
-    targets: "devices"
-    transformation: "device_startup_config"
+    targets: "cisco_devices"
+    transformation: "cisco_device_startup_config"
+  - name: "arista_startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "arista_devices"
+    transformation: "arista_device_startup_config"
+  - name: "dell_startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "dell_devices"
+    transformation: "dell_device_startup_config"
   - name: "cabling_plan"
     artifact_name: "Cabling Plan"
     parameters:

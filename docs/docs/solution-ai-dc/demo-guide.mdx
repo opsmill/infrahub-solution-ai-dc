@@ -41,9 +41,10 @@ The contrast between what you define and what Generators produce illustrates the
 
 **Design inputs** (loaded by `inv load`):
 
-- 2 fabrics, 6 pods, 16 racks
-- 9 device templates (defining interface layouts and roles)
-- 1 IP supernet (`10.0.0.0/8`) with a `FabricSupernetPool`
+- 3 single-vendor fabrics (Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell), 9 pods, 24 racks
+- Per-vendor device templates (defining interface layouts and roles)
+- 1 IP supernet (`10.0.0.0/8`) with a `FabricSupernetPool`, plus overlay resource pools (ASN, VNI, VLAN)
+- A seed overlay tenant (`Blue` on Fabric-A) with a VRF and segments
 
 **Generated output** (for Fabric-A alone):
 
@@ -86,11 +87,10 @@ Verify the repository status shows as synced. When Infrahub imports the reposito
 ### Load trigger rules
 
 ```bash
-cp objects/20_triggers.yml.save triggers.yml
 infrahubctl object load triggers.yml
 ```
 
-This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators — including the tenant/overlay trigger (`run-tenant-generator`). `triggers.yml` is a committed top-level file that is not part of `inv load`; it must be loaded after the repository has synced, because the rules reference Generator definitions that need to exist first.
 
 :::warning Branch scope
 Triggers fire only on non-main branches. All trigger rules are configured with `branch_scope: other_branches` by design. Running a Generator on `main` will not trigger downstream Generators.
@@ -109,6 +109,8 @@ With trigger rules loaded, the modular Generators run automatically. The FabricG
 5. **RackGenerator** runs for each Rack, creating leafs and links
 
 The pattern is: **checksum write → trigger rule → Generator action → next tier**, repeated at each level.
+
+A fourth Generator — the **OverlayGenerator** (`generate-tenant`) — sits alongside this physical build. It is triggered by changes to a tenant's design (a `NetworkTenant` checksum update) rather than by the fabric cascade, and it layers EVPN/VXLAN services onto the leaf switches the fabric build produced. See [Overlay services (EVPN/VXLAN)](#overlay-services-evpnvxlan) below.
 
 ### Try it
 
@@ -137,7 +139,7 @@ The proposed change shows a diff of every object the Generators created — devi
 
 Creating the proposed change also triggers Infrahub's CI pipeline, which runs the Transforms and artifact definitions registered from the repository. Once the pipeline completes, the following artifacts are available:
 
-- **Startup configuration** — a text artifact per device, rendered from a Jinja2 template
+- **Startup configuration** — a text artifact per device, rendered from that device's vendor template. Fabric-A is Cisco, so its devices render from the Cisco template; Fabric-B (Arista) and Fabric-C (Dell) render from theirs. See [Multivendor configuration](./multivendor-config).
 - **Cabling plan** — a CSV artifact per fabric, produced by a Python Transformation
 
 Browse the generated artifacts from the proposed change view or from individual device and fabric objects.
@@ -187,6 +189,33 @@ Browse the generated artifacts from the proposed change view or from individual 
 
 On the proposed change overview tab, click the **Merge** button to merge the changes into the main branch.
 
+## Overlay services (EVPN/VXLAN)
+
+On top of the physical fabric, the solution layers multi-tenant EVPN/VXLAN overlay services. `inv load` already seeded a tenant — **Blue** on Fabric-A — with a VRF (`blue-prod`) and several segments (routed, rack-scoped, and L2-only examples). Nothing about the underlay or the fabric build changes; the overlay rides on top of it.
+
+1. Create a new branch.
+
+2. Run `generate-tenant` manually for the **Blue** tenant (Generator Definitions → `generate-tenant` → **Run** → target **Blue**). The OverlayGenerator allocates every overlay identifier (an L2VNI and VLAN per segment, an L3VNI and transit VLAN per VRF, route targets derived from the fabric ASN), allocates a subnet and `.1` anycast gateway for each routed segment, and materializes which leaf switches carry which segments.
+
+3. Open a proposed change for the branch, let CI render the artifacts, then inspect a **leaf** device's startup configuration. Confirm it now contains the iBGP L2VPN-EVPN neighbors, the `nve1` VXLAN interface, per-segment VLAN/VNI mappings, the VRF context, and an anycast-gateway SVI for each routed segment.
+
+4. Inspect a **spine** or **super-spine** artifact and confirm it carries the EVPN control plane and route-reflector role but **no** NVE, VLAN, VRF, or SVI state — only leaves are VTEPs.
+
+:::info Scoped, queryable overlay
+Every allocated identifier and every iBGP session is stored as queryable data in Infrahub (browse **Network → Overlay** for Tenants, VRFs, Segments, and BGP Sessions). Adding, changing, or removing a tenant/VRF/segment regenerates configuration for only the affected leaves.
+:::
+
+To see a scoped day-two multi-tenant change, load the second tenant and run its Generator:
+
+```bash
+# data/ is not part of `inv load` — load the Red tenant manually
+infrahubctl object load data/tenant-red.yml
+```
+
+Then run `generate-tenant` for **Red**: only the leaves carrying Red's segments change; Blue's configuration and every unrelated device are untouched.
+
+For the full model, allocation rules, and rendered-configuration contract, see [EVPN/VXLAN overlay](./evpn-vxlan-overlay).
+
 ## What to take away
 
 ### Key concepts demonstrated
@@ -196,10 +225,14 @@ On the proposed change overview tab, click the **Merge** button to merge the cha
 - **Hierarchical IP delegation** — the supernet was carved automatically through fabric, pod, and rack levels via [Resource Manager](https://docs.infrahub.app/topics/resource-manager)
 - **Proposed change review** — a diff of every generated object, with CI-triggered artifact generation (startup configs, cabling plans)
 - **Day-two change support** — adding a rack produced only new objects with no rebuild of existing infrastructure
+- **Multi-tenant overlay** — declaring a tenant's intent produced a full EVPN/VXLAN control and data plane, with all identifiers auto-allocated and leaf-only state
+- **Multivendor rendering** — the same design produced Cisco, Arista, and Dell configuration, each device routed to its vendor's template
 - **Branch-based workflow** — all changes happened on a branch, reviewable and mergeable through Infrahub's standard workflow
 
 ### Next steps
 
+- [EVPN/VXLAN overlay](./evpn-vxlan-overlay) — the multi-tenant overlay model, allocation, and rendered configuration
+- [Multivendor configuration](./multivendor-config) — how per-vendor configuration is resolved and rendered
 - [Design-driven automation](./design-driven-automation) — deeper explanation of the architecture and concepts
 - [Modular Generator architecture](./modular-generator-architecture) — how the modular Generators work internally
 - [Generator patterns](./generator-patterns) — implementation patterns for building your own Generators

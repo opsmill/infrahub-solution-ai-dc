@@ -6,11 +6,43 @@ query StartupConfigQuery($name: String!){
         hostname {
           value
         }
+        role {
+          value
+        }
+        asn {
+          value
+        }
         loopback_ip {
           node {
             __typename
             address {
               ip
+            }
+          }
+        }
+        vtep_ip {
+          node {
+            __typename
+            address {
+              value
+            }
+          }
+        }
+        pod {
+          node {
+            __typename
+            parent {
+              node {
+                __typename
+                ... on NetworkFabric {
+                  overlay_asn {
+                    value
+                  }
+                  anycast_gateway_mac {
+                    value
+                  }
+                }
+              }
             }
           }
         }
@@ -34,6 +66,93 @@ query StartupConfigQuery($name: String!){
                 node {
                   __typename
                   address {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+        bgp_sessions {
+          edges {
+            node {
+              __typename
+              name {
+                value
+              }
+              remote_as {
+                value
+              }
+              rr_client {
+                value
+              }
+              peer_device {
+                node {
+                  __typename
+                  hostname {
+                    value
+                  }
+                  loopback_ip {
+                    node {
+                      __typename
+                      address {
+                        ip
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        segments {
+          edges {
+            node {
+              __typename
+              name {
+                value
+              }
+              vlan_id {
+                value
+              }
+              l2vni {
+                value
+              }
+              route_target {
+                value
+              }
+              routed {
+                value
+              }
+              subnet {
+                node {
+                  __typename
+                  prefix {
+                    value
+                  }
+                }
+              }
+              gateway {
+                node {
+                  __typename
+                  address {
+                    value
+                  }
+                }
+              }
+              vrf {
+                node {
+                  __typename
+                  name {
+                    value
+                  }
+                  l3vni {
+                    value
+                  }
+                  l3_vlan_id {
+                    value
+                  }
+                  route_target {
                     value
                   }
                 }

@@ -1,0 +1,124 @@
+---
+title: EVPN/VXLAN overlay
+description: Multi-tenant EVPN/VXLAN overlay services layered on top of the AI/DC solution's OSPF-underlay Clos fabric.
+---
+
+# EVPN/VXLAN overlay
+
+The overlay adds **multi-tenant Layer-2 and Layer-3 network services** on top of the fabric the AI/DC solution already builds. Operators declare tenant intent — a tenant, its routing instances, and its segments — and the solution allocates every overlay identifier, decides which leaf switches carry which segments, and renders the complete per-device EVPN/VXLAN configuration. The existing OSPF underlay and the Fabric → Pod → Rack build are untouched: the overlay rides on top of them with zero disruption.
+
+This page covers the operator-facing model, how generation works, and the key behaviors. For the implementation patterns behind the Generators, see [Generator patterns](./generator-patterns); for how Generators chain together, see [Modular Generator architecture](./modular-generator-architecture).
+
+## What it does
+
+The fabric provides loopback-to-loopback reachability between switches over an OSPF-routed IP **underlay**. The overlay is the iBGP **L2VPN-EVPN** control plane and **VXLAN** data plane carried on top of that underlay. It lets multiple tenants share one physical fabric while staying isolated from one another:
+
+- **Bridged Layer-2 services** stretched across the fabric (a VLAN extended fabric-wide over VXLAN).
+- **Routed Layer-3 services** with a **distributed anycast gateway** — the same default gateway present on every leaf that carries the segment, so a host's gateway is always local.
+- **Inter-subnet routing within a tenant**, while keeping different tenants' routes fully separated.
+
+Each fabric is an **independent overlay domain** with its own routing number (ASN) and identifier space. Cross-fabric interconnect (DCI) is out of scope for this release.
+
+## The operator-facing model
+
+Operators work entirely in intent. The model is a three-level hierarchy, all scoped to a single fabric:
+
+| Object | What it represents |
+|--------|--------------------|
+| **Tenant** | An owner of overlay services (a customer or workload owner), scoped to exactly one fabric. Owns one or more VRFs. |
+| **VRF** | A tenant's isolated Layer-3 routing instance (IP-VRF). Owns one or more segments and defines the boundary for inter-subnet routing and tenant isolation. |
+| **Segment** | A tenant Layer-2 service — one VLAN bridged fabric-wide. Belongs to one VRF. Optionally carries a subnet and an anycast gateway. |
+
+Two operator choices shape how a segment behaves:
+
+- **Routed (IRB) vs L2-only.** A segment **with** a subnet and gateway is routed: it gets a distributed anycast gateway and participates in inter-subnet routing within its tenant (symmetric IRB). A segment **without** a gateway is **L2-only** — bridged across the fabric with no gateway and no inter-subnet routing, for cases where routing happens outside the fabric.
+- **Rack placement (optional).** By default a segment is available on **every leaf in the fabric**. An operator may restrict it to **specific racks**, in which case only those racks' leaf switches receive it.
+
+Operators never assign VNIs, VLANs, route targets, or the fabric ASN by hand — those are allocated automatically (see below). The tenant/VRF/segment model is the stable contract: a future eBGP control-plane mode can be introduced without changing what operators declare.
+
+:::info Domain language
+The terms used here — tenant, VRF, segment, anycast gateway, VTEP, leaf/spine/super-spine, route reflector — carry precise meanings in this solution. See [`CONTEXT.md`](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/CONTEXT.md) for the shared language.
+:::
+
+## How it works
+
+A new **OverlayGenerator** turns tenant intent into implementation objects, and the per-device configuration transform renders those objects into device configuration.
+
+:::note Generator naming
+The overlay Generator is registered as `generate-tenant` in `.infrahub.yml` (targeting the `tenants` group) — that is the name you select in the Infrahub UI. Its Python class is `OverlayGenerator`, the name used throughout this page.
+:::
+
+### Allocation and materialization (OverlayGenerator)
+
+Triggered by changes to a tenant's design, the OverlayGenerator:
+
+1. **Allocates overlay identifiers** from Infrahub Resource Manager pools — an **L2VNI** and **VLAN** per segment, an **L3VNI** and transit VLAN per VRF, and the per-fabric **ASN** — with no collisions inside a fabric. **Route targets** are derived from the fabric ASN and the VNI.
+2. **Allocates the addressing** for routed segments: a tenant subnet from the overlay address space, and the segment's **anycast gateway** as the first usable host in that subnet.
+3. **Materializes placement** — it writes the relationship that records *which leaf switches carry which segments*. Empty placement means every leaf in the tenant's fabric; otherwise only the leaves in the listed racks.
+
+All of these allocations are retained as **queryable data** in Infrahub — the system of record — inspectable independently of the generated configuration. The supporting fabric/pod/rack Generators are extended to allocate the per-fabric ASN, stamp each device's ASN and route-reflector role, give every leaf a dedicated **VTEP loopback** address, and materialize the iBGP **BGP sessions** along the cabling — so the whole control plane is queryable data, not just rendered text.
+
+### Rendering the configuration (per-device transform)
+
+The per-device `startup_configuration` transform is expanded to render the overlay. The control plane is **iBGP L2VPN-EVPN** with **hierarchical route reflection**: leaf switches are clients of their spines, spines reflect to leaves and are themselves clients of the super-spines, which reflect to the spines. **VTEPs are leaf-only** — only leaves encapsulate VXLAN, sourced from their VTEP loopback. Routed segments use **symmetric IRB** (L2VNI bridging plus L3VNI routing with the distributed anycast gateway).
+
+The sections rendered depend on the device's role:
+
+| Section | Leaf | Spine | Super-spine |
+|---------|:----:|:-----:|:-----------:|
+| OSPF underlay (now also advertising the VTEP loopback) | yes | yes | yes |
+| `router bgp <asn>` + iBGP EVPN neighbors | yes | yes | yes |
+| `route-reflector-client` toward lower-tier neighbors | — | yes (→ leaf) | yes (→ spine) |
+| `interface nve1` (VXLAN tunnel endpoint) | yes | — | — |
+| L2VNI bridging (`vlan` / `vn-segment`, `member vni`) | yes | — | — |
+| L3VNI routing (`vrf context`, transit SVI) | yes | — | — |
+| Anycast gateway SVI | yes (routed segments) | — | — |
+
+Configuration is rendered **per vendor**: each device is routed to its vendor's template (Cisco NX-OS, Arista EOS, or Dell OS10), so the same overlay model produces the correct syntax for whichever fabric a device belongs to. In the demo data each fabric is single-vendor — Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell. See [Multivendor configuration](./multivendor-config) for how vendor is resolved and rendered.
+
+The leaf overlay block below is the **Cisco NX-OS** example (the Arista and Dell templates render the equivalent constructs in their own syntax). The shape (see the [configuration artifact contract](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/contracts/config-artifact.md) for the full definition):
+
+```text
+router bgp <asn>
+  router-id <loopback0 ip>
+  neighbor <spine loopback0> remote-as <asn>      ! one per cabled spine
+    update-source loopback0
+    address-family l2vpn evpn
+      send-community extended
+
+interface nve1
+  source-interface loopback1                       ! the leaf VTEP loopback
+  host-reachability protocol bgp
+  member vni <l2vni>                                ! per carried segment
+  member vni <l3vni> associate-vrf                  ! per carried VRF
+
+vrf context <vrf.name>                              ! per carried VRF
+  vni <l3vni>
+  address-family ipv4 unicast
+    route-target both <vrf.route_target> evpn
+
+interface Vlan<vlan_id>                             ! only if the segment has a gateway
+  vrf member <vrf.name>
+  ip address <segment.gateway>
+  fabric forwarding mode anycast-gateway
+```
+
+A spine or super-spine renders the EVPN control plane and acts as a route reflector toward its lower tier, but renders **no** NVE, VLAN, VRF, or SVI.
+
+## Key behaviors
+
+- **Zero-disruption coexistence.** Introducing the overlay causes no change to the previously generated underlay configuration or to the existing fabric/pod/rack build. A fabric with no tenants still establishes the EVPN control-plane baseline and keeps operating its underlay.
+- **Scoped day-two changes.** Adding, modifying, or removing a tenant, VRF, or segment regenerates configuration for **only the affected leaves** — every unrelated device's configuration is byte-identical. Removing a segment releases its allocated identifiers. Day-two overlay changes follow the same scoped, branch-based, reviewable workflow as adding a rack.
+- **Leaves carry tenant state; spines do not.** Only leaves are VTEPs and only leaves render per-tenant segment, VRF, and gateway state. Spines and super-spines participate in the control plane purely as route reflectors and never carry tenant state.
+- **No collisions.** Every overlay identifier is allocated from a managed pool, so identifiers are unique within a fabric by construction.
+
+## Try it
+
+The [overlay quickstart](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/quickstart.md) walks through end-to-end validation: lint and test, load the schema and overlay seed data, run the full build, then inspect a leaf's rendered configuration and confirm the spine/super-spine carry no tenant state. It also covers verifying scoped day-two changes and the rack-placement and L2-only variations.
+
+## Learn more
+
+- [Multivendor configuration](./multivendor-config) — how the overlay (and underlay) configuration is rendered per vendor (Cisco/Arista/Dell).
+- [`CONTEXT.md`](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/CONTEXT.md) — the domain language for the overlay (tenant, VRF, segment, VTEP, anycast gateway, route reflector).
+- Architecture Decision Records [`dev/adr/0001`–`0005`](https://github.com/opsmill/infrahub-solution-ai-dc/tree/main/dev/adr) — the rationale behind the design split, the OverlayGenerator's ownership, hierarchical route reflection, and the stored BGP-session and route-reflector model.
+- The feature [specification](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/spec.md) and [implementation plan](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/plan.md) for the full requirements and design.

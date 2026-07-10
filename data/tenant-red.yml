@@ -1,0 +1,29 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkTenant
+  data:
+    - name: "Red"
+      fabric: "Fabric-A"
+      member_of_groups: ["tenants"]
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkVrf
+  data:
+    - name: "red-prod"
+      tenant: "Red"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkSegment
+  data:
+    - name: "red-web"
+      vrf: ["Red", "red-prod"]
+      routed: true
+    - name: "red-app"
+      vrf: ["Red", "red-prod"]
+      routed: true

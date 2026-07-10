@@ -50,7 +50,7 @@ def build_rack_cabling_plan(
     dst_device_count = len(dst_devices)
 
     for src_device, src_interfaces in src_interface_map.items():
-        src_device_index: int = src_device.index.value  # type: ignore[attr-defined]
+        src_device_index: int = src_device.index.value  # type: ignore[assignment]
 
         for dst_index, src_interface in enumerate(src_interfaces[:dst_device_count]):
             start = (rack_index * 2) - 2

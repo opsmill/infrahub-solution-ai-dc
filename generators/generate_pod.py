@@ -10,7 +10,9 @@ from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.generator import GeneratorMixin
-from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
+from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .pod_generator_query import PodGeneratorQuery
 
@@ -26,6 +28,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     pod_name: str
     pod_spine_switch_template: str | None
     pod_role: str
+    vendor_group: str
 
     fabric_interface_sorting_function: Callable
     spine_interface_sorting_function: Callable
@@ -34,10 +37,12 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     fabric_name: str
 
     loopback_pool: CoreIPAddressPool
+    vtep_pool: CoreIPAddressPool
 
     pod_prefix_pool: CoreIPPrefixPool
     spine_switches: list[NetworkDevice]
     super_spine_switches: list[NetworkDevice]
+    spine_super_spine_ids: dict[str, set[str]]
 
     logger = logging.getLogger("infrahub.tasks")
 
@@ -63,8 +68,11 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.spine_switches = []
 
         if self.pod_role in EXCLUDED_POD_ROLES:
-            msg = f"Cannot run pod generator on {self.pod_name}-{self.pod_id}: {self.pod_role} is not supported by the generator!"
-            raise ValueError(msg)
+            self.logger.info(
+                f"Skipping pod generator on {self.pod_name}-{self.pod_id}: "
+                f"role {self.pod_role!r} is not managed by this generator"
+            )
+            return
 
         await self.get_super_spine_switches_for_fabric()
 
@@ -82,6 +90,9 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.fabric_interface_sorting_function = getattr(sorting, fabric_interface_sorting_method)
         self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
 
+        # Resolve the vendor group once from the spine template (raises if unresolvable).
+        self.vendor_group = await vendor_group_for_template(self.client, self.pod_spine_switch_template)
+
         await self.allocate_resource_pools()
 
         await self.create_spine_switches()
@@ -89,6 +100,9 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         await self.connect_spine_to_super_spine()
 
         await self.update_checksum()
+
+        # Stamp the overlay ASN on the spines after the checksum so it never re-triggers the rack cascade.
+        await self.configure_overlay()
 
     async def create_spine_switches(self) -> None:
         """Create the spine switches"""
@@ -101,7 +115,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
                 pod={"id": self.pod_id},
                 loopback_ip=self.loopback_pool,
                 role="spine",
-                member_of_groups=["devices"],
+                member_of_groups=["devices", self.vendor_group],
             )
             await device.save(allow_upsert=True)
 
@@ -162,10 +176,73 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
         await self.loopback_pool.save(allow_upsert=True)
 
+        # Dedicated per-pod VTEP loopback (loopback1) pool — NVE source on leafs (mirrors loopback_pool).
+        pod_vtep_prefix = await self.client.allocate_next_ip_prefix(
+            resource_pool=self.pod_prefix_pool,
+            identifier=f"{self.pod_id}-vtep",
+            member_type="address",
+            prefix_length=27,
+            data={"role": "pod_vtep_loopback"},
+        )
+
+        self.vtep_pool = await self.client.create(
+            kind=CoreIPAddressPool,
+            name=f"{self.fabric_name}-{self.pod_name}-vtep-pool",
+            default_address_type="IpamIPAddress",
+            default_prefix_length=32,
+            ip_namespace={"hfid": ["default"]},
+            resources=[pod_vtep_prefix],
+        )
+        await self.vtep_pool.save(allow_upsert=True)
+
         pod = await self.client.get(kind=NetworkPod, id=self.pod_id)
         pod.loopback_pool = self.loopback_pool  # type: ignore[assignment]
         pod.prefix_pool = self.pod_prefix_pool  # type: ignore[assignment]
+        pod.vtep_pool = self.vtep_pool  # type: ignore[assignment]
         await pod.save(allow_upsert=True)
+
+    async def configure_overlay(self) -> None:
+        """Stamp ASN + RR role on every spine and materialize the spine<->super-spine EVPN sessions.
+
+        Spines reflect EVPN routes for their leafs and are themselves clients of the super-spines
+        (hierarchical RR, ADR-0005). Sessions follow the cabling recorded in connect_spine_to_super_spine.
+
+        Best-effort: if the FabricGenerator has not allocated overlay_asn yet, skip — the config template falls
+        back to the fabric overlay_asn so rendering stays correct regardless of generator timing.
+        """
+        fabric = await self.client.get(kind=NetworkFabric, id=self.fabric_id)
+        overlay_asn = fabric.overlay_asn.value
+        if overlay_asn is None:
+            self.logger.warning(f"overlay_asn not yet allocated for {self.fabric_name}; skipping spine ASN stamping")
+            return
+
+        super_spines_by_id = {ss.id: ss for ss in self.super_spine_switches}
+        for spine in self.spine_switches:
+            device = await self.client.get(kind=NetworkDevice, id=spine.id)
+            if device.asn.value != overlay_asn or not device.route_reflector.value:
+                device.asn.value = overlay_asn
+                device.route_reflector.value = True
+                await device.save(allow_upsert=True)
+                self.logger.info(f"Stamped ASN {overlay_asn} (route reflector) on {device.hostname.value}")
+
+            for super_spine_id in sorted(self.spine_super_spine_ids.get(spine.id, set())):
+                super_spine = super_spines_by_id[super_spine_id]
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=device,
+                    peer=super_spine,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("spine", "super_spine"),
+                )
+                await upsert_evpn_session(
+                    self.client,
+                    self.logger,
+                    device=super_spine,
+                    peer=device,
+                    asn=overlay_asn,
+                    peer_is_rr_client=rr_client("super_spine", "spine"),
+                )
 
     async def get_super_spine_switches_for_fabric(self) -> tuple[NetworkPod, list[NetworkDevice]]:
         self.fabric_pod = await self.client.get(kind=NetworkPod, parent__ids=[self.fabric_id], role__value="fabric")
@@ -192,6 +269,14 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
 
         await connect_interface_maps(client=self.client, logger=self.logger, cabling_plan=created_cabling_plan)
+
+        # Remember the spine -> super-spine adjacencies: the EVPN sessions in configure_overlay follow the
+        # actual cabling (tiers are not a full mesh).
+        self.spine_super_spine_ids = {}
+        for src_interface, dst_interface in created_cabling_plan:
+            spine_id, super_spine_id = src_interface.device.id, dst_interface.device.id
+            if spine_id is not None and super_spine_id is not None:
+                self.spine_super_spine_ids.setdefault(spine_id, set()).add(super_spine_id)
 
         await assign_ip_addresses_to_p2p_connections(
             client=self.client,

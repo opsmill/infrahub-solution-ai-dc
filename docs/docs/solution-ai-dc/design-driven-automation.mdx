@@ -25,8 +25,10 @@ The solution's schema makes design intent machine-readable. Each schema node typ
 
 Relationships encode topology: a Fabric contains Pods, Pods reference Racks. Device templates (`CoreObjectTemplate`) capture interface layouts per device role — Generators use these to stamp out devices with the correct ports and interface profiles.
 
+Overlay services add a parallel intent hierarchy on top of the physical one — `NetworkTenant` → `NetworkVrf` → `NetworkSegment` — where operators declare *what* tenant services should exist and the OverlayGenerator produces the implementation. See [EVPN/VXLAN overlay](./evpn-vxlan-overlay).
+
 :::info Schema reference
-The design hierarchy is defined in `schemas/logical_design.yml` (Fabric and Pod) and `schemas/physical_location.yml` (Rack). See [Installation & Setup: Schemas](./installation-setup#schemas) for the full schema file list.
+The physical design hierarchy is defined in `schemas/logical_design.yml` (Fabric and Pod) and `schemas/physical_location.yml` (Rack); the overlay intent model is in `schemas/overlay.yml`. See [Installation & Setup: Schemas](./installation-setup#schemas) for the full schema file list.
 :::
 
 ### Generators read design, produce infrastructure
@@ -36,6 +38,9 @@ A Generator reads design objects via a GraphQL query and creates implementation 
 - **FabricGenerator** reads `NetworkFabric` → produces super spine devices, fabric IP pools
 - **PodGenerator** reads `NetworkPod` → produces spine devices, spine-to-super-spine links
 - **RackGenerator** reads `LocationRack` → produces leaf devices, leaf-to-spine links
+- **OverlayGenerator** reads `NetworkTenant` → allocates overlay identifiers and places tenant segments on leaf switches
+
+The same principle extends beyond the physical fabric: the overlay describes tenant *intent* (a tenant, its VRFs, its segments) and the OverlayGenerator produces the EVPN/VXLAN implementation. See [EVPN/VXLAN overlay](./evpn-vxlan-overlay).
 
 Generators are idempotent: running one again produces the same result, creating only what is missing. If the design changes, a Generator rebuilds only its scope — other layers remain untouched. Generators also connect through triggers: the output of one tier triggers the next, building a full data center from a single action. See [Modular Generator architecture](./modular-generator-architecture) for how the modular Generators work and [Generator patterns](./generator-patterns) for implementation details.
 
@@ -67,9 +72,9 @@ Each level carries enough information for its Generator to produce a complete se
 
 | Design object   | Key attributes                                          | Example from demo data                                             |
 |-----------------|---------------------------------------------------------|--------------------------------------------------------------------|
-| `NetworkFabric` | `amount_of_super_spines`, `super_spine_switch_template` | Fabric-A: 6 super spines, `super-spine-switch` template            |
-| `NetworkPod`    | `amount_of_spines`, `role`, `spine_switch_template`     | Pod-A2: 4 spines, role `cpu`, `spine-switch` template              |
-| `LocationRack`  | `rack_type`, `amount_of_leafs`, `leaf_switch_template`  | Rack-A2-1: type `compute`, 2 leafs, `leaf-switch-compute` template |
+| `NetworkFabric` | `amount_of_super_spines`, `super_spine_switch_template` | Fabric-A: 6 super spines, `cisco-9364d-gx2-super-spine-switch` template |
+| `NetworkPod`    | `amount_of_spines`, `role`, `spine_switch_template`     | Pod-A2: `cisco-9364d-gx2-spine-switch` template                    |
+| `LocationRack`  | `rack_type`, `amount_of_leafs`, `leaf_switch_template`  | Rack-A2-1: type `compute`, 2 leafs, `cisco-93400ld-h1-leaf-switch-compute` template |
 
 **Supporting design objects:**
 
@@ -80,18 +85,19 @@ Each level carries enough information for its Generator to produce a complete se
 | Prefix pool      | Allocates fabric subnets from the supernet                  | `FabricSupernetPool` → one /16 per fabric                                      |
 
 :::tip Data files
-The design objects above are loaded from the `objects/` directory. Device templates are defined in `objects/06_device_template.yml`, IP resources in `objects/04_ipam.yml`, and the hierarchy in `objects/10_fabric.yml` and `objects/11_rack.yml`. See [Installation & Setup: Demo data](./installation-setup#demo-data-object-files) for the full file list.
+The design objects above are loaded from the `objects/` directory. Device templates are defined in `objects/06_device_template.yml`, IP resources in `objects/04_ipam.yml`, overlay resource pools in `objects/07_pools.yml`, the physical hierarchy in `objects/10_fabric.yml` and `objects/11_rack.yml`, and the seed overlay tenant in `objects/12_overlay.yml`. See [Installation & Setup: Demo data](./installation-setup#demo-data-object-files) for the full file list.
 :::
 
 ### What Generators produce
 
 | Generator       | Reads           | Produces                                                                                                         |
 |-----------------|-----------------|------------------------------------------------------------------------------------------------------------------|
-| FabricGenerator | `NetworkFabric` | Fabric supernet prefix, super spine loopback pool, super spine devices with loopback IPs                         |
-| PodGenerator    | `NetworkPod`    | Pod supernet prefix, pod loopback pool, spine devices with loopback IPs, spine-to-super-spine links with /31 IPs |
-| RackGenerator   | `LocationRack`  | Leaf devices with loopback IPs, leaf-to-spine links with /31 IPs                                                 |
+| FabricGenerator | `NetworkFabric` | Fabric supernet prefix, super spine loopback pool, super spine devices with loopback IPs, fabric overlay ASN     |
+| PodGenerator    | `NetworkPod`    | Pod supernet prefix, pod loopback pool, spine devices with loopback IPs, spine-to-super-spine links with /31 IPs, iBGP EVPN sessions |
+| RackGenerator   | `LocationRack`  | Leaf devices with loopback IPs, leaf-to-spine links with /31 IPs, VTEP loopbacks                                 |
+| OverlayGenerator | `NetworkTenant` | Allocated overlay identifiers (VNI/VLAN/ASN/route target), tenant subnets and anycast gateways, segment-to-leaf placement |
 
-The demo defines 24 hierarchy objects (2 fabrics, 6 pods, 16 racks), 9 device templates, and 1 IP supernet with a prefix pool. From these inputs, the Generators produce devices across both fabrics, hierarchical IP pool trees, hundreds of links with point-to-point addressing, and computed attributes on every interface.
+The demo defines 36 hierarchy objects (3 fabrics, 9 pods, 24 racks), per-vendor device templates, 1 IP supernet with a prefix pool, and overlay resource pools. From these inputs, the Generators produce devices across all three fabrics, hierarchical IP pool trees, hundreds of links with point-to-point addressing, per-vendor configuration, and computed attributes on every interface.
 
 :::info Hands-on walkthrough
 The [Demo Guide](./demo-guide) walks through each Generator's output step by step. This section focuses on the mapping between design and implementation.
@@ -117,3 +123,5 @@ For deeper coverage of the concepts and patterns introduced on this page:
 - [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
 - [Modular Generator architecture](./modular-generator-architecture)
 - [Generator patterns](./generator-patterns)
+- [EVPN/VXLAN overlay](./evpn-vxlan-overlay)
+- [Multivendor configuration](./multivendor-config)

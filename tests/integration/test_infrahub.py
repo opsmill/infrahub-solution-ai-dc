@@ -6,7 +6,7 @@ from infrahub_sdk.protocols import CoreGenericRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
-REQUIRED_GROUPS = ["halls", "racks", "fabrics", "pods", "devices"]
+REQUIRED_GROUPS = ["halls", "racks", "fabrics", "pods", "devices", "tenants"]
 
 
 class TestInfrahub(TestInfrahubDockerClient):

@@ -6,82 +6,6 @@ spec:
   parameters:
     expand_range: true
   data:
-    - template_name: "spine-switch"
-      role: "spine"
-      interfaces:
-        kind: TemplateNetworkInterface
-        parameters:
-          expand_range: true
-        data:
-          - template_name: "SpineSwitchLoopback0"
-            name: "Loopback0"
-            role: "loopback"
-          - template_name: "SpineSwitchEthernet[1-27]"
-            name: "Ethernet[1-27]"
-            profiles: ["profile-interface-leaf"]
-          - template_name: "SpineSwitchEthernet[28-32]"
-            name: "Ethernet[28-32]"
-            profiles: ["profile-interface-super-spine"]
-    - template_name: "super-spine-switch"
-      role: "super_spine"
-      interfaces:
-        kind: TemplateNetworkInterface
-        parameters:
-          expand_range: true
-        data:
-          - template_name: "SuperSpineSwitchLoopback0"
-            name: "Loopback0"
-            role: "loopback"
-          - template_name: "SuperSpineSwitchEthernet[1-28]"
-            name: "Ethernet[1-28]"
-            profiles: ["profile-interface-spine"]
-          - template_name: "SuperSpineSwitchEthernet[29-32]"
-            name: "Ethernet[29-32]"
-    - template_name: "Generic Switch"
-      interfaces:
-        kind: TemplateNetworkInterface
-        parameters:
-          expand_range: true
-        data:
-          - template_name: "GenericSwitchLoopback0"
-            name: "Loopback0"
-            role: "loopback"
-          - template_name: "GenericSwitchEthernet[1-32]"
-            name: "Ethernet[1-32]"
-
-    - template_name: "leaf-switch-compute"
-      role: "leaf"
-      interfaces:
-        kind: TemplateNetworkInterface
-        parameters:
-          expand_range: true
-        data:
-          - template_name: "LeafSwitchComputeLoopback0"
-            name: "Loopback0"
-            role: "loopback"
-          - template_name: "LeafSwitchComputeEthernet[1-26]"
-            name: "Ethernet[1-26]"
-            profiles: ["profile-interface-server"]
-          - template_name: "LeafSwitchComputeEthernet[27-32]"
-            name: "Ethernet[27-32]"
-            profiles: ["profile-interface-spine"]
-
-    - template_name: "leaf-switch-storage"
-      role: "leaf"
-      interfaces:
-        kind: TemplateNetworkInterface
-        parameters:
-          expand_range: true
-        data:
-          - template_name: "LeafSwitchStorageLoopback0"
-            name: "Loopback0"
-            role: "loopback"
-          - template_name: "LeafSwitchStorageEthernet[1-10]"
-            name: "Ethernet[1-10]"
-            profiles: ["profile-interface-compute"]
-          - template_name: "LeafSwitchStorageEthernet[11-16]"
-            name: "Ethernet[11-16]"
-            profiles: ["profile-interface-spine"]
     - template_name: "dell-z9864f-on-spine-switch"
       device_type: ["Dell", "PowerSwitch Z9864F-ON"]
       role: "spine"
@@ -147,3 +71,140 @@ spec:
           - template_name: "DellS5232FLeafStorageSwitchEthernet1/1/[17-34]"
             name: Ethernet1/1/[17-34]
             profiles: ["profile-interface-compute"]
+    # Cisco Nexus 9364D-GX2 (64x 100G/400G) — spine & super-spine
+    - template_name: "cisco-9364d-gx2-spine-switch"
+      device_type: ["Cisco", "Nexus 9364D-GX2"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Cisco9364DSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Cisco9364DSpineSwitchEthernet1/[1-32]"
+            name: "Ethernet1/[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "Cisco9364DSpineSwitchEthernet1/[33-64]"
+            name: "Ethernet1/[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "cisco-9364d-gx2-super-spine-switch"
+      device_type: ["Cisco", "Nexus 9364D-GX2"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Cisco9364DSuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Cisco9364DSuperSpineSwitchEthernet1/[1-64]"
+            name: "Ethernet1/[1-64]"
+            profiles: ["profile-interface-spine"]
+    # Cisco Nexus 93400LD-H1 (48x 10/25/50G + 4x 400G) — leaf
+    - template_name: "cisco-93400ld-h1-leaf-switch-compute"
+      device_type: ["Cisco", "Nexus 93400LD-H1"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Cisco93400LeafComputeSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Cisco93400LeafComputeSwitchEthernet1/[1-48]"
+            name: "Ethernet1/[1-48]"
+            profiles: ["profile-interface-server"]
+          - template_name: "Cisco93400LeafComputeSwitchEthernet1/[49-52]"
+            name: "Ethernet1/[49-52]"
+            profiles: ["profile-interface-spine"]
+    # Arista 7060DX5-64S (64x 400G QSFP-DD) — spine & super-spine
+    - template_name: "arista-7060dx5-64s-spine-switch"
+      device_type: ["Arista", "7060DX5-64S"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Arista7060DX5SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Arista7060DX5SpineSwitchEthernet[1-32]"
+            name: "Ethernet[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "Arista7060DX5SpineSwitchEthernet[33-64]"
+            name: "Ethernet[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "arista-7060dx5-64s-super-spine-switch"
+      device_type: ["Arista", "7060DX5-64S"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Arista7060DX5SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Arista7060DX5SuperSpineSwitchEthernet[1-64]"
+            name: "Ethernet[1-64]"
+            profiles: ["profile-interface-spine"]
+    # Arista 7050X4-48Y-4DF (48x 25G + 4x 400G) — leaf
+    - template_name: "arista-7050x4-48y-4df-leaf-switch-compute"
+      device_type: ["Arista", "7050X4-48Y-4DF"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Arista7050X4LeafComputeSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Arista7050X4LeafComputeSwitchEthernet[1-48]"
+            name: "Ethernet[1-48]"
+            profiles: ["profile-interface-server"]
+          - template_name: "Arista7050X4LeafComputeSwitchEthernet[49-52]"
+            name: "Ethernet[49-52]"
+            profiles: ["profile-interface-spine"]
+    # Cisco Nexus 93400LD-H1 — storage leaf (same SKU as compute leaf; access ports carry the
+    # storage profile instead of server, mirroring the Dell storage-vs-compute leaf split).
+    - template_name: "cisco-93400ld-h1-leaf-switch-storage"
+      device_type: ["Cisco", "Nexus 93400LD-H1"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Cisco93400LeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Cisco93400LeafStorageSwitchEthernet1/[1-48]"
+            name: "Ethernet1/[1-48]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "Cisco93400LeafStorageSwitchEthernet1/[49-52]"
+            name: "Ethernet1/[49-52]"
+            profiles: ["profile-interface-spine"]
+    # Arista 7050X4-48Y-4DF — storage leaf (same SKU as compute leaf; storage-profile access ports).
+    - template_name: "arista-7050x4-48y-4df-leaf-switch-storage"
+      device_type: ["Arista", "7050X4-48Y-4DF"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "Arista7050X4LeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "Arista7050X4LeafStorageSwitchEthernet[1-48]"
+            name: "Ethernet[1-48]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "Arista7050X4LeafStorageSwitchEthernet[49-52]"
+            name: "Ethernet[49-52]"
+            profiles: ["profile-interface-spine"]
