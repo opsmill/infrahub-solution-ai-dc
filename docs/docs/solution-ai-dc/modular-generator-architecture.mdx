@@ -5,7 +5,7 @@ description: How the AI/DC solution chains Generators through checksum triggers,
 
 # Modular Generator architecture
 
-The AI/DC solution uses three modular Generators — FabricGenerator, PodGenerator, RackGenerator — that connect automatically through checksum-based triggers. This page explains the signaling mechanism, how each tier validates that the previous tier completed, and how interface allocation works.
+The AI/DC solution uses four modular Generators. Three build the physical fabric — FabricGenerator, PodGenerator, RackGenerator — connecting automatically through checksum-based triggers. A fourth, the OverlayGenerator (`generate-tenant`), layers EVPN/VXLAN services on top; it uses the same checksum-trigger mechanism but is signaled by tenant design changes rather than by the fabric cascade. This page explains the signaling mechanism, how each tier validates that the previous tier completed, and how interface allocation works.
 
 See [Design-driven automation](./design-driven-automation) for what the Generators read and produce, or [Generator patterns](./generator-patterns) for implementation-level code patterns.
 
@@ -25,12 +25,13 @@ The checksum itself is a SHA-256 hash of all object IDs fetched during the Gener
 
 Trigger rules connect checksum changes to Generator actions. Each rule watches for an attribute update on a specific node type and fires the corresponding Generator.
 
-| Trigger                 | Watches        | Attribute                                       | Fires           |
-|-------------------------|----------------|-------------------------------------------------|-----------------|
-| Pod Generator triggers  | `NetworkPod`   | `checksum`, `index`, `amount_of_spines`, `role` | `generate-pod`  |
-| Rack Generator triggers | `LocationRack` | `checksum`, `index`, `rack_type`                | `generate-rack` |
+| Trigger                    | Watches         | Attribute                                       | Fires             |
+|----------------------------|-----------------|-------------------------------------------------|-------------------|
+| Pod Generator triggers     | `NetworkPod`    | `checksum`, `index`, `amount_of_spines`, `role` | `generate-pod`    |
+| Rack Generator triggers    | `LocationRack`  | `checksum`, `index`, `rack_type`                | `generate-rack`   |
+| Tenant Generator trigger   | `NetworkTenant` | `checksum`                                      | `generate-tenant` |
 
-The checksum trigger handles the modular execution flow. The additional attribute triggers allow a Generator to re-run when an operator changes a design parameter (for example, updating `amount_of_spines` on a Pod).
+The checksum trigger handles the modular execution flow. The additional attribute triggers allow a Generator to re-run when an operator changes a design parameter (for example, updating `amount_of_spines` on a Pod). The tenant trigger re-runs the OverlayGenerator whenever a tenant's overlay design changes — the same scoped, checksum-driven pattern, applied to overlay intent.
 
 :::info Branch scope
 Trigger rules are scoped to branches other than `main`. Generators run on branches where changes can be reviewed before merging — they do not fire on `main` directly.
@@ -47,6 +48,10 @@ Running the FabricGenerator for a single fabric triggers the following sequence:
 5. **RackGenerator** validates the parent Pod is complete, creates leaf devices and leaf-to-spine links
 
 One action at the fabric level produces the entire data center — devices, links, and IP addressing across all tiers.
+
+### Overlay generation
+
+The overlay is not part of the fabric cascade — it is triggered independently by a tenant design change. When a `NetworkTenant`'s checksum updates, the trigger fires the **OverlayGenerator** (`generate-tenant`), which allocates the tenant's overlay identifiers and materializes which leaf switches carry which segments. It relies on the fabric build having already run: the three physical Generators were extended to support the overlay by allocating the per-fabric overlay **ASN**, stamping each device's ASN and **route-reflector role**, giving every leaf a dedicated **VTEP loopback**, and materializing the iBGP **EVPN sessions** along the cabling. The OverlayGenerator then only has to layer tenant services onto that control-plane baseline. See [EVPN/VXLAN overlay](./evpn-vxlan-overlay) for the full flow.
 
 ## Validation gates
 
@@ -142,5 +147,6 @@ If a Generator fails mid-run, the already-created objects remain. Re-running the
 
 - [Design-driven automation](./design-driven-automation) — what the Generators read and produce
 - [Generator patterns](./generator-patterns) — implementation-level code patterns
+- [EVPN/VXLAN overlay](./evpn-vxlan-overlay) — how the OverlayGenerator layers tenant services on the fabric
 - [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
 - [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)

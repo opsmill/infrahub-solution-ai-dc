@@ -16,6 +16,7 @@ const sidebars: SidebarsConfig = {
         'solution-ai-dc/modular-generator-architecture',
         'solution-ai-dc/generator-patterns',
         'solution-ai-dc/evpn-vxlan-overlay',
+        'solution-ai-dc/multivendor-config',
       ],
     },
   ],

@@ -87,27 +87,36 @@ uv run inv load
 
 This runs four steps in sequence:
 
-1. `infrahubctl schema load schemas` — loads the 5 schema files defining the data model
+1. `infrahubctl schema load schemas` — loads the 7 schema files defining the data model
 2. `infrahubctl menu load menus/` — loads UI menu configuration
-3. `infrahubctl object load objects/` — loads all design objects (groups, manufacturers, device types, IPAM, profiles, device templates, fabrics, pods, racks)
+3. `infrahubctl object load objects/` — loads all design objects (groups, manufacturers, device types, IPAM, overlay resource pools, profiles, device templates, fabrics, pods, racks, and the seed `Blue` overlay tenant)
 4. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
 
 :::info Repository sync
 After `inv load`, Infrahub imports the repository and reads `.infrahub.yml` to register Generators, Transforms, queries, and artifact definitions. Verify with `infrahubctl repository list`. Generators cannot run until this completes.
 :::
 
-### Load trigger rules (optional)
+### Load trigger rules
 
 ```bash
-cp objects/20_triggers.yml.save triggers.yml
 uv run infrahubctl object load triggers.yml
 ```
 
-This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects for the automatic modular Generator execution. The trigger file uses a `.save` extension so it is excluded from the initial `inv load` — triggers must be loaded after the repository has synced, because they reference Generator definitions that need to exist first.
+This creates the `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that drive automatic modular Generator execution — including the tenant/overlay trigger (`run-tenant-generator`). `triggers.yml` is a committed top-level file that is **not** part of `inv load`: it must be loaded after the repository has synced, because the trigger rules reference Generator definitions that need to exist first.
 
 :::warning Load triggers after repository sync
 If loaded before Generator definitions are imported, the trigger rules will fail to resolve their action references.
 :::
+
+### Load supplementary data (optional)
+
+```bash
+# NOTE: the data/ directory is NOT loaded by `inv load`.
+uv run infrahubctl object load data/permissions.yml   # sample operator account `john`
+uv run infrahubctl object load data/tenant-red.yml     # second, day-two overlay tenant `Red`
+```
+
+The `data/` directory holds material that is intentionally kept out of the default load: a sample operator persona (account `john`, role and group definitions) and a second overlay tenant (`Red` on Fabric-A) used to demonstrate scoped, non-clobbering day-two multi-tenant generation. Load these manually when you want them.
 
 ## Repository structure
 
@@ -117,27 +126,30 @@ The repository is self-contained — everything below is included. You do not ne
 
 | File                            | Contents                                                                                                                 |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `schemas/logical_design.yml`    | `NetworkFabric` and `NetworkPod` — the design hierarchy with Generator signaling attributes (checksum, amount_of_spines)             |
+| `schemas/logical_design.yml`    | `NetworkFabric` and `NetworkPod` — the design hierarchy with Generator signaling attributes (checksum, amount_of_spines) and the fabric overlay ASN |
 | `schemas/physical_location.yml` | `LocationHall` and `LocationRack` — physical locations with Generator target support                                     |
-| `schemas/device.yml`            | `NetworkDevice`, `NetworkInterface`, and `NetworkLink` — devices with computed attributes (interface index, description) |
+| `schemas/device.yml`            | `NetworkDevice`, `NetworkInterface`, and `NetworkLink` — devices with computed attributes, ASN, route-reflector role, and VTEP loopback |
 | `schemas/ipam.yml`              | `IpamIPPrefix` with role-based allocation and `IpamIPAddress`                                                            |
+| `schemas/overlay.yml`           | `NetworkTenant`, `NetworkVrf`, and `NetworkSegment` — the overlay intent model                                          |
+| `schemas/routing.yml`           | `NetworkBGPSession` — the stored iBGP EVPN control-plane sessions                                                       |
 | `schemas/generator.yml`         | `GeneratorTarget` generic enabling trigger-based modular Generator execution via checksum attribute                                         |
 
 ### Generators
 
 | File                            | Responsibility                                                                                                          |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `generators/generate_fabric.py` | FabricGenerator — IP pool allocation, super spine creation, writes checksums to child Pods                              |
-| `generators/generate_pod.py`    | PodGenerator — validates fabric complete, spine creation, spine-to-super-spine cabling, writes checksums to child Racks |
-| `generators/generate_rack.py`   | RackGenerator — validates pod complete, leaf creation, leaf-to-spine cabling                                            |
+| `generators/generate_fabric.py` | FabricGenerator — IP pool and overlay ASN allocation, super spine creation, writes checksums to child Pods              |
+| `generators/generate_pod.py`    | PodGenerator — validates fabric complete, spine creation, spine-to-super-spine cabling, iBGP EVPN sessions, writes checksums to child Racks |
+| `generators/generate_rack.py`   | RackGenerator — validates pod complete, leaf creation, leaf-to-spine cabling, VTEP loopbacks                            |
+| `generators/generate_tenant.py` | OverlayGenerator (registered as `generate-tenant`, targets the `tenants` group) — allocates overlay identifiers and materializes tenant/VRF/segment state |
 
-Each Generator has a paired `.gql` query file in the same directory. The `.infrahub.yml` file in the repository root wires Generator definitions to their queries and target groups.
+Each Generator has a paired `.gql` query file in the same directory. The `.infrahub.yml` file in the repository root wires Generator definitions to their queries and target groups. Note the naming split for the overlay Generator: the definition, file, and query are named `generate-tenant`/`generate_tenant`, while the Python class is `OverlayGenerator`.
 
 ### Transforms and artifacts
 
 | File                                                            | Purpose                                                                |
 |-----------------------------------------------------------------|------------------------------------------------------------------------|
-| `transforms/startup_config.gql` / `templates/startup_config.j2` | Jinja2 Transform producing a startup configuration artifact per device |
+| `transforms/startup_config.gql` + `templates/startup_config_{cisco,arista,dell}.j2` | Three per-vendor Jinja2 Transforms, each producing a startup configuration artifact for the devices in its vendor group (`cisco_devices` / `arista_devices` / `dell_devices`). See [Multivendor configuration](./multivendor-config). |
 | `transforms/cabling_plan.py` / `.gql`                           | Python Transform producing a CSV cabling plan artifact per fabric      |
 | `transforms/computed_interface_description.py` / `.gql`         | Python Transform applied as a computed attribute on each interface     |
 
@@ -147,15 +159,18 @@ Loaded in numbered order by `infrahubctl object load objects/`:
 
 | File                             | Contents                                                                                                     |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------|
-| `objects/01_groups.yml`          | `CoreStandardGroup` objects: `halls`, `racks`, `fabrics`, `pods`, `devices`                                  |
-| `objects/02_manufacturer.yml`    | Equipment manufacturers                                                                                      |
-| `objects/03_device_type.yml`     | Device types for leaf, spine, and super spine switches                                                       |
+| `objects/01_groups.yml`          | `CoreStandardGroup` objects: `halls`, `racks`, `fabrics`, `pods`, `devices`, `tenants`, and the per-vendor device groups `cisco_devices` / `arista_devices` / `dell_devices` |
+| `objects/02_manufacturer.yml`    | Equipment manufacturers (Cisco, Arista, Dell)                                                               |
+| `objects/03_device_type.yml`     | Per-vendor device types for leaf, spine, and super spine switches                                            |
 | `objects/04_ipam.yml`            | IP supernet (`10.0.0.0/8`) and `FabricSupernetPool`                                                          |
 | `objects/05_profiles.yml`        | Interface role profiles (MTU, role assignments)                                                              |
-| `objects/06_device_template.yml` | 9 device templates defining interface layouts per device role                                                |
-| `objects/10_fabric.yml`          | Fabric and Pod objects: Fabric-A (6 super spines, 3 pods), Fabric-B (4 super spines, 3 pods, Dell equipment) |
-| `objects/11_rack.yml`            | 16 Rack objects across both fabrics with leaf counts and template assignments                                |
-| `objects/20_triggers.yml.save`   | Trigger rules (`.save` extension — loaded separately after repository sync)                                  |
+| `objects/06_device_template.yml` | Per-vendor device templates defining interface layouts per device role                                       |
+| `objects/07_pools.yml`           | Overlay resource pools: ASN, L2VNI, L3VNI, and VLAN number pools                                             |
+| `objects/10_fabric.yml`          | Fabric and Pod objects: Fabric-A (Cisco), Fabric-B (Arista), Fabric-C (Dell) — each single-vendor            |
+| `objects/11_rack.yml`            | Rack objects across all three fabrics with leaf counts and per-vendor template assignments                   |
+| `objects/12_overlay.yml`         | Seed overlay tenant `Blue` on Fabric-A, with a VRF and segments (routed, rack-scoped, and L2-only examples)  |
+
+Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and are loaded separately after repository sync — see [Load trigger rules](#load-trigger-rules). Supplementary data (`data/permissions.yml`, `data/tenant-red.yml`) is loaded manually — see [Load supplementary data](#load-supplementary-data-optional).
 
 ### Infrastructure
 

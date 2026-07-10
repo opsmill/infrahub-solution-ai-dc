@@ -52,6 +52,8 @@ loopbacks
 mergeable
 Mermaid
 mermaid
+Multivendor
+multivendor
 namespace
 namespaces
 Netbox
@@ -85,7 +87,9 @@ supernet
 testcontainer
 tomek
 untrust
+upsert
 upserted
+upserts
 uv
 versionable
 VIPs

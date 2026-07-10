@@ -37,6 +37,22 @@ Key fields:
 | `class_name` | The Python class inside `file_path` that Infrahub instantiates |
 | `convert_query_response` | Set to `false` to receive the raw GraphQL response as a dict. The Generators parse it with Pydantic models for type safety |
 
+The overlay Generator follows the same wiring pattern, targeting the `tenants` group. Note the naming split: the definition, file, and query use `generate-tenant`/`generate_tenant`, while the Python class is `OverlayGenerator`.
+
+```yaml
+generator_definitions:
+  - name: generate-tenant
+    file_path: "./generators/generate_tenant.py"
+    query: generate_tenant
+    targets: tenants
+    parameters:
+      name: name__value
+    class_name: OverlayGenerator
+    convert_query_response: false
+    execute_in_proposed_change: false
+    execute_after_merge: false
+```
+
 ## GraphQL queries
 
 Each Generator has a paired `.gql` file that fetches the design object and its context. The query receives parameters mapped from the target object via the definition in `.infrahub.yml`.
@@ -297,7 +313,7 @@ Both interfaces are then marked as `active`. The `allow_upsert=True` on the link
 
 ## Checksum propagation
 
-After the FabricGenerator and PodGenerator complete their work, they write a checksum to each child object to trigger the next tier. The RackGenerator does not propagate a checksum — it is the final tier.
+After the FabricGenerator and PodGenerator complete their work, they write a checksum to each child object to trigger the next tier. The RackGenerator is the final tier of the physical cascade and does not propagate a checksum to a child. The OverlayGenerator uses the same checksum mechanism differently: it stamps a content checksum on the tenant it just materialized (guarded so it only changes when the tenant's segment set changes), which is what the tenant trigger re-fires on — without creating a self-retrigger loop.
 
 ### Calculating the checksum
 
@@ -344,12 +360,16 @@ The Generators share common logic through the `infrahub_solution_ai_dc` package 
 | `cabling.py` | `build_pod_cabling_plan`, `build_rack_cabling_plan`, `connect_interface_maps` — cabling plan algorithms and link creation |
 | `sorting.py` | `create_sorted_device_interface_map`, `create_reverse_sorted_device_interface_map` — interface sorting strategies |
 | `addressing.py` | `assign_ip_addresses_to_p2p_connections`, `assign_ip_address_to_interface` — IP allocation and assignment |
+| `overlay.py` | `route_target`, `rr_client`, `upsert_evpn_session`, `resolve_segment_devices` — overlay route-target/route-reflector helpers, iBGP session upserts, and segment-to-leaf placement |
+| `vendors.py` | `vendor_group_for_manufacturer`, `vendor_group_for_template` — resolves a device's vendor group (`cisco_devices` / `arista_devices` / `dell_devices`) for per-vendor artifact targeting |
 | `protocols.py` | Auto-generated SDK protocol classes (`infrahubctl protocols`) — typed interfaces for `NetworkDevice`, `NetworkInterface`, `LocationRack`, etc. |
 
 ## Learn more
 
 - [Modular Generator architecture](./modular-generator-architecture) — signaling mechanism, validation gates, interface allocation design
 - [Design-driven automation](./design-driven-automation) — what the Generators read and produce
+- [EVPN/VXLAN overlay](./evpn-vxlan-overlay) — the OverlayGenerator's allocation and placement patterns
+- [Multivendor configuration](./multivendor-config) — per-vendor resolution and artifact targeting
 - [Installation & Setup](./installation-setup) — repository structure and environment setup
 - [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
 - [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
