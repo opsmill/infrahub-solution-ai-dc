@@ -11,7 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "infrahub-sdk[all] @ git+https://github.com/opsmill/infrahub-sdk-python.git@dga/user-schema-infp-234",
+    "infrahub-sdk[all]>=1.22.0",
     "infrahub-testcontainers>=1.10.0",
     "invoke>=2.2.0",
     "mypy>=1.17.1",

@@ -420,7 +420,7 @@ wheels = [
 [[package]]
 name = "infrahub-sdk"
 version = "1.22.0"
-source = { git = "https://github.com/opsmill/infrahub-sdk-python.git?rev=dga%2Fuser-schema-infp-234#0f270481a05b31b0d2badcc5e889dcbc4532490d" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dulwich" },
     { name = "graphql-core" },
@@ -430,6 +430,10 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "ujson" },
     { name = "whenever" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/2b/49dfceb46cc63063f19c73b09fab8ea857ea0348de3d4f861d5beef621c7/infrahub_sdk-1.22.0.tar.gz", hash = "sha256:2aec69be27ba21fb5af3c9de73b39eed833ca3b12beb15880160bab68ced9373", size = 1084359, upload-time = "2026-06-23T16:30:46.994Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/f3/d9867ffc09bf461608a73728373180fd4c963a934ca1c78b00b5dd39fb40/infrahub_sdk-1.22.0-py3-none-any.whl", hash = "sha256:3a062da0d6158b135acfad3ba2c9e010135c41576212e9904f4d059e3f57d54c", size = 270938, upload-time = "2026-06-23T16:30:45.489Z" },
 ]
 
 [package.optional-dependencies]
@@ -471,7 +475,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.28.1" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "infrahub-sdk", extras = ["all"], git = "https://github.com/opsmill/infrahub-sdk-python.git?rev=dga%2Fuser-schema-infp-234" },
+    { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.22.0" },
     { name = "infrahub-testcontainers", specifier = ">=1.10.0" },
     { name = "invoke", specifier = ">=2.2.0" },
     { name = "mypy", specifier = ">=1.17.1" },
