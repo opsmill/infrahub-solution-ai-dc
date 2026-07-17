@@ -99,6 +99,7 @@ jobs:
       INFRAHUB_TIMEOUT: 600
       INFRAHUB_TESTING_LOG_LEVEL: INFO
       INFRAHUB_TESTING_DOCKER_PULL: "false"
+      INFRAHUB_TESTING_IMAGE_VER: dev-7db6239
     steps:
       - uses: actions/checkout@v6
       - name: Install tini
@@ -109,8 +110,8 @@ jobs:
       - name: Build custom Infrahub image
         run: >
           docker build
-          --build-arg INFRAHUB_BASE_VERSION=1.10.0
-          -t registry.opsmill.io/opsmill/infrahub:1.10.0
+          --build-arg INFRAHUB_BASE_VERSION=dev-7db6239
+          -t registry.opsmill.io/opsmill/infrahub:dev-7db6239
           .
       - name: Set environment variables
         run: |
