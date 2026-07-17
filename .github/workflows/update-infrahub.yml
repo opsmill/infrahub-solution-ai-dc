@@ -1,0 +1,102 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: "Update Infrahub Version"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Infrahub version to bump to (e.g. 1.11.0, no v prefix)"
+        required: true
+        default: "1.10.0"
+
+  repository_dispatch:
+    types: [trigger-infrahub-update]
+
+env:
+  INFRAHUB_TIMEOUT: 600
+  INFRAHUB_TESTING_LOG_LEVEL: INFO
+
+jobs:
+  update-dependencies:
+    strategy:
+      matrix:
+        branch-name:
+          - main
+
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: update-infrahub-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}-${{ matrix.branch-name }}
+      cancel-in-progress: false
+
+    env:
+      INFRAHUB_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}
+      BRANCH_NAME: update-infrahub-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}-${{ matrix.branch-name }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.branch-name }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.18"
+
+      - run: uv sync --all-groups
+
+      - name: Bump infrahub-testcontainers to ${{ env.INFRAHUB_VERSION }}
+        run: uv add --group dev "infrahub-testcontainers==${INFRAHUB_VERSION}"
+
+      - name: Upgrade infrahub-sdk to the latest compatible release
+        run: uv lock --upgrade-package infrahub-sdk
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Update Infrahub version references in project files
+        run: |
+          set -euo pipefail
+          # Dockerfile: base image build arg
+          sed -i -E "s|^ARG INFRAHUB_BASE_VERSION=.*|ARG INFRAHUB_BASE_VERSION=${INFRAHUB_VERSION}|" Dockerfile
+          # docker-compose.override.yml: both INFRAHUB_BASE_VERSION defaults
+          sed -i -E "s|(INFRAHUB_BASE_VERSION:-)[0-9]+\.[0-9]+\.[0-9]+|\1${INFRAHUB_VERSION}|g" docker-compose.override.yml
+          # ci.yml: custom-image build arg and tag used by the integration test
+          sed -i -E "s|(--build-arg INFRAHUB_BASE_VERSION=)[0-9]+\.[0-9]+\.[0-9]+|\1${INFRAHUB_VERSION}|g" .github/workflows/ci.yml
+          sed -i -E "s|(registry\.opsmill\.io/opsmill/infrahub:)[0-9]+\.[0-9]+\.[0-9]+|\1${INFRAHUB_VERSION}|g" .github/workflows/ci.yml
+          # docker-compose.yml: fetch the compose file published for the target version
+          uv run invoke download-compose-file --version "${INFRAHUB_VERSION}" --override
+
+      - name: Prepare the branch for the update
+        id: prepare-branch
+        run: |
+          echo "Checking if branch ${BRANCH_NAME} exists..."
+          BRANCH_EXISTS=$(git ls-remote --heads origin "${BRANCH_NAME}" | wc -l)
+          echo "BRANCH_EXISTS=$BRANCH_EXISTS" >> "$GITHUB_ENV"
+
+      - name: Commit and push changes
+        uses: github-actions-x/commit@v2.9
+        with:
+          github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          push-branch: ${{ env.BRANCH_NAME }}
+          commit-message: "chore: bump Infrahub to version ${{ env.INFRAHUB_VERSION }}"
+          files: |
+            pyproject.toml
+            uv.lock
+            Dockerfile
+            docker-compose.override.yml
+            docker-compose.yml
+            .github/workflows/ci.yml
+          name: opsmill-bot
+          email: github-bot@opsmill.com
+          rebase: ${{ env.BRANCH_EXISTS == 1 }}
+
+      - name: Create a pull request
+        run: |
+          echo "${{ secrets.GH_UPDATE_PACKAGE_OTTO }}" | gh auth login --with-token
+          gh pr view "${BRANCH_NAME}" --json number >/dev/null 2>&1 && exit 0
+          gh pr create \
+            --title "chore: bump Infrahub to version ${INFRAHUB_VERSION} against ${{ matrix.branch-name }}" \
+            --body "This PR bumps Infrahub to version \`${INFRAHUB_VERSION}\` across \`pyproject.toml\` (infrahub-testcontainers + infrahub-sdk), \`Dockerfile\`, \`docker-compose.override.yml\`, \`docker-compose.yml\`, and the CI build in \`.github/workflows/ci.yml\`." \
+            --base "${{ matrix.branch-name }}" \
+            --head "${BRANCH_NAME}"
