@@ -1,0 +1,15 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkServerService
+  data:
+    # US1 (P1) seed: one L3 (BGP-speaking, e.g. Cilium worker) server service.
+    # No rack / leaf_interface / segment -> fully automatic placement: the ServerGenerator
+    # picks the least-utilized rack + lowest free role:server leaf port, cables the server,
+    # allocates a /31 (both ends) and a private ASN, and upserts the paired eBGP sessions.
+    # Uses the existing "blue-prod" VRF (tenant "Blue") seeded in objects/12_overlay.yml.
+    - name: "cilium-worker-1"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      member_of_groups: ["server_services"]
