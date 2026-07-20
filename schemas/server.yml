@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: ServerService
+    namespace: Network
+    label: Server Service
+    description: The design request to connect a server to a leaf (L2 or L3); drives the ServerGenerator.
+    inherit_from:
+      - GeneratorTarget
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+        order_weight: 1000
+      - name: layer
+        kind: Dropdown
+        label: Layer
+        description: The L2/L3 selector for the server attachment.
+        choices:
+          - name: l2
+            label: L2
+          - name: l3
+            label: L3
+        optional: false
+        order_weight: 2000
+    relationships:
+      - name: vrf
+        label: VRF
+        peer: NetworkVrf
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "server_service__vrf"
+        order_weight: 3000
+      - name: rack
+        label: Rack
+        peer: LocationRack
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_service__rack"
+        order_weight: 4000
+      - name: leaf_interface
+        label: Leaf Interface
+        peer: NetworkInterface
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_service__leaf_interface"
+        order_weight: 5000
+      - name: segment
+        label: Segment
+        peer: NetworkSegment
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_service__segment"
+        order_weight: 6000
+      - name: server
+        label: Server
+        peer: NetworkServer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_service__server"
+        order_weight: 7000
+
+  - name: Server
+    namespace: Network
+    label: Server
+    description: The materialized server implementation object (never a startup-config artifact target).
+    inherit_from:
+      - NetworkBGPPeer
+    human_friendly_id:
+      - hostname__value
+    display_label: hostname__value
+    include_in_menu: false
+    order_by: ["hostname__value"]
+    attributes:
+      - name: layer
+        kind: Dropdown
+        label: Layer
+        description: L2/L3, copied from the service for render/query convenience.
+        choices:
+          - name: l2
+            label: L2
+          - name: l3
+            label: L3
+        optional: true
+        order_weight: 2000
+      - name: asn
+        label: ASN
+        kind: Number
+        description: L3 only — allocated from the global Server ASN pool.
+        optional: true
+        order_weight: 3000
+    relationships:
+      - name: interfaces
+        label: Interfaces
+        peer: NetworkInterface
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "server__interface"
+        order_weight: 4000
+      - name: rack
+        label: Rack
+        peer: LocationRack
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server__rack"
+        order_weight: 5000

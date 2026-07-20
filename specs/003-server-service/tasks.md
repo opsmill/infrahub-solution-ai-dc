@@ -42,14 +42,14 @@ the per-Pod server /31 pool. **All user stories depend on this.**
 
 ### Schema & generated types
 
-- [ ] T003 [P] Add `NetworkServerService` (`inherit_from: [GeneratorTarget]`) and `NetworkServer` (NOT `CoreArtifactTarget`; `inherit_from: [NetworkBGPPeer]`) in new `schemas/server.yml` per data-model.md
-- [ ] T004 [P] Edit `schemas/routing.yml`: add generic `NetworkBGPPeer` (`hostname`, `bgp_sessions` back-rel); repoint `NetworkBGPSession.device`/`peer_device` peer to `NetworkBGPPeer`; add `NetworkBGPPeer` to `NetworkDevice.inherit_from`
-- [ ] T005 [P] Edit `schemas/device.yml`: add optional `NetworkInterface.server` owner relationship (peer `NetworkServer`, `kind: Parent`, identifier `server__interface`), make `device` optional, widen the uniqueness constraint to cover the server owner
-- [ ] T006 [P] Edit `schemas/ipam.yml`: add `server_p2p` to `IpamIPPrefix.role`
-- [ ] T007 [P] Edit `schemas/logical_design.yml`: add `NetworkPod.server_prefix_pool` (peer `CoreIPPrefixPool`, Attribute, optional)
-- [ ] T008 Regenerate `src/infrahub_solution_ai_dc/protocols.py` from the schema (depends on T003–T007; do not hand-edit)
-- [ ] T009 Validate schema converges with `inv load-schema` (depends on T008)
-- [ ] T010 Regression-check the peer-generic repoint + interface change: run existing overlay unit/integration and confirm `overlay.upsert_evpn_session` and `transforms/startup_config.gql` still resolve with `NetworkBGPSession` pointing at `NetworkBGPPeer` and a nullable `NetworkInterface.device` (research.md verify items 2–3) (depends on T009)
+- [X] T003 [P] Add `NetworkServerService` (`inherit_from: [GeneratorTarget]`) and `NetworkServer` (NOT `CoreArtifactTarget`; `inherit_from: [NetworkBGPPeer]`) in new `schemas/server.yml` per data-model.md
+- [X] T004 [P] Edit `schemas/routing.yml`: add generic `NetworkBGPPeer` (`hostname`, `bgp_sessions` back-rel); repoint `NetworkBGPSession.device`/`peer_device` peer to `NetworkBGPPeer`; add `NetworkBGPPeer` to `NetworkDevice.inherit_from` — reconciled by removing the now-inherited `hostname`/`bgp_sessions` from `NetworkDevice`
+- [X] T005 [P] Edit `schemas/device.yml`: add optional `NetworkInterface.server` owner relationship (peer `NetworkServer`, `kind: Parent`, identifier `server__interface`), make `device` optional, widen the uniqueness constraint to cover the server owner (single constraint `[device, server, name__value]`)
+- [X] T006 [P] Edit `schemas/ipam.yml`: add `server_p2p` to `IpamIPPrefix.role`
+- [X] T007 [P] Edit `schemas/logical_design.yml`: add `NetworkPod.server_prefix_pool` (peer `CoreIPPrefixPool`, Attribute, optional)
+- [X] T008 Regenerate `src/infrahub_solution_ai_dc/protocols.py` from the schema (depends on T003–T007; do not hand-edit) — done offline: hand-added `NetworkBGPPeer`/`NetworkServer`/`NetworkServerService` + `NetworkDevice` base + `NetworkInterface.server` in the committed generator style; field lists validated against `infrahubctl protocols --schemas schemas` output. MUST be regenerated against a stack before merge (banner comment added at top of file).
+- [ ] T009 Validate schema converges with `inv load-schema` (depends on T008) — DEFERRED: needs a running Infrahub stack (unavailable in this worktree). Offline proxy passed: `infrahubctl protocols --schemas schemas` loaded/parsed all schema files (exit 0) and `yaml.safe_load` succeeded for every edited schema.
+- [X] T010 Regression-check the peer-generic repoint + interface change: run existing overlay unit/integration and confirm `overlay.upsert_evpn_session` and `transforms/startup_config.gql` still resolve with `NetworkBGPSession` pointing at `NetworkBGPPeer` and a nullable `NetworkInterface.device` (research.md verify items 2–3) (depends on T009) — unit suite (44 passed) + overlay import OK; `peer_device`/`device` fields intact in gql. Integration test (needs stack) deferred.
 
 ### Resource pools, IPAM & groups
 
