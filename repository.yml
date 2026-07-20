@@ -5,4 +5,4 @@ spec:
   kind: CoreRepository
   data:
     - name: test-repository
-      location: "/upstream"
+      location: "https://github.com/opsmill/infrahub-solution-ai-dc"

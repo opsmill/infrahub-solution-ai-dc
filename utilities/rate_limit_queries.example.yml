@@ -1,0 +1,230 @@
+---
+# Example query profile for utilities/rate_limit_loadtest.py
+#
+# Each top-level key is an admission priority (high / medium / low). The load generator
+# sends each priority's requests at its own `rate` (requests/second), tagging them with the
+# matching `X-Priority` header, and rotates through that priority's `queries` list.
+#
+# Override any rate from the CLI with --rate-high / --rate-medium / --rate-low.
+# Set a rate to 0 (or omit the priority) to disable that stream.
+#
+# The queries below hit built-in nodes that exist on a fresh stack. Swap them for queries
+# that match your data. Cost is intentionally graded: cheap for high, heavier for low, so
+# the streams put different real pressure on the server — not just a different header.
+
+high:
+  # Low request rate, cheap query: the traffic that must keep flowing under load.
+  rate: 20
+  queries:
+    - name: fabric
+      query: |
+        query {
+          NetworkFabric {
+            edges {
+              node {
+                id
+                name { value }
+              }
+            }
+          }
+        }
+
+medium:
+  rate: 60
+  queries:
+    - name: racks
+      query: |
+        query {
+          LocationRack {
+            edges {
+              node {
+                name { value }
+              }
+            }
+          }
+        }
+    - name: tag_names
+      query: |
+        query {
+          BuiltinTag {
+            edges {
+              node {
+                name { value }
+              }
+            }
+          }
+        }
+
+low:
+  # High request rate, heavier query: the bulk traffic that should shed first under load.
+  rate: 100
+  queries:
+    - name: device
+      query: |
+        {
+          NetworkDevice(hostname__value: "leaf-pod-a2-1-1") {
+            edges {
+              node {
+                __typename
+                hostname {
+                  value
+                }
+                role {
+                  value
+                }
+                asn {
+                  value
+                }
+                loopback_ip {
+                  node {
+                    __typename
+                    address {
+                      ip
+                    }
+                  }
+                }
+                vtep_ip {
+                  node {
+                    __typename
+                    address {
+                      value
+                    }
+                  }
+                }
+                pod {
+                  node {
+                    __typename
+                    parent {
+                      node {
+                        __typename
+                        ... on NetworkFabric {
+                          overlay_asn {
+                            value
+                          }
+                          anycast_gateway_mac {
+                            value
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                interfaces {
+                  edges {
+                    node {
+                      __typename
+                      name {
+                        value
+                      }
+                      description {
+                        value
+                      }
+                      role {
+                        value
+                      }
+                      status {
+                        value
+                      }
+                      ip_address {
+                        node {
+                          __typename
+                          address {
+                            value
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                bgp_sessions {
+                  edges {
+                    node {
+                      __typename
+                      name {
+                        value
+                      }
+                      remote_as {
+                        value
+                      }
+                      rr_client {
+                        value
+                      }
+                      peer_device {
+                        node {
+                          __typename
+                          hostname {
+                            value
+                          }
+                          loopback_ip {
+                            node {
+                              __typename
+                              address {
+                                ip
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                segments {
+                  edges {
+                    node {
+                      __typename
+                      name {
+                        value
+                      }
+                      vlan_id {
+                        value
+                      }
+                      l2vni {
+                        value
+                      }
+                      route_target {
+                        value
+                      }
+                      routed {
+                        value
+                      }
+                      subnet {
+                        node {
+                          __typename
+                          prefix {
+                            value
+                          }
+                        }
+                      }
+                      gateway {
+                        node {
+                          __typename
+                          address {
+                            value
+                          }
+                        }
+                      }
+                      vrf {
+                        node {
+                          __typename
+                          name {
+                            value
+                          }
+                          l3vni {
+                            value
+                          }
+                          l3_vlan_id {
+                            value
+                          }
+                          route_target {
+                            value
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+

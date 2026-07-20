@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Infrahub Solution AI DC"
 readme = "README.md"
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <3.15"
 dependencies = [
     "httpx>=0.28.1",
 ]

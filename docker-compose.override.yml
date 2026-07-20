@@ -7,6 +7,7 @@ x-infrahub-custom-build: &infrahub_custom_build
     INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT: true
     INFRAHUB_TIMEOUT: 180
     INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES: '["^demo/.*$"]'
+    INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR: "0.5"
   build:
     context: .
     dockerfile: Dockerfile
@@ -31,3 +32,7 @@ services:
     volumes:
       - ./:/upstream
       - ./src:/opt/local/src
+      # # When the checkout is a git worktree (e.g. an emdash worktree), /upstream/.git
+      # # is a pointer file into the main repo's .git. Mount that main .git at the same
+      # # absolute host path so the pointer resolves and /upstream is a valid git remote.
+      # - "${EMDASH_ROOT_PATH}/.git:${EMDASH_ROOT_PATH}/.git:ro"

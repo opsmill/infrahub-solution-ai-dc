@@ -1,0 +1,9 @@
+Rate-limit load test — 120s
+
+priority   offered     2xx     429   err   shed%   p50 ms   p95 ms   p99 ms   max ms
+------------------------------------------------------------------------------------
+high          2401     631     443  1327   18.5%  12995.4  15209.3  17004.0  19182.4
+medium        7201    1756    1608  3837   22.3%  12199.0  14957.9  15930.3  17674.5
+low          12001    3405    2116  6480   17.6%  18471.2  21965.1  25578.1  27117.8
+
+Response-time percentiles cover 2xx responses only (429s are shed near-instantly).
