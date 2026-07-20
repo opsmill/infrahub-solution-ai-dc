@@ -28,8 +28,8 @@ testing.
 
 **Purpose**: Confirm the working environment; no product code.
 
-- [ ] T001 Run `uv sync --all-packages` and confirm work is on branch `dga/feat-server-cilium-r9uuo`
-- [ ] T002 [P] Skim implementation references: `dev/adr/0002` (standalone generator), `0004` (materialized placement), `0005` (stored BGP sessions), `CONTEXT.md`, and `specs/003-server-service/` (plan/data-model/contracts/quickstart) — no file changes
+- [X] T001 Run `uv sync --all-packages` and confirm work is on branch `dga/feat-server-cilium-r9uuo`
+- [X] T002 [P] Skim implementation references: `dev/adr/0002` (standalone generator), `0004` (materialized placement), `0005` (stored BGP sessions), `CONTEXT.md`, and `specs/003-server-service/` (plan/data-model/contracts/quickstart) — no file changes
 
 ---
 
