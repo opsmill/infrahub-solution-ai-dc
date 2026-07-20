@@ -119,4 +119,4 @@ broad-blast-radius schema change and are recorded for follow-up.
 3. **Decide the eBGP-in-VRF question** (MED): confirm whether the L3 server neighbor should render inside the tenant VRF address-family or is intentionally global for v1.
 4. **Then**: `/opsmill-dev-pr` to open the PR (do not push from here — the workflow stops before PR).
 
-_Report generated at Phase 7 of `speckit-opsmill-implement`. Head commit `8c01bb3`._
+*Report generated at Phase 7 of `speckit-opsmill-implement`. Head commit `8c01bb3`.*
