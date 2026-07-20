@@ -22,6 +22,7 @@ from infrahub_solution_ai_dc.servers import (
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
+    validate_explicit_port,
     validate_service,
 )
 
@@ -299,3 +300,51 @@ class TestValidateService:
         """An L3 service that also names a segment is a contradictory request and raises."""
         with pytest.raises(ValueError, match="contradictory"):
             validate_service("l3", "cilium-worker-1", "vrf-blue", segment_id="seg-l2", segment_vrf_id="vrf-blue")
+
+
+class TestValidateExplicitPort:
+    """Fail-loud validation of an explicitly-requested leaf port (US3, pure — no client needed).
+
+    The rack∈fabric and port-on-a-leaf-of-the-rack checks are async graph reads in the
+    ``ServerGenerator`` (``resolve_explicit_placement``); the role + free checks are pure and pinned
+    here. ``rack_name`` is used only for the error message.
+    """
+
+    def test_free_server_port_is_honored(self) -> None:
+        """A free ``role:server`` port passes validation (no raise) — the honor case."""
+        port = _interface("Ethernet5", role="server")
+
+        validate_explicit_port(port, "Rack-A")  # must not raise
+
+    def test_occupied_cabled_port_fails_loud(self) -> None:
+        """A ``role:server`` port already cabled (link set) is rejected, naming the port."""
+        port = _interface("Ethernet5", role="server", link=_Related())
+
+        with pytest.raises(ValueError, match=r"Ethernet5.*already in use"):
+            validate_explicit_port(port, "Rack-A")
+
+    def test_port_with_ip_address_fails_loud(self) -> None:
+        """A ``role:server`` port that already carries an IP address is rejected."""
+        port = _interface("Ethernet5", role="server", ip_address=_Related())
+
+        with pytest.raises(ValueError, match="already in use"):
+            validate_explicit_port(port, "Rack-A")
+
+    def test_wrong_role_port_fails_loud(self) -> None:
+        """A free but wrong-role port is rejected, reporting the offending role."""
+        port = _interface("Ethernet5", role="uplink")
+
+        with pytest.raises(ValueError, match=r"role.*not 'server'"):
+            validate_explicit_port(port, "Rack-A")
+
+    def test_explicit_rack_with_no_free_port_selects_none(self) -> None:
+        """Explicit rack + no port: the pure free-port scan returns None (generator then fails loud).
+
+        This pins the 'rack with no free port' precondition for the explicit path where a rack is
+        named without a port — the generator's ``select_leaf_port`` turns this ``None`` into a
+        fail-loud ``ValueError``.
+        """
+        occupied = _interface("Ethernet1", role="server", ip_address=_Related(), link=_Related())
+        wrong_role = _interface("Ethernet2", role="uplink")
+
+        assert select_free_server_port([occupied, wrong_role]) is None

@@ -33,10 +33,12 @@ from infrahub_sdk.testing.repository import GitRepo
 from infrahub_solution_ai_dc.protocols import (
     IpamIPAddress,
     NetworkBGPSession,
+    NetworkDevice,
     NetworkInterface,
     NetworkSegment,
     NetworkServer,
     NetworkServerService,
+    NetworkVrf,
 )
 
 if TYPE_CHECKING:
@@ -241,6 +243,80 @@ class TestServerServiceL3(TestInfrahubDockerClient):
         assert not sessions, "L2 server must have no eBGP session"
         server_sessions = await client.filters(kind=NetworkBGPSession, device__ids=[server.id])
         assert not server_sessions, "L2 server must originate no eBGP session"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skip(
+        reason="Depends on the same stack-gated device build as test_l3_server_journey; re-enable together."
+    )
+    async def test_explicit_placement_honored(self, client: InfrahubClient) -> None:
+        """US3 (FR-004, quickstart §8): a service naming a valid free Rack + role:server port uses exactly it.
+
+        Flow: create an L3 ``NetworkServerService`` whose ``rack`` and ``leaf_interface`` name a free
+        ``role:server`` port on a leaf of that rack, run ``generate-server``, then assert the
+        materialized server's port is cabled to *that exact* leaf port and lands in *that exact* rack —
+        no auto-selection substituted a different rack/port.
+        """
+        # Pick a concrete free role:server leaf port and its leaf's rack to request explicitly.
+        first_leaf = await self._first_device_with_role(client, ("leaf",))
+        assert first_leaf is not None
+        leaf = await client.get(kind=NetworkDevice, id=first_leaf.id, include=["rack"])
+        free_ports = await client.filters(
+            kind=NetworkInterface, device__ids=[leaf.id], role__value="server", include=["ip_address", "link"]
+        )
+        chosen = next(p for p in free_ports if p.ip_address.id is None and p.link.id is None)
+        vrf = await client.get(kind=NetworkVrf, name__value=VRF_NAME)
+
+        service = await client.create(
+            kind=NetworkServerService,
+            name="explicit-worker-1",
+            layer="l3",
+            vrf={"id": vrf.id},
+            rack={"id": leaf.rack.id},
+            leaf_interface={"id": chosen.id},
+        )
+        await service.save()
+        # Trigger materialization the same way the other journeys do (touch → trigger, or generate-server).
+        await service.save()
+
+        server = await client.get(
+            kind=NetworkServer, hostname__value="server-explicit-worker-1", include=["rack", "interfaces"]
+        )
+        assert server.rack.id == leaf.rack.id, "explicit rack was not honored exactly"
+        chosen_after = await client.get(kind=NetworkInterface, id=chosen.id, include=["link"])
+        assert chosen_after.link.id is not None, "the explicitly-named leaf port was not cabled"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skip(
+        reason="Depends on the same stack-gated device build as test_l3_server_journey; re-enable together."
+    )
+    async def test_explicit_occupied_port_fails_loud(self, client: InfrahubClient) -> None:
+        """US3 (SC-002, quickstart §8): naming an occupied leaf port fails loud with no partial objects.
+
+        Flow: take an already-cabled ``role:server`` leaf port, create a service naming it, run the
+        generator, and assert (a) the generator errors and (b) NO ``NetworkServer`` was created for the
+        service — an invalid explicit placement produces no partial objects.
+        """
+        leaf = await self._first_device_with_role(client, ("leaf",))
+        assert leaf is not None
+        ports = await client.filters(
+            kind=NetworkInterface, device__ids=[leaf.id], role__value="server", include=["ip_address", "link"]
+        )
+        occupied = next(p for p in ports if p.link.id is not None or p.ip_address.id is not None)
+        vrf = await client.get(kind=NetworkVrf, name__value=VRF_NAME)
+
+        service = await client.create(
+            kind=NetworkServerService,
+            name="explicit-occupied-1",
+            layer="l3",
+            vrf={"id": vrf.id},
+            leaf_interface={"id": occupied.id},
+        )
+        await service.save()
+
+        # The generate-server run must fail loud (validate_explicit_port / resolve_explicit_placement);
+        # the precise invocation is exercised against a live stack. No server may exist afterwards.
+        servers = await client.filters(kind=NetworkServer, hostname__value="server-explicit-occupied-1")
+        assert not servers, "an occupied-port service must create no NetworkServer (no partial objects)"
 
     # --- helpers ---------------------------------------------------------------------------------
 

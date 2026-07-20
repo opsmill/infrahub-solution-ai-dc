@@ -22,10 +22,16 @@ from infrahub_solution_ai_dc.servers import (
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
+    validate_explicit_port,
     validate_service,
 )
 
-from .generate_server_query import ServerGeneratorQuery, ServerGeneratorQueryServiceNode
+from .generate_server_query import (
+    ServerGeneratorQuery,
+    ServerGeneratorQueryServiceNode,
+    _LeafInterfaceNode,
+    _RackNode,
+)
 
 SERVER_ASN_POOL = "Server ASN Pool"
 SERVER_PORT_NAME = "eth1"  # deterministic name of the server's own leaf-facing port
@@ -53,8 +59,9 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     L2 branch (:meth:`attach_segment_rack`) instead adds the chosen rack to the segment's placement and creates
     no BGP/IP. :meth:`servers.validate_service` fail-loud-rejects contradictory requests before any write.
 
-    Extension seam (later chunk): :meth:`resolve_placement` is where explicit ``rack``/``leaf_interface``
-    honoring lands (US3/T036); ``service`` is threaded through for that future use.
+    Placement (:meth:`resolve_placement`) is automatic by default (least-utilized rack + lowest free
+    ``role:server`` port) and honors an explicit ``rack``/``leaf_interface`` exactly when the service names
+    one (:meth:`resolve_explicit_placement`), failing loud on any invalid explicit placement (US3/FR-004).
     """
 
     logger = logging.getLogger("infrahub.tasks")
@@ -109,18 +116,109 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     async def resolve_placement(
         self, service: ServerGeneratorQueryServiceNode, fabric_id: str
     ) -> tuple[LocationRack, NetworkDevice, NetworkInterface]:
-        """Resolve (rack, leaf, leaf_port) for the attachment.
+        """Resolve (rack, leaf, leaf_port) for the attachment — automatic or explicit (US3/T036).
 
-        L3-core behaviour is fully automatic: pick the least-utilized eligible rack in the fabric, then the
-        lowest free ``role:server`` port among that rack's leaves. Explicit ``rack``/``leaf_interface``
-        honoring (US3/T036) extends this method; ``service`` is threaded through for that future use.
+        Automatic (neither ``rack`` nor ``leaf_interface`` on the service): pick the least-utilized
+        eligible rack in the fabric, then the lowest free ``role:server`` port among that rack's leaves.
+
+        Explicit (either provided): honor the request exactly via :meth:`resolve_explicit_placement`,
+        failing loud on any invalid placement. All validation happens **before** any object is created,
+        so a rejected request leaves no partial objects (FR-004/SC-002).
         """
-        _ = service  # explicit placement (rack/leaf_interface) is honored in US3/T036
+        explicit_rack = service.rack.node if service.rack and service.rack.node else None
+        explicit_port = (
+            service.leaf_interface.node if service.leaf_interface and service.leaf_interface.node else None
+        )
 
-        rack = await self.select_rack(fabric_id)
-        leaf, leaf_port = await self.select_leaf_port(rack)
+        if explicit_rack is None and explicit_port is None:
+            rack = await self.select_rack(fabric_id)
+            leaf, leaf_port = await self.select_leaf_port(rack)
+        else:
+            rack, leaf, leaf_port = await self.resolve_explicit_placement(explicit_rack, explicit_port, fabric_id)
+
         self.logger.info(f"Placement: rack {rack.name.value}, leaf {leaf.hostname.value}, port {leaf_port.name.value}")
         return rack, leaf, leaf_port
+
+    async def resolve_explicit_placement(
+        self,
+        explicit_rack: _RackNode | None,
+        explicit_port: _LeafInterfaceNode | None,
+        fabric_id: str,
+    ) -> tuple[LocationRack, NetworkDevice, NetworkInterface]:
+        """Honor an explicit ``rack``/``leaf_interface`` exactly, or fail loud (US3, FR-004/SC-002).
+
+        Validation order (all reads, all before any write — a rejection leaves no partial objects):
+
+        * an explicit rack must belong to the service's fabric;
+        * a rack given without a port falls back to the lowest free ``role:server`` port on it;
+        * an explicit port is re-fetched (the generator query omits ``ip_address``/``link``), its leaf
+          resolved, and the chosen rack taken as the explicit rack or the port's leaf's rack;
+        * the port must sit on a leaf of the chosen rack, and be ``role:server`` + free
+          (:func:`validate_explicit_port`).
+
+        Last-free-port contention is intentionally **not** locked here: two services racing for the same
+        port both pass this read-time check, but Infrahub's write side (interface/link uniqueness plus
+        upsert-by-name on ``save``) means at most one link is materialized — the loser's ``save`` fails
+        loud rather than double-booking the port. Determinism relies on that server-side constraint, not
+        on a bespoke lock in the generator.
+        """
+        fabric_rack_ids = await self._fabric_rack_ids(fabric_id)
+
+        if explicit_rack is not None and explicit_rack.id not in fabric_rack_ids:
+            msg = (
+                f"Cannot honor explicit rack {explicit_rack.id!r}: it is not a rack of the "
+                f"service's fabric {fabric_id!r}"
+            )
+            raise ValueError(msg)
+
+        if explicit_port is None:
+            # Rack given without a port: honor the rack, auto-pick its lowest free role:server port.
+            assert explicit_rack is not None
+            rack = await self.client.get(kind=LocationRack, id=explicit_rack.id)
+            leaf, leaf_port = await self.select_leaf_port(rack)
+            return rack, leaf, leaf_port
+
+        # A port is named: re-fetch it fully (the query omits ip_address/link) and resolve its leaf.
+        leaf_port = await self.client.get(
+            kind=NetworkInterface, id=explicit_port.id, include=["ip_address", "link", "device"]
+        )
+        leaf_id = leaf_port.device.id
+        if leaf_id is None:
+            msg = f"Cannot honor explicit leaf_interface {explicit_port.id!r}: it is not on any device (not a leaf port)"
+            raise ValueError(msg)
+        leaf = await self.client.get(kind=NetworkDevice, id=leaf_id, include=["rack"])
+
+        # Resolve the chosen rack: the explicit one (validated above) or the port's leaf's rack.
+        rack_id = explicit_rack.id if explicit_rack is not None else leaf.rack.id
+        if rack_id is None:
+            msg = f"Cannot honor explicit leaf_interface {explicit_port.id!r}: its leaf {leaf_id!r} is in no rack"
+            raise ValueError(msg)
+        if explicit_rack is None and rack_id not in fabric_rack_ids:
+            msg = (
+                f"Cannot honor explicit leaf_interface {explicit_port.id!r}: its leaf's rack {rack_id!r} "
+                f"is not in the service's fabric {fabric_id!r}"
+            )
+            raise ValueError(msg)
+        rack = await self.client.get(kind=LocationRack, id=rack_id)
+
+        # The port must sit on a leaf of the chosen rack (trivially true when the rack was derived).
+        if leaf.rack.id != rack.id:
+            msg = (
+                f"Cannot honor explicit leaf_interface {leaf_port.name.value!r}: its leaf "
+                f"{leaf.hostname.value!r} is not on rack {rack.name.value!r}"
+            )
+            raise ValueError(msg)
+
+        # role:server + free (pure, unit-tested).
+        validate_explicit_port(leaf_port, rack.name.value)
+        return rack, leaf, leaf_port
+
+    async def _fabric_rack_ids(self, fabric_id: str) -> set[str]:
+        """Return the set of ``LocationRack`` ids belonging to the fabric (via its pods)."""
+        pods = await self.client.filters(kind=NetworkPod, parent__ids=[fabric_id])
+        pod_ids = [pod.id for pod in pods]
+        racks = await self.client.filters(kind=LocationRack, pod__ids=pod_ids) if pod_ids else []
+        return {rack.id for rack in racks}
 
     async def select_rack(self, fabric_id: str) -> LocationRack:
         """Return the least-utilized rack in the fabric (fewest attached servers), fail-loud if none."""

@@ -91,6 +91,15 @@ def select_least_utilized_rack(
     return min(racks, key=sort_key)
 
 
+def _server_port_is_unused(interface: NetworkInterface) -> bool:
+    """Return True when a ``role: server`` interface is unused — no IP address and no cabled link.
+
+    The "free" half of :func:`select_free_server_port`, factored out so explicit-placement validation
+    (:func:`validate_explicit_port`) can reject an occupied port using the *same* definition of unused.
+    """
+    return not _relationship_is_set(interface.ip_address) and not _relationship_is_set(interface.link)
+
+
 def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkInterface | None:
     """Return the lowest-numbered free ``role: server`` interface, or ``None`` if there is none.
 
@@ -102,15 +111,39 @@ def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkIn
     free_by_name = {
         interface.name.value: interface
         for interface in interfaces
-        if interface.role.value == "server"
-        and not _relationship_is_set(interface.ip_address)
-        and not _relationship_is_set(interface.link)
+        if interface.role.value == "server" and _server_port_is_unused(interface)
     }
     if not free_by_name:
         return None
 
     lowest_name = sort_interface_list(list(free_by_name))[0]
     return free_by_name[lowest_name]
+
+
+def validate_explicit_port(interface: NetworkInterface, rack_name: str) -> None:
+    """Fail-loud-validate an explicitly requested leaf port (US3/FR-004, ``vendors.py`` convention).
+
+    Pure and synchronous so the honor-or-fail decision is directly unit-testable (unlike the async
+    graph checks — rack∈fabric and port-on-a-leaf-of-the-rack — the ``ServerGenerator`` does around
+    it). A valid explicit port must have ``role == "server"`` and be **unused** (the same "free"
+    definition :func:`select_free_server_port` uses). Raises ``ValueError`` naming the port and its
+    rack on either violation; the generator calls this **before** any write, so a rejected explicit
+    placement produces no partial objects. ``rack_name`` is used only for the error message.
+    """
+    port_name = interface.name.value
+    role = interface.role.value
+    if role != "server":
+        msg = (
+            f"Cannot honor explicit leaf_interface {port_name!r} on rack {rack_name!r}: "
+            f"its role is {role!r}, not 'server'"
+        )
+        raise ValueError(msg)
+    if not _server_port_is_unused(interface):
+        msg = (
+            f"Cannot honor explicit leaf_interface {port_name!r} on rack {rack_name!r}: "
+            f"the port is already in use (it has an IP address or a cabled link)"
+        )
+        raise ValueError(msg)
 
 
 async def upsert_ebgp_session(
