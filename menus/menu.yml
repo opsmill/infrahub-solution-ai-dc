@@ -67,6 +67,23 @@ spec:
                   kind: NetworkBGPSession
                   icon: "mdi:swap-horizontal"
 
+          - namespace: Network
+            name: Servers
+            label: Servers
+            icon: "mdi:server-network"
+            children:
+              data:
+                - namespace: Network
+                  name: ServerService
+                  label: Server Services
+                  kind: NetworkServerService
+                  icon: "mdi:file-cog"
+                - namespace: Network
+                  name: Server
+                  label: Servers
+                  kind: NetworkServer
+                  icon: "mdi:server"
+
     - namespace: Location
       name: Menu
       label: Location

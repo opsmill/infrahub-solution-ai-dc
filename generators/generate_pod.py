@@ -40,6 +40,7 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     vtep_pool: CoreIPAddressPool
 
     pod_prefix_pool: CoreIPPrefixPool
+    server_prefix_pool: CoreIPPrefixPool
     spine_switches: list[NetworkDevice]
     super_spine_switches: list[NetworkDevice]
     spine_super_spine_ids: dict[str, set[str]]
@@ -195,10 +196,34 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
         await self.vtep_pool.save(allow_upsert=True)
 
+        # Per-pod server /31 pool: carve a /24 from the global ServerSupernetPool (192.168.0.0/16,
+        # seeded in objects/04_ipam.yml) and hand out /31s for server<->leaf p2p links. Mirrors the
+        # prefix_pool/vtep_pool creation above and stays distinct from the underlay/overlay supernets.
+        server_supernet_pool = await self.client.get(CoreIPPrefixPool, name__value="ServerSupernetPool")
+
+        pod_server_supernet = await self.client.allocate_next_ip_prefix(
+            resource_pool=server_supernet_pool,
+            identifier=f"{self.pod_id}-server",
+            member_type="prefix",
+            prefix_length=24,
+            data={"role": "server_p2p"},
+        )
+
+        self.server_prefix_pool = await self.client.create(
+            kind=CoreIPPrefixPool,
+            name=f"{self.fabric_name}-{self.pod_name}-server-prefix-pool",
+            default_prefix_type="IpamIPPrefix",
+            default_prefix_length=31,
+            ip_namespace={"hfid": ["default"]},
+            resources=[pod_server_supernet],
+        )
+        await self.server_prefix_pool.save(allow_upsert=True)
+
         pod = await self.client.get(kind=NetworkPod, id=self.pod_id)
         pod.loopback_pool = self.loopback_pool  # type: ignore[assignment]
         pod.prefix_pool = self.pod_prefix_pool  # type: ignore[assignment]
         pod.vtep_pool = self.vtep_pool  # type: ignore[assignment]
+        pod.server_prefix_pool = self.server_prefix_pool  # type: ignore[assignment]
         await pod.save(allow_upsert=True)
 
     async def configure_overlay(self) -> None:

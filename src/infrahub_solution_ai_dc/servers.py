@@ -1,0 +1,103 @@
+"""Server-attachment helpers for the Server service (connect L2/L3 servers to leaves).
+
+Two kinds of helper live here:
+
+- **Pure functions** — :func:`select_least_utilized_rack` and :func:`select_free_server_port` —
+  take plain node objects (no ``client``) so they are unit-testable with simple stubs, mirroring
+  the pure helpers in :mod:`infrahub_solution_ai_dc.overlay`.
+- **An SDK mutation** — :func:`upsert_ebgp_session` — creates the leaf<->server eBGP
+  ``NetworkBGPSession`` and is modeled on :func:`infrahub_solution_ai_dc.overlay.upsert_evpn_session`.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from netutils.interface import sort_interface_list
+
+from .protocols import NetworkBGPSession
+
+if TYPE_CHECKING:
+    import logging
+    from collections.abc import Iterable, Mapping, Sequence
+
+    from infrahub_sdk import InfrahubClient
+
+    from .protocols import LocationRack, NetworkBGPPeer, NetworkInterface
+
+
+def _relationship_is_set(related: object) -> bool:
+    """Return True when a to-one relationship points at a real node (a non-null ``id``)."""
+    if related is None:
+        return False
+    return getattr(related, "id", None) is not None
+
+
+def select_least_utilized_rack(
+    racks: Sequence[LocationRack],
+    server_counts: Mapping[str, int],
+) -> LocationRack | None:
+    """Return the eligible rack hosting the fewest servers, deterministically.
+
+    ``racks`` is the set of eligible racks; ``server_counts`` maps a rack ``id`` to the number of
+    servers already attached to it (a rack absent from the mapping counts as zero). Ties are broken
+    deterministically by the rack's ``index`` then its ``name`` so re-runs are stable. Returns
+    ``None`` when ``racks`` is empty (the caller decides whether that is fail-loud).
+    """
+    if not racks:
+        return None
+
+    def sort_key(rack: LocationRack) -> tuple[int, int, str]:
+        return (server_counts.get(rack.id, 0), rack.index.value, rack.name.value)
+
+    return min(racks, key=sort_key)
+
+
+def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkInterface | None:
+    """Return the lowest-numbered free ``role: server`` interface, or ``None`` if there is none.
+
+    An interface is *free* when its ``role`` is ``"server"`` and it is unused — no IP address and no
+    cabled link (both to-one relationships unset). "Lowest-numbered" is resolved with
+    ``netutils.sort_interface_list`` over the candidate names, the same ordering the cabling helpers
+    use, so selection is deterministic regardless of input order.
+    """
+    free_by_name = {
+        interface.name.value: interface
+        for interface in interfaces
+        if interface.role.value == "server"
+        and not _relationship_is_set(interface.ip_address)
+        and not _relationship_is_set(interface.link)
+    }
+    if not free_by_name:
+        return None
+
+    lowest_name = sort_interface_list(list(free_by_name))[0]
+    return free_by_name[lowest_name]
+
+
+async def upsert_ebgp_session(
+    client: InfrahubClient,
+    logger: logging.Logger,
+    device: NetworkBGPPeer,
+    peer: NetworkBGPPeer,
+    local_as: int,
+    remote_as: int,
+) -> None:
+    """Create or refresh the directional eBGP ipv4-unicast session from ``device`` toward ``peer``.
+
+    Sessions are named ``"<device>__<peer>"`` (the upsert key), so re-running a generator refreshes
+    the existing session instead of duplicating it. Unlike the iBGP EVPN sessions, a server<->leaf
+    eBGP session carries distinct ``local_as``/``remote_as`` and is never a route-reflector client.
+    """
+    session = await client.create(
+        kind=NetworkBGPSession,
+        name=f"{device.hostname.value}__{peer.hostname.value}",
+        device={"id": device.id},
+        peer_device={"id": peer.id},
+        local_as=local_as,
+        remote_as=remote_as,
+        address_family="ipv4_unicast",
+        rr_client=False,
+    )
+    await session.save(allow_upsert=True)
+    logger.info(f"eBGP session {session.name.value} (local_as={local_as}, remote_as={remote_as})")

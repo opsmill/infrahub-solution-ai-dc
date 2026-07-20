@@ -53,18 +53,18 @@ the per-Pod server /31 pool. **All user stories depend on this.**
 
 ### Resource pools, IPAM & groups
 
-- [ ] T011 [P] Add a global `CoreNumberPool` "Server ASN Pool" → `NetworkServer.asn` (range 4200000000–4294967294) in `objects/07_pools.yml` per contracts/infrahub-registration.md
-- [ ] T012 [P] Edit `objects/04_ipam.yml`: seed a `server_p2p` supernet prefix that the PodGenerator carves per-Pod into each pod's `server_prefix_pool`
-- [ ] T013 [P] Add a `server_services` `CoreStandardGroup` to `objects/01_groups.yml` (do NOT add any group for `NetworkServer`)
+- [X] T011 [P] Add a global `CoreNumberPool` "Server ASN Pool" → `NetworkServer.asn` (range 4200000000–4294967294) in `objects/07_pools.yml` per contracts/infrahub-registration.md
+- [X] T012 [P] Edit `objects/04_ipam.yml`: seed a `server_p2p` supernet prefix that the PodGenerator carves per-Pod into each pod's `server_prefix_pool`
+- [X] T013 [P] Add a `server_services` `CoreStandardGroup` to `objects/01_groups.yml` (do NOT add any group for `NetworkServer`)
 
 ### Shared helpers & per-Pod pool
 
-- [ ] T014 [P] Create `src/infrahub_solution_ai_dc/servers.py` with pure helpers — `select_least_utilized_rack(racks, server_counts)` (fewest servers; deterministic tie-break by rack index/name) and `select_free_server_port(interfaces)` (lowest free `role:server` interface) — plus `upsert_ebgp_session(client, logger, device, peer, local_as, remote_as)` (creates a `NetworkBGPSession` `"{a}__{b}"`, `address_family="ipv4_unicast"`, `rr_client=False`, `save(allow_upsert=True)`), modeled on `overlay.upsert_evpn_session`
-- [ ] T015 Extend `generators/generate_pod.py` `allocate_resource_pools()`: create + attach a per-Pod server /31 `CoreIPPrefixPool` (role `server_p2p`) on `pod.server_prefix_pool`, mirroring `prefix_pool`/`vtep_pool` (depends on T008)
+- [X] T014 [P] Create `src/infrahub_solution_ai_dc/servers.py` with pure helpers — `select_least_utilized_rack(racks, server_counts)` (fewest servers; deterministic tie-break by rack index/name) and `select_free_server_port(interfaces)` (lowest free `role:server` interface) — plus `upsert_ebgp_session(client, logger, device, peer, local_as, remote_as)` (creates a `NetworkBGPSession` `"{a}__{b}"`, `address_family="ipv4_unicast"`, `rr_client=False`, `save(allow_upsert=True)`), modeled on `overlay.upsert_evpn_session`
+- [X] T015 Extend `generators/generate_pod.py` `allocate_resource_pools()`: create + attach a per-Pod server /31 `CoreIPPrefixPool` (role `server_p2p`) on `pod.server_prefix_pool`, mirroring `prefix_pool`/`vtep_pool` (depends on T008)
 
 ### UI (optional)
 
-- [ ] T016 [P] Add a `Servers` menu group exposing `NetworkServerService`/`NetworkServer` in `menus/menu.yml`
+- [X] T016 [P] Add a `Servers` menu group exposing `NetworkServerService`/`NetworkServer` in `menus/menu.yml`
 
 **Checkpoint**: Schema loads; existing overlay generation is unchanged; the global Server ASN pool exists and
 each pod gets a `server_prefix_pool` — no server objects yet.

@@ -285,6 +285,7 @@ class NetworkPod(NetworkBuildingBlock, GeneratorTarget):
     prefix_pool: RelatedNode
     profiles: RelationshipManager
     racks: RelationshipManager
+    server_prefix_pool: RelatedNode
     spine_switch_template: RelatedNode
     subscriber_of_groups: RelationshipManager
     vtep_pool: RelatedNode

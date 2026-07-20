@@ -8,6 +8,11 @@ spec:
       role: supernet
     - prefix: 172.16.0.0/16
       role: overlay_supernet
+    # Server point-to-point supernet. Uses the 192.168.0.0/16 RFC1918 block so it never
+    # overlaps the underlay (10.0.0.0/8) or overlay (172.16.0.0/16) supernets. PodGenerator
+    # carves a per-Pod /24 from this into each pod's server_prefix_pool.
+    - prefix: 192.168.0.0/16
+      role: server_p2p
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -34,3 +39,18 @@ spec:
       ip_namespace: "default"
       resources:
         - "172.16.0.0/16"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreIPPrefixPool
+  data:
+    # Source pool the PodGenerator draws a per-Pod server supernet (/24) from; each pod then
+    # carves /31s out of its own server_prefix_pool for server<->leaf links.
+    - name: ServerSupernetPool
+      default_member_type: prefix
+      default_prefix_type: "IpamIPPrefix"
+      default_prefix_length: 24
+      ip_namespace: "default"
+      resources:
+        - "192.168.0.0/16"
