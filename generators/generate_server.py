@@ -127,9 +127,7 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         so a rejected request leaves no partial objects (FR-004/SC-002).
         """
         explicit_rack = service.rack.node if service.rack and service.rack.node else None
-        explicit_port = (
-            service.leaf_interface.node if service.leaf_interface and service.leaf_interface.node else None
-        )
+        explicit_port = service.leaf_interface.node if service.leaf_interface and service.leaf_interface.node else None
 
         if explicit_rack is None and explicit_port is None:
             rack = await self.select_rack(fabric_id)
@@ -186,7 +184,9 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         )
         leaf_id = leaf_port.device.id
         if leaf_id is None:
-            msg = f"Cannot honor explicit leaf_interface {explicit_port.id!r}: it is not on any device (not a leaf port)"
+            msg = (
+                f"Cannot honor explicit leaf_interface {explicit_port.id!r}: it is not on any device (not a leaf port)"
+            )
             raise ValueError(msg)
         leaf = await self.client.get(kind=NetworkDevice, id=leaf_id, include=["rack"])
 

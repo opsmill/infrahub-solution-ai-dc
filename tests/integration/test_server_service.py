@@ -130,7 +130,9 @@ class TestServerServiceL3(TestInfrahubDockerClient):
         server = await client.get(kind=NetworkServer, hostname__value=SERVER_HOSTNAME, include=["interfaces"])
         assert server is not None, f"expected NetworkServer {SERVER_HOSTNAME!r} after generator run"
 
-        server_ports = await client.filters(kind=NetworkInterface, server__ids=[server.id], include=["ip_address", "link"])
+        server_ports = await client.filters(
+            kind=NetworkInterface, server__ids=[server.id], include=["ip_address", "link"]
+        )
         assert server_ports, "server has no interface"
         server_port = server_ports[0]
         assert server_port.link.id is not None, "server port is not cabled to a leaf"
