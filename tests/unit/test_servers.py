@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 import pytest
 
 from infrahub_solution_ai_dc.servers import (
+    require_allocated,
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
@@ -126,6 +127,31 @@ class TestSelectLeastUtilizedRack:
     def test_empty_racks_returns_none(self) -> None:
         """No eligible rack -> None (the ServerGenerator turns this into a fail-loud ValueError)."""
         assert select_least_utilized_rack([], {}) is None
+
+    def test_repeated_placement_spreads_evenly(self) -> None:
+        """SC-005: placing N servers one at a time keeps the racks balanced within one server.
+
+        This drives the placement loop the ServerGenerator performs across successive service
+        materializations: each call picks the current least-utilized rack, and that rack's count is
+        then incremented. After every placement the spread (max - min server count across racks) must
+        stay <= 1, proving the even-spread success criterion.
+        """
+        racks = [
+            _rack("r-1", index=1, name="Rack-A"),
+            _rack("r-2", index=2, name="Rack-B"),
+            _rack("r-3", index=3, name="Rack-C"),
+        ]
+        counts: dict[str, int] = {}
+
+        for _ in range(10):
+            winner = select_least_utilized_rack(racks, counts)
+            assert winner is not None
+            counts[winner.id] = counts.get(winner.id, 0) + 1
+            # After each placement, every rack (incl. the ones never chosen yet -> 0) stays balanced.
+            per_rack = [counts.get(rack.id, 0) for rack in racks]
+            assert max(per_rack) - min(per_rack) <= 1
+
+        assert sum(counts.values()) == 10
 
 
 class TestSelectFreeServerPort:
@@ -337,14 +363,15 @@ class TestValidateExplicitPort:
         with pytest.raises(ValueError, match=r"role.*not 'server'"):
             validate_explicit_port(port, "Rack-A")
 
-    def test_explicit_rack_with_no_free_port_selects_none(self) -> None:
-        """Explicit rack + no port: the pure free-port scan returns None (generator then fails loud).
 
-        This pins the 'rack with no free port' precondition for the explicit path where a rack is
-        named without a port — the generator's ``select_leaf_port`` turns this ``None`` into a
-        fail-loud ``ValueError``.
-        """
-        occupied = _interface("Ethernet1", role="server", ip_address=_Related(), link=_Related())
-        wrong_role = _interface("Ethernet2", role="uplink")
+class TestRequireAllocated:
+    """Pure pool-exhaustion guard (the fail-loud path the ServerGenerator uses for pool allocation)."""
 
-        assert select_free_server_port([occupied, wrong_role]) is None
+    def test_none_fails_loud_naming_the_pool(self) -> None:
+        """A ``None`` allocation (exhausted/misnamed pool) raises, naming the offending pool."""
+        with pytest.raises(ValueError, match="Server ASN Pool"):
+            require_allocated(None, "Server ASN Pool")
+
+    def test_value_passes_through_unchanged(self) -> None:
+        """A real allocated value is returned unchanged (the normal case)."""
+        assert require_allocated(4200000001, "Server ASN Pool") == 4200000001

@@ -101,12 +101,14 @@ router bgp {{ overlay_asn }}
       {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
     {% endif %}
   {% endfor %}
+{% if sns.addr %}
   neighbor {{ sns.addr }}
     remote-as {{ session.remote_as.value }}
     no shutdown
     address-family ipv4 unicast
       activate
 !
+{% endif %}
 {% else %}
   neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }}
     remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}

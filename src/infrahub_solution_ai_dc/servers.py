@@ -26,6 +26,19 @@ if TYPE_CHECKING:
     from .protocols import LocationRack, NetworkBGPPeer, NetworkInterface
 
 
+def require_allocated(value: int | None, pool_name: str) -> int:
+    """Return ``value`` unchanged, or fail loud when a pool never allocated it (``vendors.py`` convention).
+
+    Pure guard for the generator's pool-exhaustion paths (ASN / prefix pool): an allocation that
+    silently yields ``None`` (an exhausted or misnamed pool) must fail loud rather than write a
+    half-configured object. Raises ``ValueError`` naming ``pool_name`` when ``value is None``.
+    """
+    if value is None:
+        msg = f"Pool {pool_name!r} did not allocate a value (pool exhausted or misnamed?)"
+        raise ValueError(msg)
+    return value
+
+
 def _relationship_is_set(related: object) -> bool:
     """Return True when a to-one relationship points at a real node (a non-null ``id``)."""
     if related is None:

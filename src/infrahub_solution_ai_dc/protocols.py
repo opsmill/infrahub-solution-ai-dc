@@ -3,7 +3,8 @@
 #
 # NOTE (feature 003-server-service, T008): the classes NetworkBGPPeer, NetworkServer, and
 # NetworkServerService below, plus the NetworkDevice base-class change (now also inherits
-# NetworkBGPPeer) and the new NetworkInterface.server relationship, were HAND-ADDED offline
+# NetworkBGPPeer), the new NetworkInterface.server relationship, and the new
+# NetworkPod.server_prefix_pool relationship, were HAND-ADDED offline
 # because no dedicated Infrahub stack was available for this worktree. They mirror the exact
 # style of the surrounding generated classes. This file MUST be regenerated with
 # "infrahubctl protocols" against a stack with the updated schema loaded before merge.

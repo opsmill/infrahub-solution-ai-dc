@@ -19,6 +19,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkServerService,
 )
 from infrahub_solution_ai_dc.servers import (
+    require_allocated,
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
@@ -156,11 +157,12 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         * the port must sit on a leaf of the chosen rack, and be ``role:server`` + free
           (:func:`validate_explicit_port`).
 
-        Last-free-port contention is intentionally **not** locked here: two services racing for the same
-        port both pass this read-time check, but Infrahub's write side (interface/link uniqueness plus
-        upsert-by-name on ``save``) means at most one link is materialized — the loser's ``save`` fails
-        loud rather than double-booking the port. Determinism relies on that server-side constraint, not
-        on a bespoke lock in the generator.
+        Last-free-port contention is **not** currently hard-enforced. Two services racing for the same
+        port both pass this read-time check, and nothing on the write side stops the second racer:
+        ``NetworkLink.endpoints`` carries no uniqueness constraint, and each server's link has a distinct
+        name, so the loser's ``save`` silently re-points ``leaf_port.link`` instead of failing loud.
+        Strict enforcement — a uniqueness constraint on the endpoint relationship, validated against a
+        running stack — is a deferred follow-up (it needs the stack to verify) and is not attempted here.
         """
         fabric_rack_ids = await self._fabric_rack_ids(fabric_id)
 
@@ -226,7 +228,14 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         pod_ids = [pod.id for pod in pods]
         racks = await self.client.filters(kind=LocationRack, pod__ids=pod_ids) if pod_ids else []
 
-        servers = await self.client.filters(kind=NetworkServer, include=["rack"])
+        # Count servers only within this fabric's racks (O(fabric), not instance-wide); servers on
+        # racks outside the fabric were discarded anyway, so scoping the query is behavior-preserving.
+        fabric_rack_ids = [rack.id for rack in racks]
+        servers = (
+            await self.client.filters(kind=NetworkServer, rack__ids=fabric_rack_ids, include=["rack"])
+            if fabric_rack_ids
+            else []
+        )
         server_counts: dict[str, int] = {}
         for existing in servers:
             rack_id = existing.rack.id
@@ -382,14 +391,10 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
             await server.save(allow_upsert=True, update_group_context=False)
             # Pool-allocated values are not readable on the returned node; re-fetch to read them.
             server = await self.client.get(kind=NetworkServer, id=server_id)
-        asn = server.asn.value
-        if asn is None:
-            msg = f"Server ASN pool {SERVER_ASN_POOL!r} did not allocate an ASN (pool exhausted?)"
-            raise ValueError(msg)
-        return asn
+        return require_allocated(server.asn.value, SERVER_ASN_POOL)
 
     async def resolve_overlay_asn(self, fabric_id: str) -> int:
-        """Return the fabric's overlay ASN (the leaf-side remote AS), fail-loud if not yet allocated."""
+        """Return the fabric's overlay ASN (the leaf's local AS / the server's remote AS), fail-loud if not yet allocated."""
         fabric = await self.client.get(kind=NetworkFabric, id=fabric_id)
         overlay_asn = fabric.overlay_asn.value
         if overlay_asn is None:

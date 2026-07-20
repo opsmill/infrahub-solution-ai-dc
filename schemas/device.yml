@@ -213,6 +213,10 @@ nodes:
         kind: Parent
         optional: true
         cardinality: one
+        description: >-
+          Owning fabric device (switch port). An interface has exactly ONE owner — either device (a
+          fabric device port) or server (a server port), never both and never neither; enforced by the
+          generators, not by the schema (both relationships are optional to allow the two shapes).
         identifier: device__interface
         order_weight: 10000
       - name: server
@@ -221,6 +225,10 @@ nodes:
         kind: Parent
         optional: true
         cardinality: one
+        description: >-
+          Owning server (server port). An interface has exactly ONE owner — either server (a server
+          port) or device (a fabric device port), never both and never neither; enforced by the
+          generators, not by the schema (both relationships are optional to allow the two shapes).
         identifier: server__interface
         order_weight: 11000
       - name: ip_address
