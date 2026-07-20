@@ -140,10 +140,10 @@ no partial objects; a service naming a valid free Rack+port uses exactly that Ra
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T039 [P] Run `inv lint` (yamllint + ruff ALL + mypy strict) and resolve findings across new/edited files
-- [ ] T040 [P] Run `inv test` (full unit + integration suite) and ensure green
-- [ ] T041 [P] Add a "Connect servers" feature note under `dev/` (or `docs/`) summarizing the Server service (links to ADR-0002/0004/0005 and CONTEXT.md)
-- [ ] T042 Run the full `quickstart.md` validation end-to-end (§1–8)
+- [X] T039 [P] Run `inv lint` (yamllint + ruff ALL + mypy strict) and resolve findings across new/edited files — CLEAN: `uv run inv lint` → rumdl "No issues found in 52 files", ruff "All checks passed!", mypy "no issues found in 41 source files" (no findings to fix)
+- [ ] T040 [P] Run `inv test` (full unit + integration suite) and ensure green — ⚠️ PARTIAL: unit suite green (`uv run pytest tests/unit/ -q` → **67 passed**, 2026-07-20T08:02:28Z, Python 3.12.13). Integration collects 15 tests (8 in `test_server_service.py`); the 5 server journeys are `@pytest.mark.skip`-gated (stack-only) and cannot run headless in this worktree (no Dockerized Infrahub stack). CI/stack command: `uv run pytest tests/integration/test_server_service.py`
+- [X] T041 [P] Add a "Connect servers" feature note under `dev/` (or `docs/`) summarizing the Server service (links to ADR-0002/0004/0005 and CONTEXT.md) — added `dev/guides/connect-servers.md` (design/implementation object, generator, L2/L3, placement, /31+ASN+eBGP, idempotency + checksum exclusion; links ADR-0002/0004/0005 + CONTEXT.md); rumdl clean. Placed in `dev/guides/` per AGENTS.md "human-facing reference" (docs/ mdx pages are the polished user site; this is the engineering feature note)
+- [ ] T042 Run the full `quickstart.md` validation end-to-end (§1–8) — ⚠️ PARTIAL: offline parts done — §1 static: `uv run inv lint` clean + `uv run pytest tests/unit/` **67 passed**; §2 schema YAML validity: all `schemas/*.yml` + `objects/13_servers.yml` parse via `yaml.safe_load_all`. §3–8 DEFERRED (need `inv load` + `inv start`, no stack in this worktree). Runbook: `inv load` → `inv start`, then walk quickstart §3–8 (L3 auto-connect + rendered leaf config + idempotency; L2 Segment placement; explicit placement honor-or-fail) and lift the skips on the `test_server_service.py` journeys
 
 ---
 
