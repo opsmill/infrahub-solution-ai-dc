@@ -34,6 +34,7 @@ from infrahub_solution_ai_dc.protocols import (
     IpamIPAddress,
     NetworkBGPSession,
     NetworkInterface,
+    NetworkSegment,
     NetworkServer,
     NetworkServerService,
 )
@@ -55,6 +56,11 @@ STARTUP_ARTIFACT = "Startup configuration"
 SERVICE_NAME = "cilium-worker-1"
 VRF_NAME = "blue-prod"
 SERVER_HOSTNAME = f"server-{SERVICE_NAME}"
+
+# Seed L2 server service (objects/13_servers.yml) naming the L2-only segment of the same VRF.
+L2_SERVICE_NAME = "web-host-1"
+L2_SEGMENT_NAME = "blue-l2"
+L2_SERVER_HOSTNAME = f"server-{L2_SERVICE_NAME}"
 
 
 class TestServerServiceL3(TestInfrahubDockerClient):
@@ -197,6 +203,44 @@ class TestServerServiceL3(TestInfrahubDockerClient):
         assert server_after.asn.value == server_before.asn.value, "re-run re-allocated the ASN"
         assert len(sessions_after) == len(sessions_before), "re-run changed the eBGP session count"
         assert leaf_after == leaf_before, "leaf artifact changed on an unchanged re-run (not idempotent)"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skip(
+        reason="Depends on the same stack-gated device build as test_l3_server_journey; re-enable together."
+    )
+    async def test_l2_server_journey(self, client: InfrahubClient) -> None:
+        """US2 (FR-006, quickstart §7): an L2 server is bridged into a segment; placement grows, no BGP/IP.
+
+        Flow: the seeded L2 ``NetworkServerService`` (naming segment ``blue-l2`` in VRF ``blue-prod``)
+        drove the ServerGenerator, so:
+          1. A ``NetworkServer`` exists, cabled (via a ``NetworkLink``) to a leaf's ``role:server`` port.
+          2. That leaf's Rack now appears in the segment's ``racks`` placement.
+          3. NO ``NetworkBGPSession`` and NO ``/31`` were created for the L2 server (no ASN either).
+        """
+        # --- server materialized + cabled --------------------------------------------------------
+        server = await client.get(kind=NetworkServer, hostname__value=L2_SERVER_HOSTNAME, include=["rack"])
+        assert server is not None, f"expected NetworkServer {L2_SERVER_HOSTNAME!r} after generator run"
+        assert server.rack.id is not None, "L2 server has no resolved rack"
+
+        server_ports = await client.filters(
+            kind=NetworkInterface, server__ids=[server.id], include=["ip_address", "link"]
+        )
+        assert server_ports, "L2 server has no interface"
+        server_port = server_ports[0]
+        assert server_port.link.id is not None, "L2 server port is not cabled to a leaf"
+
+        # --- the chosen leaf's rack is now in the segment's placement ----------------------------
+        segment = await client.get(kind=NetworkSegment, name__value=L2_SEGMENT_NAME, include=["racks"])
+        rack_ids = {peer.id for peer in segment.racks.peers}
+        assert server.rack.id in rack_ids, "the L2 server's rack was not added to the segment placement"
+
+        # --- NO BGP session and NO /31 (FR-006) --------------------------------------------------
+        assert server.asn.value is None, "L2 server must not be allocated an ASN"
+        assert server_port.ip_address.id is None, "L2 server port must not carry a /31"
+        sessions = await client.filters(kind=NetworkBGPSession, peer_device__ids=[server.id])
+        assert not sessions, "L2 server must have no eBGP session"
+        server_sessions = await client.filters(kind=NetworkBGPSession, device__ids=[server.id])
+        assert not server_sessions, "L2 server must originate no eBGP session"
 
     # --- helpers ---------------------------------------------------------------------------------
 

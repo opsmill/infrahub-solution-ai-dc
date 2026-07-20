@@ -16,10 +16,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, NamedTuple, cast
 
+import pytest
+
 from infrahub_solution_ai_dc.servers import (
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
+    validate_service,
 )
 
 if TYPE_CHECKING:
@@ -269,3 +272,30 @@ class TestUpsertEbgpSession:
         assert server_side["name"] == "server-cilium-worker-1__leaf-a1"
         assert server_side["local_as"] == server_asn
         assert server_side["remote_as"] == overlay_asn
+
+
+class TestValidateService:
+    """Fail-loud L2/L3 intent validation (pure, synchronous — the generator calls it before any write)."""
+
+    def test_l3_without_segment_is_valid(self) -> None:
+        """An L3 service naming no segment is the normal case: no raise."""
+        validate_service("l3", "cilium-worker-1", "vrf-blue", segment_id=None, segment_vrf_id=None)
+
+    def test_l2_with_segment_in_same_vrf_is_valid(self) -> None:
+        """An L2 service whose segment is in the service's VRF is valid: no raise."""
+        validate_service("l2", "web-host-1", "vrf-blue", segment_id="seg-l2", segment_vrf_id="vrf-blue")
+
+    def test_l2_without_segment_fails_loud(self) -> None:
+        """L2 requires a segment; omitting it raises, naming the offending service (no partial objects)."""
+        with pytest.raises(ValueError, match=r"web-host-1.*L2.*segment"):
+            validate_service("l2", "web-host-1", "vrf-blue", segment_id=None, segment_vrf_id=None)
+
+    def test_l2_segment_in_other_vrf_fails_loud(self) -> None:
+        """L2 with a segment belonging to a different VRF than the service raises (segment.vrf != service.vrf)."""
+        with pytest.raises(ValueError, match="not the service's VRF"):
+            validate_service("l2", "web-host-1", "vrf-blue", segment_id="seg-l2", segment_vrf_id="vrf-red")
+
+    def test_l3_with_segment_is_contradictory_and_fails_loud(self) -> None:
+        """An L3 service that also names a segment is a contradictory request and raises."""
+        with pytest.raises(ValueError, match="contradictory"):
+            validate_service("l3", "cilium-worker-1", "vrf-blue", segment_id="seg-l2", segment_vrf_id="vrf-blue")

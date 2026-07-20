@@ -14,6 +14,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkFabric,
     NetworkInterface,
     NetworkPod,
+    NetworkSegment,
     NetworkServer,
     NetworkServerService,
 )
@@ -21,6 +22,7 @@ from infrahub_solution_ai_dc.servers import (
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
+    validate_service,
 )
 
 from .generate_server_query import ServerGeneratorQuery, ServerGeneratorQueryServiceNode
@@ -46,9 +48,13 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     allocates by a stable identifier, sessions upsert by ``"{a}__{b}"`` name, and the ASN is allocated only
     when unset. Re-running yields an empty diff.
 
-    Extension seams (later chunks): :meth:`resolve_placement` is where explicit ``rack``/``leaf_interface``
-    honoring lands (US3/T036); the ``layer == "l3"`` branch in :meth:`generate` is paired with the L2 branch
-    (US2/T031) which reuses placement + cabling and instead attaches the chosen rack to the segment.
+    The L2 and L3 branches in :meth:`generate` share the same placement + server + cabling foundation; the
+    L3 branch (:meth:`configure_l3`) additionally allocates the ASN and /31 and upserts the eBGP pair, while the
+    L2 branch (:meth:`attach_segment_rack`) instead adds the chosen rack to the segment's placement and creates
+    no BGP/IP. :meth:`servers.validate_service` fail-loud-rejects contradictory requests before any write.
+
+    Extension seam (later chunk): :meth:`resolve_placement` is where explicit ``rack``/``leaf_interface``
+    honoring lands (US3/T036); ``service`` is threaded through for that future use.
     """
 
     logger = logging.getLogger("infrahub.tasks")
@@ -70,6 +76,16 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         service_name = service.name.value
         layer = service.layer.value if service.layer and service.layer.value else "l3"
         fabric_id = service.vrf.node.tenant.node.fabric.node.id
+        service_vrf_id = service.vrf.node.id
+
+        # Resolve the (optional) segment + its VRF from the parsed query.
+        segment = service.segment.node if service.segment else None
+        segment_id = segment.id if segment else None
+        segment_vrf_id = segment.vrf.node.id if segment and segment.vrf and segment.vrf.node else None
+
+        # Fail-loud validation BEFORE any object is created (no partial objects): L2 requires a
+        # segment in the service's VRF; L3 forbids a segment (contradictory request).
+        validate_service(layer, service_name, service_vrf_id, segment_id, segment_vrf_id)
 
         # Placement: least-utilized rack + lowest free role:server leaf port (fail-loud on none).
         rack, leaf, leaf_port = await self.resolve_placement(service, fabric_id)
@@ -82,9 +98,10 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         if layer == "l3":
             await self.configure_l3(server, server_port, leaf, leaf_port, fabric_id)
         else:
-            # L2 segment placement (Segment.racks) is deferred to US2/T031; the server + cabling above are
-            # already the shared foundation that branch reuses.
-            self.logger.info(f"Server service {service_name}: layer l2 attachment deferred to US2 (T031)")
+            # L2: attach the chosen leaf's rack to the segment's placement. No ASN, no /31, no session —
+            # overlay materialization onto the leaf remains the OverlayGenerator's separate step (SD8).
+            assert segment_id is not None  # guaranteed by validate_service for the L2 layer
+            await self.attach_segment_rack(segment_id, rack)
 
         await self.set_service_server(service.id, server.id)
         await self.update_checksum(service.id, [server.id, server_port.id, leaf_port.id])
@@ -211,6 +228,21 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
             interface.status.value = "active"
             await interface.save(allow_upsert=True, update_group_context=False)
         self.logger.info(f"Cabled {name}")
+
+    async def attach_segment_rack(self, segment_id: str, rack: LocationRack) -> None:
+        """Idempotently add the chosen leaf's rack to the L2 segment's ``racks`` placement.
+
+        Edge-scoped ``add_relationships`` (the pattern from ``OverlayGenerator.materialize_segments`` /
+        ``generate_tenant``): only the single ``(segment, rack)`` edge is touched, so a re-run where the
+        edge already exists is a no-op and other racks on the segment are never rewritten. No BGP session,
+        /31, or ASN is created on the L2 path — carrying the segment onto the rack's leaves is the
+        OverlayGenerator's separate step (research SD8).
+        """
+        segment = await self.client.get(kind=NetworkSegment, id=segment_id, include=["racks"])
+        current = {peer.id for peer in segment.racks.peers if peer.id is not None}
+        if rack.id not in current:
+            await segment.add_relationships("racks", [rack.id])
+            self.logger.info(f"Added rack {rack.name.value} to segment {segment.name.value} placement")
 
     async def configure_l3(
         self,

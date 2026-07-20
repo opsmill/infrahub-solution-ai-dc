@@ -13,3 +13,12 @@ spec:
       layer: "l3"
       vrf: ["Blue", "blue-prod"]
       member_of_groups: ["server_services"]
+    # US2 (P2) seed: one L2 (bridged) server service naming an existing segment under the SAME VRF.
+    # No rack / leaf_interface -> automatic placement; the ServerGenerator cables the server and adds
+    # the chosen leaf's rack to the segment's placement (no ASN, no /31, no BGP session).
+    # "blue-l2" is the L2-only segment of the "blue-prod" VRF seeded in objects/12_overlay.yml.
+    - name: "web-host-1"
+      layer: "l2"
+      vrf: ["Blue", "blue-prod"]
+      segment: "blue-l2"
+      member_of_groups: ["server_services"]

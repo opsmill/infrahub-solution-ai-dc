@@ -33,6 +33,44 @@ def _relationship_is_set(related: object) -> bool:
     return getattr(related, "id", None) is not None
 
 
+def validate_service(
+    layer: str,
+    service_name: str,
+    service_vrf_id: str,
+    segment_id: str | None,
+    segment_vrf_id: str | None,
+) -> None:
+    """Validate a ``NetworkServerService``'s L2/L3 intent, fail-loud (``vendors.py`` convention).
+
+    Pure and synchronous so the fail-loud paths are directly unit-testable (unlike the async
+    placement raises). The ``ServerGenerator`` calls this **before** creating any object, so an
+    invalid request produces no partial objects. Rules (data-model.md):
+
+    - ``layer == "l2"`` ⇒ a ``segment`` is **required** and ``segment.vrf`` must equal the service's
+      ``vrf`` (an L2 host bridges into a segment of its own VRF).
+    - ``layer == "l3"`` ⇒ a ``segment`` is **forbidden** — naming one is a contradictory request.
+
+    ``segment_id``/``segment_vrf_id`` are the resolved segment's id and its VRF's id (both ``None``
+    when the service names no segment). Raises ``ValueError`` naming the offending service.
+    """
+    if layer == "l2":
+        if segment_id is None:
+            msg = f"Server service {service_name!r} is L2 but names no segment; an L2 service requires a segment"
+            raise ValueError(msg)
+        if segment_vrf_id != service_vrf_id:
+            msg = (
+                f"Server service {service_name!r} names segment {segment_id!r} in VRF {segment_vrf_id!r}, "
+                f"which is not the service's VRF {service_vrf_id!r}; an L2 segment must belong to the service's VRF"
+            )
+            raise ValueError(msg)
+    elif segment_id is not None:
+        msg = (
+            f"Server service {service_name!r} is L3 but also names segment {segment_id!r}; "
+            f"an L3 service must not name a segment (contradictory request)"
+        )
+        raise ValueError(msg)
+
+
 def select_least_utilized_rack(
     racks: Sequence[LocationRack],
     server_counts: Mapping[str, int],
