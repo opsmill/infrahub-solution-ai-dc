@@ -24,8 +24,7 @@ nodes:
         kind: Dropdown
         label: Layer
         description: >-
-          The L2/L3 selector for the server attachment. L2 requires a segment whose vrf matches this
-          service's vrf; L3 forbids a segment (contradictory request). Enforced by the ServerGenerator.
+          L2/L3 selector for the attachment. L2 needs a vrf-matching segment; L3 forbids one. Enforced by the ServerGenerator.
         choices:
           - name: l2
             label: L2
@@ -65,8 +64,7 @@ nodes:
         cardinality: one
         optional: true
         description: >-
-          L2 only — required for an L2 service and its vrf must match the service's vrf; must be absent
-          for an L3 service. Enforced by the ServerGenerator (validate_service), not by the schema.
+          L2 only — required with a vrf-matching segment; absent for L3. Enforced by ServerGenerator.validate_service.
         identifier: "server_service__segment"
         order_weight: 6000
       - name: server
