@@ -5,6 +5,8 @@ ignore: |
   /.git
   /.github
   /.venv
+  /.specify/extensions
+  /.specify/extensions.yml
   /docs/node_modules
   /docs/pnpm-lock.yaml
 
