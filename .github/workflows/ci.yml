@@ -112,12 +112,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - run: uv sync
-      - name: Build custom Infrahub image
-        run: >
-          docker build
-          --build-arg INFRAHUB_BASE_VERSION=1.10.0
-          -t registry.opsmill.io/opsmill/infrahub:1.10.0
-          .
+      # Builds opsmill/infrahub-solution-ai-dc:<INFRAHUB_BASE_VERSION>, the image
+      # tests/integration/conftest.py points the testcontainers stack at. Using `inv build` keeps the
+      # tag and the version default in docker-compose.override.yml only, and matches what a
+      # developer runs locally before the integration tests.
+      - name: Build the project Infrahub image
+        run: uv run inv build
       - name: Set environment variables
         run: |
           RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
