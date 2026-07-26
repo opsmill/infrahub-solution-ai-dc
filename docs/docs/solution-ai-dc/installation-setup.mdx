@@ -87,7 +87,7 @@ uv run inv load
 
 This runs five steps in sequence:
 
-1. `inv publish-upstream` — mirrors every local branch into the gitignored bare repo `.upstream.git/`, then force-pushes the current checkout over the mirror's `main`
+1. `inv publish-upstream` — mirrors every local branch into the bare repository `.upstream.git/` (ignored by Git), then force-pushes the current checkout over the mirror's `main`
 2. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
 3. `infrahubctl object load data/permissions.yml` — sample operator persona (account `john`, role and group definitions)
 4. `inv wait-for-repository` — blocks until Infrahub reports the repository `in-sync` at the commit just published
