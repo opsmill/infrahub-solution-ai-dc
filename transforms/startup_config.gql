@@ -98,11 +98,13 @@ query StartupConfigQuery($name: String!){
                   hostname {
                     value
                   }
-                  loopback_ip {
-                    node {
-                      __typename
-                      address {
-                        ip
+                  ... on NetworkDevice {
+                    loopback_ip {
+                      node {
+                        __typename
+                        address {
+                          ip
+                        }
                       }
                     }
                   }
