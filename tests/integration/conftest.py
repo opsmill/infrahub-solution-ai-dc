@@ -15,8 +15,10 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 # 1. The default stack runs the vanilla ``opsmill/infrahub`` image, which has no
 #    ``infrahub_solution_ai_dc`` module — every transform/generator import fails during repository
 #    sync. Point it at the image ``inv build`` produces (and skip the registry pull, it is local).
-# 2. ``task-manager-background-svc`` is declared with ``replicas: 0`` and nothing depends on it, but
-#    ``docker compose up --wait`` refuses to start a project containing a zero-replica service.
+# 2. ``docker compose up --wait`` fails on a project containing a zero-replica service, reporting it
+#    as a missing dependency — a Compose bug (docker/compose#13899), not a stack problem. The stack
+#    declares ``task-manager-background-svc`` with ``replicas: 0`` and nothing depends on it, so
+#    scheduling one replica is a harmless workaround. Drop it once Compose ships the fix.
 TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
 # Mirrors the tag docker-compose.override.yml builds.
 TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.10.0")
