@@ -40,12 +40,18 @@ jobs:
     needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both ends of requires-python, so the supported range stays honest
+        python-version: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           version: "0.9.18"
+          python-version: ${{ matrix.python-version }}
       - run: uv sync
       - name: Check code formatting
         run: |
