@@ -249,7 +249,6 @@ class NetworkInterface(NetworkEndpoint):
     link: RelatedNode
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
-    server: RelatedNode
     subscriber_of_groups: RelationshipManager
 
 
@@ -332,6 +331,20 @@ class NetworkServer(NetworkBGPPeer):
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
     rack: RelatedNode
+    subscriber_of_groups: RelationshipManager
+
+
+class ServerInterface(NetworkEndpoint):
+    description: StringOptional
+    mtu: IntegerOptional
+    name: String
+    role: Dropdown
+    status: DropdownOptional
+    ip_address: RelatedNode
+    link: RelatedNode
+    member_of_groups: RelationshipManager
+    profiles: RelationshipManager
+    server: RelatedNode
     subscriber_of_groups: RelationshipManager
 
 

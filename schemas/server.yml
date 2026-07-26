@@ -108,7 +108,7 @@ nodes:
     relationships:
       - name: interfaces
         label: Interfaces
-        peer: NetworkInterface
+        peer: ServerInterface
         kind: Component
         cardinality: many
         optional: true
@@ -122,3 +122,73 @@ nodes:
         optional: true
         identifier: "server__rack"
         order_weight: 5000
+
+  # A server port is its own kind rather than a NetworkInterface: it shares only the cabling
+  # contract (NetworkEndpoint.link), so NetworkInterface keeps a required device, a single-column
+  # owner and a resolvable human_friendly_id. See dev/adr/0006.
+  - name: Interface
+    namespace: Server
+    label: Server Interface
+    description: A server-owned port, cabled to a leaf's role:server port via a NetworkLink.
+    inherit_from:
+      - NetworkEndpoint
+    uniqueness_constraints:
+      - [server, name__value]
+    human_friendly_id:
+      - server__hostname__value
+      - name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        order_weight: 1000
+      - name: status
+        kind: Dropdown
+        label: Status
+        default_value: inactive
+        choices:
+          - name: active
+          - name: inactive
+          - name: maintenance
+        order_weight: 2000
+      - name: role
+        kind: Dropdown
+        label: Role
+        default_value: production
+        choices:
+          - name: production
+            label: Production
+          - name: management
+            label: Management
+        optional: false
+        order_weight: 3000
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+        order_weight: 4000
+      - name: mtu
+        label: MTU
+        kind: Number
+        optional: true
+        order_weight: 5000
+    relationships:
+      - name: server
+        label: Server
+        peer: NetworkServer
+        kind: Parent
+        cardinality: one
+        optional: false
+        identifier: "server__interface"
+        order_weight: 10000
+      - name: ip_address
+        label: IP Address
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_interface__ip_address"
+        order_weight: 6000

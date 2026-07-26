@@ -142,7 +142,7 @@ nodes:
     inherit_from:
       - NetworkEndpoint
     uniqueness_constraints:
-      - [device, server, name__value]
+      - [device, name__value]
     human_friendly_id:
       - device__hostname__value
       - name__value
@@ -211,22 +211,10 @@ nodes:
       - name: device
         peer: NetworkDevice
         kind: Parent
-        optional: true
+        optional: false
         cardinality: one
-        description: >-
-          Owning fabric device for a switch port. Exactly one of device/server is set, enforced by the generators not the schema.
         identifier: device__interface
         order_weight: 10000
-      - name: server
-        label: Server
-        peer: NetworkServer
-        kind: Parent
-        optional: true
-        cardinality: one
-        description: >-
-          Owning server for a server port. Exactly one of server/device is set, enforced by the generators not the schema.
-        identifier: server__interface
-        order_weight: 11000
       - name: ip_address
         label: IP Address
         peer: IpamIPAddress

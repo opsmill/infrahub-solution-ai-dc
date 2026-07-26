@@ -23,7 +23,8 @@ re-run on checksum change, like every other generator.
 ## Design vs. implementation
 
 - **Design object**: `NetworkServerService` — the request, owned by the operator.
-- **Implementation object**: `NetworkServer` + interfaces + `NetworkLink` + IP/ASN/BGP allocations,
+- **Implementation object**: `NetworkServer` + its `ServerInterface` ports + `NetworkLink` + IP/ASN/BGP
+  allocations,
   produced by the generator. The `NetworkServer` is **never** swept into `devices`/`{vendor}_devices`
   groups and is **not** a `CoreArtifactTarget` — it renders no startup-config of its own; only the leaf
   side is materialized.

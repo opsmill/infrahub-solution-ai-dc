@@ -39,6 +39,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkServer,
     NetworkServerService,
     NetworkVrf,
+    ServerInterface,
 )
 
 if TYPE_CHECKING:
@@ -131,7 +132,7 @@ class TestServerServiceL3(TestInfrahubDockerClient):
         assert server is not None, f"expected NetworkServer {SERVER_HOSTNAME!r} after generator run"
 
         server_ports = await client.filters(
-            kind=NetworkInterface, server__ids=[server.id], include=["ip_address", "link"]
+            kind=ServerInterface, server__ids=[server.id], include=["ip_address", "link"]
         )
         assert server_ports, "server has no interface"
         server_port = server_ports[0]
@@ -227,7 +228,7 @@ class TestServerServiceL3(TestInfrahubDockerClient):
         assert server.rack.id is not None, "L2 server has no resolved rack"
 
         server_ports = await client.filters(
-            kind=NetworkInterface, server__ids=[server.id], include=["ip_address", "link"]
+            kind=ServerInterface, server__ids=[server.id], include=["ip_address", "link"]
         )
         assert server_ports, "L2 server has no interface"
         server_port = server_ports[0]

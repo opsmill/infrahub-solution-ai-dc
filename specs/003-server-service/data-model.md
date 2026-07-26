@@ -60,7 +60,7 @@ an eBGP session endpoint (SD3).
 
 | Relationship | Peer | Card. | Kind | Notes |
 |--------------|------|-------|------|-------|
-| `interfaces` | NetworkInterface | many | Component | server-owned ports; `identifier: "server__interface"` |
+| `interfaces` | ServerInterface | many | Component | server-owned ports; `identifier: "server__interface"` |
 | `rack` | LocationRack | one | Attribute | resolved placement (chosen or explicit) |
 | `bgp_sessions` | NetworkBGPSession | many | Component | inherited; server side of the eBGP pair (L3) |
 
@@ -76,15 +76,34 @@ an eBGP session endpoint (SD3).
 No attribute changes — `address_family` already offers `ipv4_unicast`; `rr_client` already exists. Server↔leaf
 sessions: `address_family: ipv4_unicast`, `rr_client: false`, `local_as`/`remote_as` per side (eBGP).
 
+### ServerInterface (`schemas/server.yml`)
+
+A server port is its own node kind (namespace `Server`, name `Interface` ⇒ kind `ServerInterface`), sharing
+only the `NetworkEndpoint` generic — the cabling contract (`link`) a `NetworkLink` joins on. See
+[ADR-0006](../../dev/adr/0006-separate-server-interface-node.md).
+
+| Attribute | Kind | Notes |
+|-----------|------|-------|
+| `name` | Text | required; with `server` forms the `human_friendly_id` and uniqueness constraint |
+| `status` | Dropdown | `active`/`inactive`/`maintenance`, default `inactive`; set `active` when cabled |
+| `role` | Dropdown | `production`/`management`, default `production` — the **server's** own port role |
+| `description` | Text | optional |
+| `mtu` | Number | optional |
+
+| Relationship | Peer | Card. | Kind | Notes |
+|--------------|------|-------|------|-------|
+| `server` | NetworkServer | one | Parent | **required**; `identifier: "server__interface"` |
+| `ip_address` | IpamIPAddress | one | Attribute | optional; L3 /31 host address |
+| `link` | NetworkLink | one | Attribute | inherited from `NetworkEndpoint` — the cable to the leaf port |
+
+`uniqueness_constraints: [[server, name__value]]` and `human_friendly_id: [server__hostname__value,
+name__value]`, so the generator upserts the port on its identity.
+
 ### NetworkInterface (`schemas/device.yml`)
 
-| Change | Notes |
-|--------|-------|
-| `device` relationship → **optional** | server ports have no owning device (SD4) |
-| **NEW** `server` relationship | peer `NetworkServer`, cardinality one, `kind: Parent`, optional, `identifier: "server__interface"` (back-rel `NetworkServer.interfaces`) |
-| `uniqueness_constraints` | widen `[[device, name__value]]` to also key on the server owner so `(server, name)` is unique |
-
-`role` already includes `server` (used for both the leaf-facing port and the server's own port). No new role.
+Unchanged — `device` stays **required**, uniqueness stays `[[device, name__value]]`, and there is no
+`server` relationship. Its `role` already includes `server`, which the generator selects on for the
+leaf-facing port and the startup-config templates render.
 
 ### IpamIPPrefix (`schemas/ipam.yml`)
 
@@ -133,7 +152,7 @@ NetworkServerService (GeneratorTarget)
   └─ server → NetworkServer (generator-set)
 
 NetworkServer (inherit NetworkBGPPeer; NOT CoreArtifactTarget)
-  ├─ interfaces → NetworkInterface (server__interface)   ── cabled via NetworkLink ── leaf NetworkInterface(role:server)
+  ├─ interfaces → ServerInterface (server__interface)    ── cabled via NetworkLink ── leaf NetworkInterface(role:server)
   ├─ rack → LocationRack
   ├─ asn (L3; from global Server ASN pool)
   └─ bgp_sessions → NetworkBGPSession  (L3: server side of the pair)

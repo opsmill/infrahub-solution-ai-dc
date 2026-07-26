@@ -34,6 +34,11 @@ class CablingPlan(InfrahubTransform):
         for link in links:
             [src_interface, dst_interface] = link.endpoints.peers
 
+            # Fabric cabling only: a server attachment link has a ServerInterface on one end, which has
+            # no owning device to report a rack/hostname for.
+            if any(endpoint.peer.get_kind() != "NetworkInterface" for endpoint in (src_interface, dst_interface)):
+                continue
+
             csv_data.append(
                 [
                     src_interface.peer.device.peer.rack.peer.name.value  # type: ignore[union-attr]

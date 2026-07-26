@@ -17,6 +17,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkSegment,
     NetworkServer,
     NetworkServerService,
+    ServerInterface,
 )
 from infrahub_solution_ai_dc.servers import (
     require_allocated,
@@ -50,10 +51,9 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
 
     All operator/service-node writes use ``update_group_context=False`` (mirroring ``OverlayGenerator``) so
     the generator group's cleanup never prunes them. The generator is purely additive/idempotent: the server
-    is named deterministically, its own port is looked up by ``(server, name)`` (its ``device`` is null, so
-    its ``human_friendly_id`` does not resolve — the ``server`` relationship is the identity instead), the /31
-    allocates by a stable identifier, sessions upsert by ``"{a}__{b}"`` name, and the ASN is allocated only
-    when unset. Re-running yields an empty diff.
+    is named deterministically, its own ``ServerInterface`` upserts on its ``(server, name)``
+    ``human_friendly_id``, the /31 allocates by a stable identifier, sessions upsert by ``"{a}__{b}"`` name,
+    and the ASN is allocated only when unset. Re-running yields an empty diff.
 
     The L2 and L3 branches in :meth:`generate` share the same placement + server + cabling foundation; the
     L3 branch (:meth:`configure_l3`) additionally allocates the ASN and /31 and upserts the eBGP pair, while the
@@ -283,43 +283,29 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         # Re-fetch so subsequent relationship/pool writes read a fully-resolved node.
         return await self.client.get(kind=NetworkServer, id=server.id)
 
-    async def materialize_server_port(self, server: NetworkServer) -> NetworkInterface:
-        """Return the server's own port, looking it up by ``(server, name)`` to stay idempotent.
-
-        The server port has a null ``device`` (it is owned via the ``server`` relationship), so its
-        ``human_friendly_id`` does not resolve and ``save(allow_upsert=True)`` cannot match on it. Querying by
-        the ``server`` relationship + deterministic ``name`` gives a stable identity across re-runs.
-        """
-        existing = await self.client.filters(
-            kind=NetworkInterface,
-            server__ids=[server.id],
-            name__value=SERVER_PORT_NAME,
-            include=["ip_address", "link"],
-        )
-        if existing:
-            return existing[0]
-
+    async def materialize_server_port(self, server: NetworkServer) -> ServerInterface:
+        """Create/upsert the server's own ``ServerInterface`` on its ``(server, name)`` identity."""
         port = await self.client.create(
-            kind=NetworkInterface,
+            kind=ServerInterface,
             name=SERVER_PORT_NAME,
-            role="server",
+            role="production",
             status="active",
             server={"id": server.id},
         )
         await port.save(allow_upsert=True, update_group_context=False)
-        return await self.client.get(kind=NetworkInterface, id=port.id, include=["ip_address", "link"])
+        return await self.client.get(kind=ServerInterface, id=port.id, include=["ip_address", "link"])
 
     async def cable_server_to_leaf(
         self,
         server: NetworkServer,
-        server_port: NetworkInterface,
+        server_port: ServerInterface,
         leaf: NetworkDevice,
         leaf_port: NetworkInterface,
     ) -> None:
         """Create/upsert the ``NetworkLink`` between the leaf port and the server port.
 
         Built by hand rather than via ``cabling.connect_interface_maps`` because that helper derives the link
-        name from ``interface.device.display_label`` — null on the server-owned port.
+        name from ``interface.device.display_label`` — a ``ServerInterface`` is owned by a server, not a device.
         """
         name = f"{leaf.hostname.value}-{leaf_port.name.value}__{server.hostname.value}-{server_port.name.value}"
         link = await self.client.create(
@@ -330,10 +316,15 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         )
         await link.save(allow_upsert=True, update_group_context=False)
 
-        for interface_id in (leaf_port.id, server_port.id):
-            interface = await self.client.get(kind=NetworkInterface, id=interface_id, include=["link"])
-            interface.status.value = "active"
-            await interface.save(allow_upsert=True, update_group_context=False)
+        # Both ends go active. Written out per kind rather than looped: the two ends are distinct kinds
+        # and their common ancestor (NetworkEndpoint) carries no ``status``.
+        leaf_end = await self.client.get(kind=NetworkInterface, id=leaf_port.id, include=["link"])
+        leaf_end.status.value = "active"
+        await leaf_end.save(allow_upsert=True, update_group_context=False)
+
+        server_end = await self.client.get(kind=ServerInterface, id=server_port.id, include=["link"])
+        server_end.status.value = "active"
+        await server_end.save(allow_upsert=True, update_group_context=False)
         self.logger.info(f"Cabled {name}")
 
     async def attach_segment_rack(self, segment_id: str, rack: LocationRack) -> None:
@@ -354,7 +345,7 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     async def configure_l3(
         self,
         server: NetworkServer,
-        server_port: NetworkInterface,
+        server_port: ServerInterface,
         leaf: NetworkDevice,
         leaf_port: NetworkInterface,
         fabric_id: str,

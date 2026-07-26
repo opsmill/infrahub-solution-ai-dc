@@ -6,23 +6,29 @@ from .protocols import NetworkDevice, NetworkInterface
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
     from ipaddress import IPv4Address
 
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
+    from .protocols import ServerInterface
+
+    # Either side of a p2p link: a fabric switch port or a server port. Both carry link +
+    # ip_address, but they are distinct kinds, so the re-fetch below reads the kind off the node.
+    P2PEndpoint = NetworkInterface | ServerInterface
+
 
 async def assign_ip_address_to_interface(
     client: InfrahubClient,
-    interface: NetworkInterface,
+    interface: P2PEndpoint,
     logger: logging.Logger,
     host_addresses: Generator[IPv4Address],
     prefix_len: int,
 ) -> None:
     ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
     await ip_address.save(allow_upsert=True)
-    interface = await client.get(NetworkInterface, id=interface.id, include=["link"])
+    interface = await client.get(interface.get_kind(), id=interface.id, include=["link"])  # type: ignore[assignment]
     interface.ip_address = ip_address  # type: ignore[assignment]
     await interface.save(allow_upsert=True)
     logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")  # type: ignore[union-attr]
@@ -31,7 +37,7 @@ async def assign_ip_address_to_interface(
 async def assign_ip_addresses_to_p2p_connections(
     client: InfrahubClient,
     logger: logging.Logger,
-    connections: list[tuple[NetworkInterface, NetworkInterface]],
+    connections: Sequence[tuple[P2PEndpoint, P2PEndpoint]],
     prefix_len: int,
     prefix_role: str,
     pool: CoreIPPrefixPool,
