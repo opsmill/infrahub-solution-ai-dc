@@ -71,7 +71,10 @@ def publish_upstream(ctx: Context) -> None:
     """
     bare = quote(str(UPSTREAM_BARE_REPO))
     ctx.run(f"git init --bare {bare}", pty=True)
-    ctx.run(f"git push --force {bare} 'refs/heads/*:refs/heads/*'", pty=True)
+    # Best-effort and deliberately not forced: a mirror branch the git agent has moved on
+    # is rejected rather than clobbered, and one stale copy must not fail the whole publish.
+    ctx.run(f"git push {bare} 'refs/heads/*:refs/heads/*'", pty=True, warn=True)
+    # The checkout, however, is authoritative for the branch Infrahub tracks.
     ctx.run(f"git push --force {bare} HEAD:refs/heads/{UPSTREAM_DEFAULT_BRANCH}", pty=True)
     # `git init --bare` only honours the initial branch on a fresh repo; set it either way.
     ctx.run(f"git -C {bare} symbolic-ref HEAD refs/heads/{UPSTREAM_DEFAULT_BRANCH}", pty=True)
@@ -90,19 +93,23 @@ def wait_for_repository(ctx: Context, timeout: int = 300) -> None:
     head = rev_parse.stdout.strip()
     client = InfrahubClientSync()
     deadline = monotonic() + timeout
+    status = "unknown"
     while True:
         repo = client.get(kind=CoreRepositorySync, name__value=REPOSITORY_NAME, raise_when_missing=False)
         if repo:
-            if repo.sync_status.value == "error-import":
-                message = f"Repository {REPOSITORY_NAME} failed to import, check `docker compose logs task-worker`"
-                raise Exit(message)
-            if repo.sync_status.value == "in-sync" and repo.commit.value == head:
+            status = repo.sync_status.value
+            # `error-import` alone is not fatal: it may still describe the previous commit,
+            # and the periodic fetch clears it once this one imports cleanly.
+            if status == "in-sync" and repo.commit.value == head:
                 return
         if monotonic() >= deadline:
             break
         sleep(5)
 
-    message = f"Repository {REPOSITORY_NAME} did not import {head[:8]} within {timeout}s"
+    message = (
+        f"Repository {REPOSITORY_NAME} did not import {head[:8]} within {timeout}s (status: {status}), "
+        f"check `docker compose logs task-worker`"
+    )
     raise Exit(message)
 
 
