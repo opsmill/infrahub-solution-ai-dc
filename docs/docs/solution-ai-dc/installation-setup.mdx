@@ -87,36 +87,26 @@ uv run inv load
 
 This runs four steps in sequence:
 
-1. `infrahubctl schema load schemas` — loads the 7 schema files defining the data model
-2. `infrahubctl menu load menus/` — loads UI menu configuration
-3. `infrahubctl object load objects/` — loads all design objects (groups, manufacturers, device types, IPAM, overlay resource pools, profiles, device templates, fabrics, pods, racks, and the seed `Blue` overlay tenant)
-4. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
+1. `inv publish-upstream` — mirrors every local branch into the gitignored bare repo `.upstream.git/`, plus the current checkout as `local`
+2. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
+3. `infrahubctl object load data/permissions.yml` — sample operator persona (account `john`, role and group definitions)
+4. `infrahubctl object load triggers.yml` — trigger rules, once the repository import has completed
 
-:::info Repository sync
-After `inv load`, Infrahub imports the repository and reads `.infrahub.yml` to register Generators, Transforms, queries, and artifact definitions. Verify with `infrahubctl repository list`. Generators cannot run until this completes.
-:::
+Everything else comes from the repository itself: `.infrahub.yml` declares `schemas`, `objects` and `menus` alongside the queries, Generators, transforms and artifact definitions, so Infrahub imports all of it during the repository sync. There is no separate schema, menu or object load step.
 
-### Load trigger rules
+Between steps 3 and 4, `inv load` blocks until Infrahub reports the repository `in-sync` at the commit that was just published — trigger rules reference Generator definitions that the import has to register first. Verify at any time with `infrahubctl repository list`.
 
-```bash
-uv run infrahubctl object load triggers.yml
-```
-
-This creates the `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that drive automatic modular Generator execution — including the tenant/overlay trigger (`run-tenant-generator`). `triggers.yml` is a committed top-level file that is **not** part of `inv load`: it must be loaded after the repository has synced, because the trigger rules reference Generator definitions that need to exist first.
-
-:::warning Load triggers after repository sync
-If loaded before Generator definitions are imported, the trigger rules will fail to resolve their action references.
+:::note Publishing local commits
+The containers clone the bare mirror, not your working tree — this is what makes a `git worktree` checkout work, since its `.git` is a file pointing outside the bind mount. All of your local branches are copied into the mirror, and the current checkout is published a second time under the fixed name `local`. `local` is the repository's `default_branch`, so Infrahub's `main` tracks whatever branch you have checked out on the host. Only committed work is published: after committing, re-run `inv publish-upstream` (or `inv load`) so the containers see it.
 :::
 
 ### Load supplementary data (optional)
 
 ```bash
-# NOTE: the data/ directory is NOT loaded by `inv load`.
-uv run infrahubctl object load data/permissions.yml   # sample operator account `john`
 uv run infrahubctl object load data/tenant-red.yml     # second, day-two overlay tenant `Red`
 ```
 
-The `data/` directory holds material that is intentionally kept out of the default load: a sample operator persona (account `john`, role and group definitions) and a second overlay tenant (`Red` on Fabric-A) used to demonstrate scoped, non-clobbering day-two multi-tenant generation. Load these manually when you want them.
+`data/tenant-red.yml` is intentionally kept out of the default load: a second overlay tenant (`Red` on Fabric-A) used to demonstrate scoped, non-clobbering day-two multi-tenant generation. Load it manually when you want it.
 
 ## Repository structure
 
@@ -170,7 +160,7 @@ Loaded in numbered order by `infrahubctl object load objects/`:
 | `objects/11_rack.yml`            | Rack objects across all three fabrics with leaf counts and per-vendor template assignments                   |
 | `objects/12_overlay.yml`         | Seed overlay tenant `Blue` on Fabric-A, with a VRF and segments (routed, rack-scoped, and L2-only examples)  |
 
-Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and are loaded separately after repository sync — see [Load trigger rules](#load-trigger-rules). Supplementary data (`data/permissions.yml`, `data/tenant-red.yml`) is loaded manually — see [Load supplementary data](#load-supplementary-data-optional).
+Objects are imported from the repository (`objects:` in `.infrahub.yml`), not loaded directly. Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and are loaded by `inv load` only once the repository import has completed. `data/tenant-red.yml` is loaded manually — see [Load supplementary data](#load-supplementary-data-optional).
 
 ### Infrastructure
 
@@ -178,9 +168,10 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 |-------------------------------|---------------------------------------------------------------------------------------------|
 | `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed           |
 | `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes |
-| `repository.yml`              | `CoreRepository` object pointing to `/upstream` (the mounted repository)                    |
+| `repository.yml`              | `CoreRepository` object pointing to `/upstream/.upstream.git` (bare mirror), branch `local` |
 | `tasks.py`                    | Invoke task definitions for environment management                                          |
-| `.infrahub.yml`               | Central configuration wiring Generators, Transforms, queries, and artifacts                 |
+| `.infrahub.yml`               | Central configuration wiring schemas, objects, menus, Generators, Transforms, queries, and artifacts |
+| `triggers.yml`                | Trigger rules, loaded by `inv load` after the repository import completes                   |
 
 ## Invoke tasks
 
@@ -190,9 +181,11 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 | Stop        | `inv stop`        | Stop containers, remove networks (data preserved)                  |
 | Destroy     | `inv destroy`     | Stop containers, remove networks **and volumes** (full reset)      |
 | Restart     | `inv restart`     | Restart all services (or `inv restart --component=<name>` for one) |
-| Load        | `inv load`        | Load schemas, menus, objects, and register repository              |
-| Load schema | `inv load-schema` | Load schema files only                                             |
-| Load menu   | `inv load-menu`   | Load menu definitions only                                         |
+| Load        | `inv load`        | Publish the repository, then load permissions and trigger rules    |
+| Load schema | `inv load-schema` | Push schema files straight to Infrahub, bypassing the repository   |
+| Load menu   | `inv load-menu`   | Push menu definitions straight to Infrahub, bypassing the repository |
+| Publish     | `inv publish-upstream` | Mirror all local branches into `.upstream.git/`, checkout as `local` |
+| Wait        | `inv wait-for-repository` | Block until Infrahub imported the published commit          |
 | Build       | `inv build`       | Build the custom Docker image locally                              |
 | Test        | `inv test`        | Run pytest test suite                                              |
 | Format      | `inv format`      | Run Ruff formatter and auto-fix linting issues                     |
@@ -209,5 +202,5 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 ### Repository not syncing
 
 - Verify with `infrahubctl repository list`
-- The repository mounts from `/upstream` inside the container — check `docker compose logs task-worker` for import errors
+- The containers clone `/upstream/.upstream.git` — make sure `inv publish-upstream` ran and that your latest commits were pushed to it; check `docker compose logs task-worker` for import errors
 - Schema mismatches between what `.infrahub.yml` references and what is loaded can block sync

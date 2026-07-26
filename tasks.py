@@ -1,15 +1,24 @@
 import os
 from pathlib import Path
+from shutil import rmtree
 from time import sleep
 
 import httpx
-from invoke import Context, task
+from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk.protocols import CoreRepositorySync
+from invoke import Context, Exit, task
 
 # If no version is indicated, we will take the latest
 VERSION = os.getenv("VERSION", None)
 CURRENT_DIRECTORY = Path(__file__).resolve()
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
+# Bare mirror of the local checkout, living inside the directory bind-mounted at /upstream.
+UPSTREAM_BARE_REPO = MAIN_DIRECTORY_PATH / ".upstream.git"
+# Branch the containers track in that mirror; must match `default_branch` in repository.yml.
+UPSTREAM_DEFAULT_BRANCH = "local"
+# Must match the CoreRepository name in repository.yml.
+REPOSITORY_NAME = "test-repository"
 
 
 @task
@@ -43,12 +52,63 @@ def destroy(ctx: Context) -> None:
 
 
 @task
+def publish_upstream(ctx: Context) -> None:
+    """
+    Mirror the current checkout into a bare repo the containers can clone.
+
+    The checkout is bind-mounted at /upstream, but the git agent cannot clone it
+    directly when it is a git worktree: `.git` is then a file pointing at a path
+    outside the mount. A bare repo inside the mount clones cleanly either way.
+
+    Every local branch is copied over, plus the current checkout under the fixed
+    name `local` — whatever it is named on the host. `local` is the repository's
+    `default_branch` (see `repository.yml`), so Infrahub's `main` tracks what you
+    have checked out while the other branches stay available to the containers.
+
+    The mirror is rebuilt from scratch every time: cheap on a repo this size, and
+    it keeps branches deleted on the host from lingering as Infrahub branches.
+    """
+    rmtree(UPSTREAM_BARE_REPO, ignore_errors=True)
+    ctx.run(f'git init --bare --initial-branch={UPSTREAM_DEFAULT_BRANCH} "{UPSTREAM_BARE_REPO}"', pty=True)
+    ctx.run(f'git push "{UPSTREAM_BARE_REPO}" "refs/heads/*:refs/heads/*"', pty=True)
+    ctx.run(f'git push "{UPSTREAM_BARE_REPO}" "HEAD:refs/heads/{UPSTREAM_DEFAULT_BRANCH}"', pty=True)
+
+
+@task
+def wait_for_repository(ctx: Context, timeout: int = 300) -> None:
+    """
+    Block until Infrahub has imported the commit currently published upstream.
+    """
+    rev_parse = ctx.run("git rev-parse HEAD", hide=True)
+    head = rev_parse.stdout.strip() if rev_parse else ""
+    client = InfrahubClientSync()
+    for _ in range(timeout // 5):
+        repo = client.get(kind=CoreRepositorySync, name__value=REPOSITORY_NAME, raise_when_missing=False)
+        if repo and repo.sync_status.value == "erroneous":
+            message = f"Repository {REPOSITORY_NAME} failed to sync, check `docker compose logs task-worker`"
+            raise Exit(message)
+        if repo and repo.sync_status.value == "in-sync" and repo.commit.value == head:
+            return
+        sleep(5)
+
+    message = f"Repository {REPOSITORY_NAME} did not import {head[:8]} within {timeout}s"
+    raise Exit(message)
+
+
+@task
 def load(ctx: Context) -> None:
-    load_schema(ctx)
-    load_menu(ctx)
-    sleep(5)
-    ctx.run("infrahubctl object load objects/")
+    """
+    Publish the repository and load everything it does not carry itself.
+
+    Schemas, menus and objects are declared in `.infrahub.yml`, so Infrahub imports
+    them during the repository sync — they need no explicit load step.
+    """
+    publish_upstream(ctx)
     ctx.run("infrahubctl object load repository.yml")
+    ctx.run("infrahubctl object load data/permissions.yml")
+    wait_for_repository(ctx)
+    # Trigger rules reference the generator definitions the repository import registers.
+    ctx.run("infrahubctl object load triggers.yml")
 
 
 @task

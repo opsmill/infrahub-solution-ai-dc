@@ -19,9 +19,11 @@ inv destroy                     # Stop and remove everything including volumes
 inv restart [--component=NAME]  # Restart all or specific service
 inv build [--no-cache]          # Build Docker image
 
-inv load                        # Full load: schema → menu → objects → repository
-inv load-schema                 # Load schemas only
-inv load-menu                   # Load menus only
+inv load                        # publish → repository → permissions → wait for sync → triggers
+inv load-schema                 # Push schemas straight to Infrahub, bypassing the repository
+inv load-menu                   # Push menus straight to Infrahub, bypassing the repository
+inv publish-upstream            # Mirror all local branches into .upstream.git/, checkout as `local`
+inv wait-for-repository         # Block until Infrahub imported the published commit
 
 inv lint                        # Run all linters (yamllint, ruff, mypy)
 inv format                      # Format with ruff
@@ -61,12 +63,14 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 
 ### Data Files
 
+`schemas/`, `objects/` and `menus/` are declared in `.infrahub.yml`, so Infrahub imports them during the repository sync — `inv load` does not push them directly.
+
 - `schemas/` — Infrahub schema definitions (YAML), including `overlay.yml` (Tenant/VRF/Segment) and `routing.yml` (BGP sessions)
-- `objects/` — Object data files loaded in numbered order (01-12) by `inv load`
-- `triggers.yml` — Top-level trigger rules (`CoreGeneratorAction` + `CoreNodeTriggerRule`); **not** loaded by `inv load`, loaded manually after repository sync
-- `data/` — Supplementary data **not** loaded by `inv load`: `permissions.yml` (operator account/roles) and `tenant-red.yml` (a second, day-two overlay tenant); load manually with `infrahubctl object load`
+- `objects/` — Object data files imported in numbered order (01-12)
+- `triggers.yml` — Top-level trigger rules (`CoreGeneratorAction` + `CoreNodeTriggerRule`); loaded by `inv load` after the repository import completes, since the rules reference generator definitions
+- `data/` — `permissions.yml` (operator account/roles) is loaded by `inv load`; `tenant-red.yml` (a second, day-two overlay tenant) is **not** — load it manually with `infrahubctl object load`
 - `menus/` — UI menu definitions
-- `.infrahub.yml` — Registers all generators, transforms, queries, and artifact definitions
+- `.infrahub.yml` — Registers schemas, objects, menus, generators, transforms, queries, and artifact definitions
 
 ### Agentic Layout
 

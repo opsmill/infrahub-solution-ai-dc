@@ -57,19 +57,13 @@ cd infrahub-solution-ai-dc
 uv sync --all-packages
 uv run inv start
 
-# Load demo data
+# Load demo data: publishes the checkout for the containers to clone, registers the
+# repository, then loads permissions and (once the import completes) the trigger rules.
+# Schemas, menus and objects come from the repository itself via `.infrahub.yml`.
 uv run inv load
 
-# Wait for repository sync
-uv run infrahubctl repository list
-
-# Load trigger rules (after repository sync completes)
-uv run infrahubctl object load triggers.yml
-
-# Optional — the data/ directory is NOT loaded by `inv load`. Load it manually to
-# get the sample operator account and a second (day-two) tenant:
-uv run infrahubctl object load data/permissions.yml   # adds the `john` operator
-uv run infrahubctl object load data/tenant-red.yml     # adds the day-two `Red` tenant
+# Optional — a second (day-two) tenant, not part of `inv load`:
+uv run infrahubctl object load data/tenant-red.yml
 ```
 
 Then in the Infrahub UI: navigate to **Actions > Generator Definitions > generate-fabric**, click **Run**, and select a target fabric.

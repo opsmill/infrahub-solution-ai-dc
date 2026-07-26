@@ -70,27 +70,15 @@ This installs Python dependencies and launches the Infrahub stack via Docker Com
 inv load
 ```
 
-This runs four steps in sequence: loads schema definitions (`infrahubctl schema load`), loads UI menus (`infrahubctl menu load`), loads all design objects from `objects/`, and registers the Git repository from `repository.yml`. After this command completes, Infrahub contains the full design — fabrics, pods, racks, device templates, and IP pools — but no actual devices.
+This publishes all local branches to the bare mirror `.upstream.git/` — plus the current checkout as branch `local`, the one Infrahub tracks — registers the Git repository from `repository.yml`, loads `data/permissions.yml`, waits for the repository import to complete, and finally loads `triggers.yml`. Everything else — schemas, UI menus, design objects, Generator definitions, Transforms, queries and artifact definitions — is declared in `.infrahub.yml` and imported by Infrahub during the repository sync.
+
+Only committed work is published, so commit before running `inv load`. After this command completes, Infrahub contains the full design — fabrics, pods, racks, device templates, and IP pools — but no actual devices.
 
 :::info What `inv load` does not create
 No devices exist yet. The fabrics, pods, and racks define design intent — they describe *what* the infrastructure should look like. Browse the NetworkDevice list in the Infrahub UI to confirm it is empty.
 :::
 
-### Wait for repository sync
-
-```bash
-infrahubctl repository list
-```
-
-Verify the repository status shows as synced. When Infrahub imports the repository, it reads `.infrahub.yml` to register Generator definitions, Transforms, queries, and artifact definitions. Generators cannot run until this import completes.
-
-### Load trigger rules
-
-```bash
-infrahubctl object load triggers.yml
-```
-
-This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators — including the tenant/overlay trigger (`run-tenant-generator`). `triggers.yml` is a committed top-level file that is not part of `inv load`; it must be loaded after the repository has synced, because the rules reference Generator definitions that need to exist first.
+The trigger rules loaded in the last step create the `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators — including the tenant/overlay trigger (`run-tenant-generator`). They come last because they reference Generator definitions the repository import has to register first. Check the repository status at any time with `infrahubctl repository list`.
 
 :::warning Branch scope
 Triggers fire only on non-main branches. All trigger rules are configured with `branch_scope: other_branches` by design. Running a Generator on `main` will not trigger downstream Generators.

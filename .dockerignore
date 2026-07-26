@@ -2,6 +2,7 @@
 .git
 .gitignore
 .gitattributes
+.upstream.git/
 
 # Python
 __pycache__/
