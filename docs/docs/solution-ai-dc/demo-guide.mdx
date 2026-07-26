@@ -70,7 +70,7 @@ This installs Python dependencies and launches the Infrahub stack via Docker Com
 inv load
 ```
 
-This publishes all local branches to the bare mirror `.upstream.git/` — plus the current checkout as branch `local`, the one Infrahub tracks — registers the Git repository from `repository.yml`, loads `data/permissions.yml`, waits for the repository import to complete, and finally loads `triggers.yml`. Everything else — schemas, UI menus, design objects, Generator definitions, Transforms, queries and artifact definitions — is declared in `.infrahub.yml` and imported by Infrahub during the repository sync.
+This publishes all local branches to the bare mirror `.upstream.git/` — with the current checkout force-pushed over the mirror's `main`, the branch Infrahub tracks — registers the Git repository from `repository.yml`, loads `data/permissions.yml`, waits for the repository import to complete, and finally loads `triggers.yml`. Everything else — schemas, UI menus, design objects, Generator definitions, Transforms, queries and artifact definitions — is declared in `.infrahub.yml` and imported by Infrahub during the repository sync.
 
 Only committed work is published, so commit before running `inv load`. After this command completes, Infrahub contains the full design — fabrics, pods, racks, device templates, and IP pools — but no actual devices.
 

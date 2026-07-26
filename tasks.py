@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
-from shutil import rmtree
-from time import sleep
+from shlex import quote
+from time import monotonic, sleep
 
 import httpx
 from infrahub_sdk import InfrahubClientSync
@@ -15,8 +15,9 @@ MAIN_DIRECTORY_PATH = Path(__file__).parent
 BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
 # Bare mirror of the local checkout, living inside the directory bind-mounted at /upstream.
 UPSTREAM_BARE_REPO = MAIN_DIRECTORY_PATH / ".upstream.git"
-# Branch the containers track in that mirror; must match `default_branch` in repository.yml.
-UPSTREAM_DEFAULT_BRANCH = "local"
+# Branch the containers track in that mirror. Infrahub imports the remote branch whose name
+# matches its own, so this has to stay `main` — and match `default_branch` in repository.yml.
+UPSTREAM_DEFAULT_BRANCH = "main"
 # Must match the CoreRepository name in repository.yml.
 REPOSITORY_NAME = "test-repository"
 
@@ -60,18 +61,20 @@ def publish_upstream(ctx: Context) -> None:
     directly when it is a git worktree: `.git` is then a file pointing at a path
     outside the mount. A bare repo inside the mount clones cleanly either way.
 
-    Every local branch is copied over, plus the current checkout under the fixed
-    name `local` — whatever it is named on the host. `local` is the repository's
-    `default_branch` (see `repository.yml`), so Infrahub's `main` tracks what you
-    have checked out while the other branches stay available to the containers.
+    Every local branch is copied over, then the current checkout is force-pushed
+    over the mirror's `main` — whatever the branch is called on the host. Infrahub
+    tracks the remote branch named after its own (`main`), so this is what makes it
+    follow your checkout; the other branches stay available to the containers.
 
-    The mirror is rebuilt from scratch every time: cheap on a repo this size, and
-    it keeps branches deleted on the host from lingering as Infrahub branches.
+    Incremental and safe to re-run after every commit: `git init --bare` is a no-op
+    on an existing mirror, so branches the git agent pushed back into it survive.
     """
-    rmtree(UPSTREAM_BARE_REPO, ignore_errors=True)
-    ctx.run(f'git init --bare --initial-branch={UPSTREAM_DEFAULT_BRANCH} "{UPSTREAM_BARE_REPO}"', pty=True)
-    ctx.run(f'git push "{UPSTREAM_BARE_REPO}" "refs/heads/*:refs/heads/*"', pty=True)
-    ctx.run(f'git push "{UPSTREAM_BARE_REPO}" "HEAD:refs/heads/{UPSTREAM_DEFAULT_BRANCH}"', pty=True)
+    bare = quote(str(UPSTREAM_BARE_REPO))
+    ctx.run(f"git init --bare {bare}", pty=True)
+    ctx.run(f"git push --force {bare} 'refs/heads/*:refs/heads/*'", pty=True)
+    ctx.run(f"git push --force {bare} HEAD:refs/heads/{UPSTREAM_DEFAULT_BRANCH}", pty=True)
+    # `git init --bare` only honours the initial branch on a fresh repo; set it either way.
+    ctx.run(f"git -C {bare} symbolic-ref HEAD refs/heads/{UPSTREAM_DEFAULT_BRANCH}", pty=True)
 
 
 @task
@@ -80,15 +83,23 @@ def wait_for_repository(ctx: Context, timeout: int = 300) -> None:
     Block until Infrahub has imported the commit currently published upstream.
     """
     rev_parse = ctx.run("git rev-parse HEAD", hide=True)
-    head = rev_parse.stdout.strip() if rev_parse else ""
+    if not rev_parse:
+        message = "Unable to resolve the current commit"
+        raise Exit(message)
+
+    head = rev_parse.stdout.strip()
     client = InfrahubClientSync()
-    for _ in range(timeout // 5):
+    deadline = monotonic() + timeout
+    while True:
         repo = client.get(kind=CoreRepositorySync, name__value=REPOSITORY_NAME, raise_when_missing=False)
-        if repo and repo.sync_status.value == "erroneous":
-            message = f"Repository {REPOSITORY_NAME} failed to sync, check `docker compose logs task-worker`"
-            raise Exit(message)
-        if repo and repo.sync_status.value == "in-sync" and repo.commit.value == head:
-            return
+        if repo:
+            if repo.sync_status.value == "error-import":
+                message = f"Repository {REPOSITORY_NAME} failed to import, check `docker compose logs task-worker`"
+                raise Exit(message)
+            if repo.sync_status.value == "in-sync" and repo.commit.value == head:
+                return
+        if monotonic() >= deadline:
+            break
         sleep(5)
 
     message = f"Repository {REPOSITORY_NAME} did not import {head[:8]} within {timeout}s"

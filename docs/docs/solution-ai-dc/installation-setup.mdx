@@ -85,19 +85,18 @@ Open `http://localhost:8000` in a browser and log in with username `admin`, pass
 uv run inv load
 ```
 
-This runs four steps in sequence:
+This runs five steps in sequence:
 
-1. `inv publish-upstream` — mirrors every local branch into the gitignored bare repo `.upstream.git/`, plus the current checkout as `local`
+1. `inv publish-upstream` — mirrors every local branch into the gitignored bare repo `.upstream.git/`, then force-pushes the current checkout over the mirror's `main`
 2. `infrahubctl object load repository.yml` — registers the Git repository with Infrahub
 3. `infrahubctl object load data/permissions.yml` — sample operator persona (account `john`, role and group definitions)
-4. `infrahubctl object load triggers.yml` — trigger rules, once the repository import has completed
+4. `inv wait-for-repository` — blocks until Infrahub reports the repository `in-sync` at the commit just published
+5. `infrahubctl object load triggers.yml` — trigger rules, which reference Generator definitions the import has to register first
 
 Everything else comes from the repository itself: `.infrahub.yml` declares `schemas`, `objects` and `menus` alongside the queries, Generators, transforms and artifact definitions, so Infrahub imports all of it during the repository sync. There is no separate schema, menu or object load step.
 
-Between steps 3 and 4, `inv load` blocks until Infrahub reports the repository `in-sync` at the commit that was just published — trigger rules reference Generator definitions that the import has to register first. Verify at any time with `infrahubctl repository list`.
-
 :::note Publishing local commits
-The containers clone the bare mirror, not your working tree — this is what makes a `git worktree` checkout work, since its `.git` is a file pointing outside the bind mount. All of your local branches are copied into the mirror, and the current checkout is published a second time under the fixed name `local`. `local` is the repository's `default_branch`, so Infrahub's `main` tracks whatever branch you have checked out on the host. Only committed work is published: after committing, re-run `inv publish-upstream` (or `inv load`) so the containers see it.
+The containers clone the bare mirror, not your working tree — this is what makes a `git worktree` checkout work, since its `.git` is a file pointing outside the bind mount. All of your local branches are copied into the mirror, and the current checkout is then force-pushed over the mirror's `main`. Infrahub imports the remote branch whose name matches its own, so its `main` follows whatever branch you have checked out on the host — note this means the mirror's `main` is your checkout, not the host's `main` branch. Only committed work is published: after committing, re-run `inv publish-upstream` (or `inv load`) so the containers see it.
 :::
 
 ### Load supplementary data (optional)
@@ -145,7 +144,7 @@ Each Generator has a paired `.gql` query file in the same directory. The `.infra
 
 ### Demo data (object files)
 
-Loaded in numbered order by `infrahubctl object load objects/`:
+Imported in numbered order during the repository sync (`objects:` in `.infrahub.yml`):
 
 | File                             | Contents                                                                                                     |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------|
@@ -168,7 +167,7 @@ Objects are imported from the repository (`objects:` in `.infrahub.yml`), not lo
 |-------------------------------|---------------------------------------------------------------------------------------------|
 | `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed           |
 | `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes |
-| `repository.yml`              | `CoreRepository` object pointing to `/upstream/.upstream.git` (bare mirror), branch `local` |
+| `repository.yml`              | `CoreRepository` object pointing to `/upstream/.upstream.git` (bare mirror), branch `main` |
 | `tasks.py`                    | Invoke task definitions for environment management                                          |
 | `.infrahub.yml`               | Central configuration wiring schemas, objects, menus, Generators, Transforms, queries, and artifacts |
 | `triggers.yml`                | Trigger rules, loaded by `inv load` after the repository import completes                   |
@@ -184,7 +183,7 @@ Objects are imported from the repository (`objects:` in `.infrahub.yml`), not lo
 | Load        | `inv load`        | Publish the repository, then load permissions and trigger rules    |
 | Load schema | `inv load-schema` | Push schema files straight to Infrahub, bypassing the repository   |
 | Load menu   | `inv load-menu`   | Push menu definitions straight to Infrahub, bypassing the repository |
-| Publish     | `inv publish-upstream` | Mirror all local branches into `.upstream.git/`, checkout as `local` |
+| Publish     | `inv publish-upstream` | Mirror all local branches into `.upstream.git/`, checkout over `main` |
 | Wait        | `inv wait-for-repository` | Block until Infrahub imported the published commit          |
 | Build       | `inv build`       | Build the custom Docker image locally                              |
 | Test        | `inv test`        | Run pytest test suite                                              |

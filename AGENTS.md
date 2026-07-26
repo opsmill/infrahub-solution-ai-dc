@@ -22,7 +22,7 @@ inv build [--no-cache]          # Build Docker image
 inv load                        # publish → repository → permissions → wait for sync → triggers
 inv load-schema                 # Push schemas straight to Infrahub, bypassing the repository
 inv load-menu                   # Push menus straight to Infrahub, bypassing the repository
-inv publish-upstream            # Mirror all local branches into .upstream.git/, checkout as `local`
+inv publish-upstream            # Mirror all local branches into .upstream.git/, checkout over `main`
 inv wait-for-repository         # Block until Infrahub imported the published commit
 
 inv lint                        # Run all linters (yamllint, ruff, mypy)

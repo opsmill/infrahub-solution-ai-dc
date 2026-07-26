@@ -8,5 +8,5 @@ spec:
       # Bare mirror published by `inv publish-upstream`; a bind-mounted worktree
       # cannot be cloned directly (its .git is a file pointing outside the mount).
       location: "/upstream/.upstream.git"
-      # `local` is whatever branch is checked out on the host, under a stable name.
-      default_branch: "local"
+      # The mirror's `main` is the host's current checkout, whatever it is named there.
+      default_branch: "main"
