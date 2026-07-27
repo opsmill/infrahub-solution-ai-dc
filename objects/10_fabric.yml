@@ -66,3 +66,23 @@ spec:
             index: 3
             spine_switch_template: "dell-z9864f-on-spine-switch"
             member_of_groups: ["pods"]
+    - name: "Fabric-D"
+      index: 4
+      member_of_groups: ["fabrics"]
+      super_spine_switch_template: "juniper-qfx5230-64cd-super-spine-switch"
+      amount_of_super_spines: 4
+      children:
+        kind: NetworkPod
+        data:
+          - name: "Pod-D1"
+            index: 1
+            role: "fabric"
+            member_of_groups: ["pods"]
+          - name: "Pod-D2"
+            index: 2
+            spine_switch_template: "juniper-qfx5230-64cd-spine-switch"
+            member_of_groups: ["pods"]
+          - name: "Pod-D3"
+            index: 3
+            spine_switch_template: "juniper-qfx5230-64cd-spine-switch"
+            member_of_groups: ["pods"]

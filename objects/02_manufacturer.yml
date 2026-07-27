@@ -7,3 +7,4 @@ spec:
     - name: Dell
     - name: Cisco
     - name: Arista
+    - name: Juniper

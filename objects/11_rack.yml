@@ -206,3 +206,68 @@ spec:
       amount_of_leafs: 1
       leaf_switch_template: dell-s5232f-on-leaf-switch-storage
       member_of_groups: ["racks"]
+    # Fabric-D (Juniper) racks — mirror Fabric-B/C's layout with the Juniper leaf templates,
+    - name: "Rack-D2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-D2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-D2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-D2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-D2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D3-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-D3
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D3-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-D3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-D3-3"
+      index: 3
+      rack_type: storage
+      pod: Pod-D3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-storage
+      member_of_groups: ["racks"]
+    - name: "Rack-D3-4"
+      index: 4
+      rack_type: compute
+      pod: Pod-D3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-storage
+      member_of_groups: ["racks"]
