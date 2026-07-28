@@ -149,7 +149,7 @@ Each Generator has a paired `.gql` query file in the same directory. The `.infra
 
 | File                                                            | Purpose                                                                |
 |-----------------------------------------------------------------|------------------------------------------------------------------------|
-| `transforms/startup_config.gql` + `templates/startup_config_{cisco,arista,dell}.j2` | Three per-vendor Jinja2 Transforms, each producing a startup configuration artifact for the devices in its vendor group (`cisco_devices` / `arista_devices` / `dell_devices`). See [Multivendor configuration](./multivendor-config). |
+| `transforms/startup_config.gql` + `templates/startup_config_{cisco,arista,dell,juniper}.j2` | Four per-vendor Jinja2 Transforms, each producing a startup configuration artifact for the devices in its vendor group (`{manufacturer}_devices`). See [Multivendor configuration](./multivendor-config). |
 | `transforms/cabling_plan.py` / `.gql`                           | Python Transform producing a CSV cabling plan artifact per fabric      |
 | `transforms/computed_interface_description.py` / `.gql`         | Python Transform applied as a computed attribute on each interface     |
 
@@ -159,15 +159,15 @@ Loaded in numbered order by `infrahubctl object load objects/`:
 
 | File                             | Contents                                                                                                     |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------|
-| `objects/01_groups.yml`          | `CoreStandardGroup` objects: `halls`, `racks`, `fabrics`, `pods`, `devices`, `tenants`, and the per-vendor device groups `cisco_devices` / `arista_devices` / `dell_devices` |
-| `objects/02_manufacturer.yml`    | Equipment manufacturers (Cisco, Arista, Dell)                                                               |
+| `objects/01_groups.yml`          | `CoreStandardGroup` objects: `halls`, `racks`, `fabrics`, `pods`, `devices`, `tenants`, and the per-vendor device groups `cisco_devices` / `arista_devices` / `dell_devices` / `juniper_devices` |
+| `objects/02_manufacturer.yml`    | Equipment manufacturers (Cisco, Arista, Dell, Juniper)                                                      |
 | `objects/03_device_type.yml`     | Per-vendor device types for leaf, spine, and super spine switches                                            |
 | `objects/04_ipam.yml`            | IP supernet (`10.0.0.0/8`) and `FabricSupernetPool`                                                          |
 | `objects/05_profiles.yml`        | Interface role profiles (MTU, role assignments)                                                              |
 | `objects/06_device_template.yml` | Per-vendor device templates defining interface layouts per device role                                       |
 | `objects/07_pools.yml`           | Overlay resource pools: ASN, L2VNI, L3VNI, and VLAN number pools                                             |
-| `objects/10_fabric.yml`          | Fabric and Pod objects: Fabric-A (Cisco), Fabric-B (Arista), Fabric-C (Dell) — each single-vendor            |
-| `objects/11_rack.yml`            | Rack objects across all three fabrics with leaf counts and per-vendor template assignments                   |
+| `objects/10_fabric.yml`          | Fabric and Pod objects: Fabric-A (Cisco), Fabric-B (Arista), Fabric-C (Dell), Fabric-D (Juniper) — each single-vendor |
+| `objects/11_rack.yml`            | Rack objects across all four fabrics with leaf counts and per-vendor template assignments                    |
 | `objects/12_overlay.yml`         | Seed overlay tenant `Blue` on Fabric-A, with a VRF and segments (routed, rack-scoped, and L2-only examples)  |
 
 Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and are loaded separately after repository sync — see [Load trigger rules](#load-trigger-rules). Supplementary data (`data/permissions.yml`, `data/tenant-red.yml`) is loaded manually — see [Load supplementary data](#load-supplementary-data-optional).
