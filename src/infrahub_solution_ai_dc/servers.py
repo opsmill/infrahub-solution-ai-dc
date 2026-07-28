@@ -84,6 +84,50 @@ def validate_service(
         raise ValueError(msg)
 
 
+def peer_endpoint_id(endpoint_ids: Iterable[str], own_endpoint_id: str) -> str | None:
+    """Return the far end of a point-to-point link, or ``None`` when there is no single one.
+
+    Used to recover a previous run's placement: a server's cabled port names a ``NetworkLink`` whose
+    other endpoint *is* the leaf port that was chosen. Returns ``None`` for a half-built link (our own
+    endpoint only) and for a link with several far ends — neither is a point-to-point server cable, and
+    guessing would re-place a server that is already cabled.
+    """
+    others = [endpoint_id for endpoint_id in endpoint_ids if endpoint_id != own_endpoint_id]
+    if len(others) != 1:
+        return None
+    return others[0]
+
+
+def validate_placement_matches_request(
+    service_name: str,
+    placed_rack_id: str,
+    placed_port_id: str,
+    requested_rack_id: str | None,
+    requested_port_id: str | None,
+) -> None:
+    """Fail loud when an explicit request contradicts the placement a previous run already materialized.
+
+    A service whose server is already cabled is reused as-is (that is what makes the generator
+    idempotent). If the operator has since pointed ``rack``/``leaf_interface`` somewhere else, honoring
+    it would mean moving a live cable, and ignoring it would silently discard the request — so this
+    raises instead. Re-placement is done by deleting the server and letting the generator run again.
+    """
+    if requested_rack_id is not None and requested_rack_id != placed_rack_id:
+        msg = (
+            f"Server service {service_name!r} is already placed on rack {placed_rack_id!r} but now requests "
+            f"rack {requested_rack_id!r}; re-placing a cabled server is not supported (delete its "
+            f"NetworkServer to re-place it)"
+        )
+        raise ValueError(msg)
+    if requested_port_id is not None and requested_port_id != placed_port_id:
+        msg = (
+            f"Server service {service_name!r} is already placed on leaf port {placed_port_id!r} but now "
+            f"requests port {requested_port_id!r}; re-placing a cabled server is not supported (delete "
+            f"its NetworkServer to re-place it)"
+        )
+        raise ValueError(msg)
+
+
 def select_least_utilized_rack(
     racks: Sequence[LocationRack],
     server_counts: Mapping[str, int],
@@ -119,18 +163,25 @@ def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkIn
     An interface is *free* when its ``role`` is ``"server"`` and it is unused — no IP address and no
     cabled link (both to-one relationships unset). "Lowest-numbered" is resolved with
     ``netutils.sort_interface_list`` over the candidate names, the same ordering the cabling helpers
-    use, so selection is deterministic regardless of input order.
+    use.
+
+    Candidates span *every* leaf of a rack, so the same port name legitimately occurs more than once
+    (each leaf has an ``Ethernet1/1``). An exact-name tie therefore breaks on the owning device id,
+    which keeps selection deterministic regardless of input order.
     """
-    free_by_name = {
-        interface.name.value: interface
+    free = [
+        interface
         for interface in interfaces
         if interface.role.value == "server" and _server_port_is_unused(interface)
-    }
-    if not free_by_name:
+    ]
+    if not free:
         return None
 
-    lowest_name = sort_interface_list(list(free_by_name))[0]
-    return free_by_name[lowest_name]
+    lowest_name = sort_interface_list([interface.name.value for interface in free])[0]
+    return min(
+        (interface for interface in free if interface.name.value == lowest_name),
+        key=lambda interface: getattr(interface.device, "id", "") or "",
+    )
 
 
 def validate_explicit_port(interface: NetworkInterface, rack_name: str) -> None:

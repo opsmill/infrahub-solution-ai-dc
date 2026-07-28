@@ -13,6 +13,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkDevice,
     NetworkFabric,
     NetworkInterface,
+    NetworkLink,
     NetworkPod,
     NetworkSegment,
     NetworkServer,
@@ -20,11 +21,13 @@ from infrahub_solution_ai_dc.protocols import (
     ServerInterface,
 )
 from infrahub_solution_ai_dc.servers import (
+    peer_endpoint_id,
     require_allocated,
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
     validate_explicit_port,
+    validate_placement_matches_request,
     validate_service,
 )
 
@@ -50,19 +53,28 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     ``server_p2p`` /31 from the pod's ``server_prefix_pool`` and upserts the paired eBGP sessions.
 
     All operator/service-node writes use ``update_group_context=False`` (mirroring ``OverlayGenerator``) so
-    the generator group's cleanup never prunes them. The generator is purely additive/idempotent: the server
-    is named deterministically, its own ``ServerInterface`` upserts on its ``(server, name)``
-    ``human_friendly_id``, the /31 allocates by a stable identifier, sessions upsert by ``"{a}__{b}"`` name,
-    and the ASN is allocated only when unset. Re-running yields an empty diff.
+    the generator group's cleanup never prunes them. The generator is purely additive/idempotent, and
+    **placement reuse is what makes that true**: every other upsert key is derived from the placement, so a
+    re-run that reused it re-derives the same server hostname, the same ``(server, name)``
+    ``human_friendly_id`` for the port, the same ``NetworkLink`` name, the same ``/31`` allocation
+    identifier and the same ``"{a}__{b}"`` session names — while the ASN is allocated only when unset.
+    Re-running yields an empty diff. A re-run that *re-selected* placement instead could not: see
+    :meth:`existing_placement`.
+
+    Note that a re-run is the norm, not an edge case — stamping the checksum at the end of a first run
+    fires ``trigger-server-generator-update-checksum`` (``triggers.yml``), so every service is processed
+    at least twice.
 
     The L2 and L3 branches in :meth:`generate` share the same placement + server + cabling foundation; the
     L3 branch (:meth:`configure_l3`) additionally allocates the ASN and /31 and upserts the eBGP pair, while the
     L2 branch (:meth:`attach_segment_rack`) instead adds the chosen rack to the segment's placement and creates
     no BGP/IP. :meth:`servers.validate_service` fail-loud-rejects contradictory requests before any write.
 
-    Placement (:meth:`resolve_placement`) is automatic by default (least-utilized rack + lowest free
-    ``role:server`` port) and honors an explicit ``rack``/``leaf_interface`` exactly when the service names
-    one (:meth:`resolve_explicit_placement`), failing loud on any invalid explicit placement (US3/FR-004).
+    Placement (:meth:`resolve_placement`) reuses what a previous run already cabled
+    (:meth:`existing_placement`); for an unplaced service it is automatic by default (least-utilized rack +
+    lowest free ``role:server`` port) and honors an explicit ``rack``/``leaf_interface`` exactly when the
+    service names one (:meth:`resolve_explicit_placement`), failing loud on any invalid explicit placement
+    (US3/FR-004).
     """
 
     logger = logging.getLogger("infrahub.tasks")
@@ -117,17 +129,41 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     async def resolve_placement(
         self, service: ServerGeneratorQueryServiceNode, fabric_id: str
     ) -> tuple[LocationRack, NetworkDevice, NetworkInterface]:
-        """Resolve (rack, leaf, leaf_port) for the attachment — automatic or explicit (US3/T036).
+        """Resolve (rack, leaf, leaf_port) for the attachment — reused, automatic, or explicit (US3/T036).
 
-        Automatic (neither ``rack`` nor ``leaf_interface`` on the service): pick the least-utilized
-        eligible rack in the fabric, then the lowest free ``role:server`` port among that rack's leaves.
+        **Reused** (the service's server is already cabled): return that placement unchanged via
+        :meth:`existing_placement`. This is what makes the generator idempotent — see that method for
+        why recomputing instead is not merely wasteful but guaranteed to fail.
 
-        Explicit (either provided): honor the request exactly via :meth:`resolve_explicit_placement`,
-        failing loud on any invalid placement. All validation happens **before** any object is created,
-        so a rejected request leaves no partial objects (FR-004/SC-002).
+        Automatic (unplaced, and neither ``rack`` nor ``leaf_interface`` on the service): pick the
+        least-utilized eligible rack in the fabric, then the lowest free ``role:server`` port among
+        that rack's leaves.
+
+        Explicit (unplaced, either provided): honor the request exactly via
+        :meth:`resolve_explicit_placement`, failing loud on any invalid placement. All validation
+        happens **before** any object is created, so a rejected request leaves no partial objects
+        (FR-004/SC-002).
         """
         explicit_rack = service.rack.node if service.rack and service.rack.node else None
         explicit_port = service.leaf_interface.node if service.leaf_interface and service.leaf_interface.node else None
+
+        existing = await self.existing_placement(service)
+        if existing is not None:
+            rack, leaf, leaf_port = existing
+            # An explicit request that has since moved would mean re-cabling a live server; refuse
+            # rather than silently keeping the old placement or corrupting the cable.
+            validate_placement_matches_request(
+                str(service.name.value) if service.name else "",
+                placed_rack_id=rack.id,
+                placed_port_id=leaf_port.id,
+                requested_rack_id=explicit_rack.id if explicit_rack is not None else None,
+                requested_port_id=explicit_port.id if explicit_port is not None else None,
+            )
+            self.logger.info(
+                f"Reusing placement: rack {rack.name.value}, leaf {leaf.hostname.value}, "
+                f"port {leaf_port.name.value}"
+            )
+            return rack, leaf, leaf_port
 
         if explicit_rack is None and explicit_port is None:
             rack = await self.select_rack(fabric_id)
@@ -136,6 +172,79 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
             rack, leaf, leaf_port = await self.resolve_explicit_placement(explicit_rack, explicit_port, fabric_id)
 
         self.logger.info(f"Placement: rack {rack.name.value}, leaf {leaf.hostname.value}, port {leaf_port.name.value}")
+        return rack, leaf, leaf_port
+
+    async def placed_server_id(self, service: ServerGeneratorQueryServiceNode) -> str | None:
+        """Return the id of this service's already-materialized server, or ``None`` if there is none.
+
+        Prefers the ``service.server`` relationship and falls back to the deterministic hostname, so a
+        server cabled by a run that never reached :meth:`set_service_server` is still recognized.
+        """
+        server = service.server.node if service.server else None
+        if server is not None and server.id is not None:
+            return server.id
+
+        service_name = service.name.value if service.name else None
+        if service_name is None:
+            return None
+        servers = await self.client.filters(kind=NetworkServer, hostname__value=f"server-{service_name}")
+        return servers[0].id if servers else None
+
+    async def existing_placement(
+        self, service: ServerGeneratorQueryServiceNode
+    ) -> tuple[LocationRack, NetworkDevice, NetworkInterface] | None:
+        """Recover the placement a previous run materialized, or ``None`` when the service is unplaced.
+
+        Placement **must not** be recomputed for a service that already has a cabled server, and not
+        just to save work: :func:`servers.select_free_server_port` counts a port with a link as *not*
+        free, so a re-run necessarily picks a *different* port. That yields a differently-named
+        ``NetworkLink`` on the server's single ``eth1``, whose ``networkendpoint__networklink``
+        cardinality is 1 — so the second link is rejected and the run dies *after*
+        :meth:`materialize_server` has already re-pointed ``server.rack``. Reusing the placement is
+        what makes the whole chain (server, port, link, /31, sessions) idempotent: every downstream
+        upsert key is derived from it, including the ``/31`` allocation identifier (the port-id pair).
+
+        The server is found through ``service.server`` when set, and otherwise by the deterministic
+        hostname :meth:`materialize_server` assigns. That fallback matters: :meth:`generate` cables at
+        step 4 but only points ``service.server`` at step 6, so a failure in between (an exhausted ASN
+        pool, an unallocated ``overlay_asn``) leaves a cabled server the service does not reference —
+        and keying reuse solely on the relationship would re-select a port and crash exactly as before.
+
+        From there it walks server -> its ``eth1`` -> that port's link -> the link's far endpoint (the
+        leaf port) -> its leaf -> its rack. Returns ``None`` at any missing step so a half-built server
+        (created but never cabled) falls through to normal selection and gets finished rather than being
+        reused in a broken state.
+        """
+        server_id = await self.placed_server_id(service)
+        if server_id is None:
+            return None
+
+        server_ports = await self.client.filters(
+            kind=ServerInterface,
+            server__ids=[server_id],
+            name__value=SERVER_PORT_NAME,
+            include=["link"],
+        )
+        server_port = next((port for port in server_ports if port.link.id is not None), None)
+        if server_port is None:
+            return None
+
+        link = await self.client.get(kind=NetworkLink, id=server_port.link.id, include=["endpoints"])
+        leaf_port_id = peer_endpoint_id(
+            [peer.id for peer in link.endpoints.peers if peer.id is not None], server_port.id
+        )
+        if leaf_port_id is None:
+            return None
+
+        leaf_port = await self.client.get(
+            kind=NetworkInterface, id=leaf_port_id, include=["ip_address", "link", "device"]
+        )
+        if leaf_port.device.id is None:
+            return None
+        leaf = await self.client.get(kind=NetworkDevice, id=leaf_port.device.id, include=["rack"])
+        if leaf.rack.id is None:
+            return None
+        rack = await self.client.get(kind=LocationRack, id=leaf.rack.id)
         return rack, leaf, leaf_port
 
     async def resolve_explicit_placement(

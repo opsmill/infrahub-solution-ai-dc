@@ -19,11 +19,13 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 import pytest
 
 from infrahub_solution_ai_dc.servers import (
+    peer_endpoint_id,
     require_allocated,
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
     validate_explicit_port,
+    validate_placement_matches_request,
     validate_service,
 )
 
@@ -57,7 +59,7 @@ class _RackStub:
 
 
 class _InterfaceStub:
-    """Minimal NetworkInterface stub: name/role + the two to-one relationships checked for 'free'."""
+    """Minimal NetworkInterface stub: name/role, its owning device, + the relationships checked for 'free'."""
 
     def __init__(
         self,
@@ -65,11 +67,13 @@ class _InterfaceStub:
         role: str = "server",
         ip_address: _Related | None = None,
         link: _Related | None = None,
+        device_id: str = "leaf",
     ) -> None:
         self.name = _Value(name)
         self.role = _Value(role)
         self.ip_address = ip_address
         self.link = link
+        self.device = _Related(device_id)
 
 
 def _rack(rack_id: str, index: int, name: str) -> LocationRack:
@@ -81,8 +85,9 @@ def _interface(
     role: str = "server",
     ip_address: _Related | None = None,
     link: _Related | None = None,
+    device_id: str = "leaf",
 ) -> NetworkInterface:
-    return cast("NetworkInterface", _InterfaceStub(name, role, ip_address, link))
+    return cast("NetworkInterface", _InterfaceStub(name, role, ip_address, link, device_id))
 
 
 class TestSelectLeastUtilizedRack:
@@ -201,6 +206,78 @@ class TestSelectFreeServerPort:
     def test_empty_interfaces_returns_none(self) -> None:
         """An empty candidate set yields None."""
         assert select_free_server_port([]) is None
+
+    def test_same_named_ports_on_two_leaves_break_the_tie_by_device(self) -> None:
+        """A rack's leaves share port names, so the tie must break on the device — not on query order.
+
+        ``select_leaf_port`` feeds this the free ports of *every* leaf in the rack, so two leaves both
+        offering ``Ethernet1/1`` are ordinary. Keying candidates by name alone made the winner depend
+        on iteration order, so consecutive runs could pick a different leaf for the same rack.
+        """
+        on_leaf_b = _interface("Ethernet1/1", device_id="leaf-b")
+        on_leaf_a = _interface("Ethernet1/1", device_id="leaf-a")
+
+        assert select_free_server_port([on_leaf_b, on_leaf_a]) is on_leaf_a
+        assert select_free_server_port([on_leaf_a, on_leaf_b]) is on_leaf_a
+
+    def test_lowest_name_still_wins_across_devices(self) -> None:
+        """Port ordering is by interface name first; the device only breaks an exact-name tie."""
+        high_on_first_leaf = _interface("Ethernet10", device_id="leaf-a")
+        low_on_second_leaf = _interface("Ethernet2", device_id="leaf-b")
+
+        result = select_free_server_port([high_on_first_leaf, low_on_second_leaf])
+
+        assert result is low_on_second_leaf
+
+
+class TestPeerEndpointId:
+    """Resolving the far end of a two-ended ``NetworkLink`` (the leaf port behind a server port)."""
+
+    def test_returns_the_other_end_of_the_link(self) -> None:
+        """Given both endpoint ids and our own, the remaining one is the peer."""
+        assert peer_endpoint_id(["leaf-port", "server-port"], "server-port") == "leaf-port"
+
+    def test_returns_none_when_link_has_no_other_end(self) -> None:
+        """A half-built link (only our own endpoint) has no peer to reuse."""
+        assert peer_endpoint_id(["server-port"], "server-port") is None
+
+    def test_returns_none_when_the_peer_is_ambiguous(self) -> None:
+        """More than one far end is not a point-to-point link; refuse to guess."""
+        assert peer_endpoint_id(["leaf-a-port", "leaf-b-port", "server-port"], "server-port") is None
+
+
+class TestValidatePlacementMatchesRequest:
+    """An already-placed service may only be reused when the request still asks for that placement."""
+
+    def test_accepts_reuse_when_the_request_names_nothing(self) -> None:
+        """Automatic placement: nothing requested, so the existing placement stands."""
+        validate_placement_matches_request(
+            "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
+            requested_rack_id=None, requested_port_id=None,
+        )
+
+    def test_accepts_reuse_when_the_request_matches(self) -> None:
+        """An explicit request identical to what was already materialized is a no-op."""
+        validate_placement_matches_request(
+            "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
+            requested_rack_id="rack-1", requested_port_id="port-1",
+        )
+
+    def test_rejects_a_rack_change_on_a_placed_service(self) -> None:
+        """Re-placing a cabled server is not supported; fail loud instead of silently ignoring the request."""
+        with pytest.raises(ValueError, match="already placed"):
+            validate_placement_matches_request(
+                "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
+                requested_rack_id="rack-2", requested_port_id=None,
+            )
+
+    def test_rejects_a_port_change_on_a_placed_service(self) -> None:
+        """Same for a new explicit leaf_interface on an already-cabled service."""
+        with pytest.raises(ValueError, match="already placed"):
+            validate_placement_matches_request(
+                "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
+                requested_rack_id=None, requested_port_id="port-2",
+            )
 
 
 class _RecordedSession:
