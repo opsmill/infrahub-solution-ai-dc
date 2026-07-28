@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "infrahub": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "infrahub-mcp"
+      ],
+      "env": {
+        "INFRAHUB_ADDRESS": "http://localhost:8000",
+        "INFRAHUB_USERNAME": "admin",
+        "INFRAHUB_PASSWORD": "infrahub"
+      }
+    }
+  }
+}
