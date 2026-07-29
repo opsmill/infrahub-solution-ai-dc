@@ -84,7 +84,9 @@ A Kubernetes platform engineer runs Vidra, which needs to know when the fabric a
 
 - **Member moved** to another rack or port: the /31 and leaf change; the manifest re-renders with the new peer address, driven by the artifact's own data dependency.
 - **Member removed**: the manifest re-renders without it and Vidra reconciles the deletion — the case a per-member artifact would handle badly, since a deleted artifact tells the cluster nothing.
-- **Zero-member or all-L2 cluster**: empty manifest, not an error; removing the last L3 member correctly withdraws all peering.
+- **Zero-member or all-L2 cluster**: empty manifest, not an error. Whether the deployment tool then withdraws the peering it previously applied is its behaviour, not ours — see Assumptions.
+- **A member whose name is not a valid Kubernetes identifier**: the node selector derives from the service name, which is free text. A name containing spaces or capitals produces a manifest the Kubernetes API server rejects. Not detected on the fabric side — see Assumptions.
+- **A second Kubernetes cluster in the same Infrahub branch**: out of scope for v1, and not merely unsupported but actively wrong — see Assumptions and Out of Scope.
 - **Member mid-provisioning or permanently broken**: omitted from the manifest so the other members' valid peering still deploys. A permanently broken member is silently absent, detectable only as member count not matching document count.
 - **Same service in two clusters**: impossible by cardinality.
 - **Node selector collision**: impossible — it derives from the hostname, which derives from the unique service name.
@@ -128,6 +130,9 @@ A Kubernetes platform engineer runs Vidra, which needs to know when the fabric a
 - Cilium's v2 BGP resources (`CiliumBGPClusterConfig`, `CiliumBGPPeerConfig`, `CiliumBGPAdvertisement`, `cilium.io/v2`), verified against the Cilium BGP control-plane configuration documentation. Peer address is expressible only per cluster-config document, which is why there is one per member; per-node overrides cannot carry it.
 - Nodes carry an `infrahub.io/server` label matching each member's node selector. Kubelet never sets this label — something outside this repository applies it. Applying it is the reader's responsibility, documented in the feature quickstart; a mismatch yields a manifest that matches no node.
 - Vidra is installed in the cluster and configured to sync the cluster artifact by name. **The artifact name is a published contract** — renaming it later breaks deployed clusters.
+- **Exactly one Cilium-consuming Kubernetes cluster exists per Infrahub branch.** Every artifact produced by one artifact definition shares one name (verified: the existing cabling plan yields three artifacts all named `Cabling Plan`, one per fabric), and Vidra selects an artifact *only* by that name, then syncs every match into its one configured destination. So a second cluster would have its manifest delivered to the first cluster as well, and vice versa. Foreign documents are inert — their node selector matches no local node — but they are still applied, and they stop being inert if a node-label value is reused across clusters. Declaring more than one cluster is therefore out of scope for v1 rather than merely untested.
+- Removing the last L3 member renders an empty manifest, and **withdrawing the peering that was previously applied is Vidra's behaviour, not this feature's**. Whether an empty artifact body causes Vidra to delete the resources it previously synced or to no-op — leaving them in place — was not verified, and cannot be without running the operator. This feature's obligation ends at rendering zero documents.
+- **Server service names are valid Kubernetes identifiers**: lowercase alphanumeric with `-` or `.`, no spaces, at most 63 characters. The node selector is used verbatim as a resource name and a label value, both of which Kubernetes constrains more tightly than Infrahub does — Infrahub requires only that the name be unique. A non-conforming name yields a manifest that fails to apply, and the fabric side cannot detect it. Every service in the shipped dataset already conforms.
 - One uplink per member — single-leaf attachment, as the Server service provides today. No multi-homing.
 - Per-member ASN allocation continues from the existing global server ASN pool; the pool is sized for cluster growth rather than individual servers.
 - No cluster-level tenancy constraint: members may span VRFs and Fabrics, unvalidated, because the correct constraint depends on how the cluster itself is configured.
@@ -145,6 +150,8 @@ A Kubernetes platform engineer runs Vidra, which needs to know when the fabric a
 - Multi-homed members; declaring N members from a single object (see issue #62, which owns the multi-member declaration ergonomics).
 - Automated integration or end-to-end coverage — deferred until the integration foundation exists; acceptance is manual for now.
 - Any new generator. Member provisioning stays with the existing Server service generator, per ADR-0002's standalone-generator boundary.
+- **More than one Cilium-consuming Kubernetes cluster per Infrahub branch.** Supporting it needs a way for the deployment tool to select one cluster's manifest out of several sharing an artifact name — either per-cluster artifact naming in Infrahub or a target selector in Vidra's `InfrahubSync`. Both belong to those projects, not to this feature.
+- Validating that a service name is a usable Kubernetes identifier. Adding a fail-loud path here would cut against the agreed decision that ineligible members are omitted rather than raised; the constraint is documented in Assumptions instead.
 
 ## Dependencies
 

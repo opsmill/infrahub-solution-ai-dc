@@ -148,15 +148,27 @@ A member yields a record only when **all** hold:
 4. That session has non-null `local_as` **and** `remote_as`.
 5. The server's cabling resolves to a leaf-port IP address.
 
-Failing any check **omits** the member silently — no raise (FR-004, FR-005). This is the one place the
-feature deliberately does not fail loud, and the reason is in the spec: one mid-provisioning member
-must not withhold valid config from the rest.
+Failing any check **omits** the member — no raise (FR-004, FR-005). This is the one place the feature
+deliberately does not fail loud, and the reason is in the spec: one mid-provisioning member must not
+withhold valid config from the rest.
 
-### Ordering
+Omission is not, however, *silent*: the module **logs each omitted member and the check it failed**.
+Without that, a permanently broken member is detectable only by manually comparing member count to
+document count, which the spec concedes. A log line costs nothing, changes no rendered output, and
+turns an invisible failure into a diagnosable one.
 
-Sorted by `node_selector`. Deterministic ordering is what makes the artifact checksum stable across
-renders, which is what makes Vidra's checksum comparison meaningful (FR-008). Without it, an
-unordered member fetch would produce a new checksum on every render and Vidra would re-sync forever.
+### Ordering — at both levels
+
+**Across members**: sorted by `node_selector`. Deterministic ordering is what makes the artifact
+checksum stable across renders, which is what makes Vidra's checksum comparison meaningful (FR-008).
+Without it, an unordered member fetch would produce a new checksum on every render and Vidra would
+re-sync forever.
+
+**Within a member**: when resolving the leaf-port IP, iterate the server's interfaces **sorted by
+interface name** and take the first eligible one — not simply "the first found", which is query order.
+The spec assumes one uplink per member, so in practice there is one candidate. But a second cabled
+interface (a management port, or leftovers mid-move) would otherwise let `peerAddress` flip between
+renders, reintroducing exactly the checksum churn the across-member ordering exists to prevent.
 
 ### Value mapping
 

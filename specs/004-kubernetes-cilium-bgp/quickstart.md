@@ -116,6 +116,23 @@ Then remove that member and confirm the artifact returns to 5 documents with the
 Then move an existing member to a different rack (set `rack` on its service) and confirm its
 `peerAddress` follows the new leaf.
 
+This step is also the **only** verification that FR-006's trigger half works. The unit tests prove the
+manifest is a pure function of its members; that Infrahub actually re-renders on add / remove / move
+rests on artifact data-dependency tracking, which nothing in this feature tests (`research.md` R7).
+
+**Additionally, if Vidra is running** (step 8), remove the *last* L3 member and check what happens in
+the cluster:
+
+```bash
+kubectl get ciliumbgpclusterconfigs
+```
+
+**Expected — but unverified**: the previously-synced `CiliumBGPClusterConfig` objects are deleted. This
+feature's obligation ends at rendering zero documents (FR-005), which it does; whether an empty artifact
+body makes Vidra *delete* what it previously applied or simply no-op was not verified and cannot be
+without running the operator. If stale objects remain, that is a Vidra-side gap to report upstream, not
+a defect in this feature — but it does mean the last member's peering is not withdrawn automatically.
+
 ## 7. Vidra's polling contract (US4 / FR-008)
 
 ```bash

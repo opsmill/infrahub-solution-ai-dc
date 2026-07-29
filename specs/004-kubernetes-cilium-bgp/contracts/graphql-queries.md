@@ -104,6 +104,30 @@ query ArtifactIDs($artifactname: [String]) {
 | Variable type | `[String]` (a **list**) | Paired with `name__values` (plural). Using `String` + `name__value` silently returns nothing rather than erroring. |
 | Fields | `id`, `storage_id { id }`, `checksum { value }`, `name { value }` | Vidra reads all four; `checksum` drives its re-sync decision. |
 
+### ⚠️ `storage_id { id }` is correct — do not "fix" it to `{ value }`
+
+It looks wrong. It is not. Both halves were verified:
+
+- **Infrahub 1.11 introspection**: `CoreArtifact.storage_id` is a `TextAttribute`, and `TextAttribute`
+  exposes **both** `id` and `value`. So `{ id }` is valid, and returns the attribute node's UUID rather
+  than the storage-id string.
+- **Vidra's unmarshalling** (`internal/adapter/infrahub/models.go`):
+
+  ```go
+  StorageID struct {
+      ID string `json:"id"`
+  } `json:"storage_id"`
+  ```
+
+  assigned as `StorageID: node.StorageID.ID`.
+
+So `{ id }` is precisely what Vidra parses. Changing it to `{ value }` would make Vidra unmarshal an
+empty `StorageID` — **with no error**, since the JSON key would simply be absent. Every deployed
+consumer would break silently.
+
+This is recorded because `{ value }` is the intuitive reading and a future reader, reviewer, or linter
+is likely to "correct" it.
+
 Vidra invokes it as `POST {infrahubAPIURL}/api/query/ArtifactIDs?update_group=false&branch=<branch>&at=<date>`.
 
 This query is **not** artifact- or cluster-specific — it matches any artifact by name and serves every

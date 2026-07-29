@@ -14,6 +14,26 @@ FR-003, FR-004, FR-005, SC-002 and SC-004.
 **Do not rename `artifact_name` without treating it as a breaking change.** The `.infrahub.yml`
 definition key (`cilium_bgp_manifest`) is internal and may be renamed freely; `artifact_name` may not.
 
+### One cluster per branch — a hard v1 bound
+
+The artifact name is shared by **every** artifact the definition produces, not scoped per target.
+Verified against a running stack: the existing cabling-plan definition yields three `CoreArtifact` rows
+all named `Cabling Plan`, one per fabric.
+
+Vidra's `InfrahubSync` carries no target or object selector — only `artefactName` — and its
+`CreateArtifactsFromAPIResponse` iterates *every* returned edge rather than erroring on ambiguity. So
+with two clusters, each cluster's Vidra syncs **both** clusters' documents into its own destination
+namespace.
+
+A foreign `CiliumBGPClusterConfig` is inert in the wrong cluster, since its `nodeSelector` matches no
+local node — but it is still applied, and it stops being inert the moment a node-label value is reused
+across clusters.
+
+**Consequence for this contract**: v1 supports exactly one Cilium-consuming cluster per Infrahub
+branch. Rendering is already correct for any number of clusters; it is *delivery* that cannot
+disambiguate. Do not treat the N-cluster case as merely untested — it is wrong. Lifting the bound needs
+either per-cluster artifact naming in Infrahub or a target selector in `InfrahubSync`.
+
 ## Document set
 
 A single multi-document YAML body, `---`-separated. For a cluster with **N** eligible L3 members

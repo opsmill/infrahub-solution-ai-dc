@@ -41,6 +41,20 @@ service's own integration suite is entirely `@pytest.mark.skip`-marked pending s
 (verified, `research.md` R6b), so adding cluster integration tests would add skipped tests rather than
 coverage. Acceptance is manual via `quickstart.md`.
 
+Be precise about what that covers, so the unit tests are not mistaken for full coverage:
+
+| Requirement | Verified by unit test | Verified only manually |
+|---|---|---|
+| FR-003, FR-004, FR-005 | yes — render fixtures, parse, assert documents and fields | — |
+| FR-002 | yes — render the computed-attribute template | — |
+| **FR-006** | **half** — that the manifest is a pure *function of* its members (N vs N+1 vs moved-leaf fixtures) | **that Infrahub actually re-renders on those changes** — quickstart step 6 |
+| FR-008 | no — needs a live stack | quickstart step 7 |
+| FR-009 | yes — the existing Server service suite passes with zero edits | — |
+| FR-001, FR-007 | no — schema-level and data-level | quickstart steps 2 and 4 |
+
+FR-006's trigger half rests on artifact data-dependency tracking (`research.md` R7), which no test in
+this feature exercises.
+
 **Target Platform**: Infrahub 1.11.x stack (Docker Compose); the rendered artifact is consumed by the
 Vidra operator in a Kubernetes cluster, outside this repository.
 
@@ -185,7 +199,12 @@ Steps 5 and 8 are independent of the 4 → 6 → 7 chain and can proceed in para
 
 | Risk | Mitigation |
 |---|---|
+| **A second cluster cross-contaminates the first.** All artifacts of one definition share one name (verified: 3 artifacts named `Cabling Plan`), Vidra selects only by name and syncs every match, so each cluster receives every cluster's documents. | Bounded out of scope for v1 — one Cilium-consuming cluster per Infrahub branch, stated in `spec.md` Assumptions and Out of Scope and in the artifact contract. Foreign documents are inert (their node selector matches no local node) unless a label value is reused across clusters. Proper fixes — per-cluster artifact naming, or a target selector in `InfrahubSync` — belong to Infrahub/Vidra. |
 | Artifact renamed later, silently breaking deployed clusters | Named and flagged as a contract in `contracts/cilium-manifest-artifact.md`, the plan constraints, and `quickstart.md`. |
+| Empty manifest may not withdraw previously-synced peering — Vidra's behaviour on an empty body is unverified | Scoped as a Vidra assumption in `spec.md` rather than asserted as an outcome; FR-005 (render zero documents) is unaffected and remains our side of the contract. Manual check added to `quickstart.md` step 6. |
+| A service name that is not a valid Kubernetes identifier renders a manifest the API server rejects, breaking SC-004 | Documented as an assumption and edge case in `spec.md`. Deliberately not validated — a new fail-loud path would cut against the agreed omit-don't-raise decision. |
+| Two cabled interfaces on one member → `peerAddress` flips between renders → checksum churn → Vidra re-syncs forever | Interface selection is specified as deterministic (sort by name, take the first eligible), not "first found" — `data-model.md` §5. |
+| A silently-omitted member is invisible; the spec concedes detection needs manual counting | The peering module logs each omitted member and the eligibility check it failed — `data-model.md` §5. Diagnosability without weakening omit-don't-raise. |
 | `ArtifactIDs` query name/variable/type drifting from Vidra's expectation (`[String]` + `name__values`, not `String` + `name__value`) | Exact document pinned verbatim in `contracts/graphql-queries.md`, with the failure mode (silent empty result) called out. |
 | Wrong end of the cabling link selected → the *server's* address rendered as `peerAddress` | Called out explicitly in the query contract; `__typename` discrimination required; a unit test asserts `peerAddress` equals the leaf's address. |
 | Non-deterministic member ordering → checksum churn → Vidra re-syncs forever | Ordering by `node_selector` is a stated requirement of the peering module with its own unit test. |
