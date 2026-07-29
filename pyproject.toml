@@ -45,6 +45,14 @@ disallow_untyped_defs = true
 module = "infrahub_solution_ai_dc.protocols"
 disable_error_code = ["assignment"]
 
+# PyYAML ships no type information, and the global ignore_missing_imports above does not cover it:
+# mypy reports [import-untyped] for an installed package that has a stub package on PyPI, regardless
+# of that setting. The stubs are not installed on purpose — this feature added no dependency, and
+# yaml is only reached through `safe_dump_all`/`safe_load_all`.
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 120
 

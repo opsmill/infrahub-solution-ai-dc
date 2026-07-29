@@ -33,6 +33,9 @@ queries:
   - name: cabling_plan
     file_path: "./transforms/cabling_plan.gql"
 
+  - name: cilium_manifest
+    file_path: "./transforms/cilium_manifest.gql"
+
 
 # Every generator below imports from the shared src/infrahub_solution_ai_dc/ package. The
 # dependency closure Infrahub detects for a Python definition is the directory holding its
@@ -141,6 +144,15 @@ python_transforms:
     watch:
       files:
         - src/infrahub_solution_ai_dc/
+  - name: cilium_manifest
+    class_name: CiliumManifest
+    file_path: "./transforms/cilium_manifest.py"
+    # Required, not optional: the closure Infrahub detects for a Python transform is the directory
+    # holding its file_path (./transforms), and cilium_manifest.py imports the peering module from
+    # src/. Without this entry a change to that module would not re-render the manifest.
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
 artifact_definitions:
   - name: "cisco_startup_configuration"
@@ -178,3 +190,13 @@ artifact_definitions:
     content_type: "text/csv"
     targets: "fabrics"
     transformation: "cabling_plan"
+  # `artifact_name` is the published contract with Vidra: it is what an InfrahubSync CR names in
+  # spec.source.artefactName, and Vidra treats a no-match as an empty result rather than an error.
+  # Renaming it silently breaks every deployed cluster. The `name` key above it is internal.
+  - name: "cilium_bgp_manifest"
+    artifact_name: "Cilium BGP Manifest"
+    parameters:
+      name: "name__value"
+    content_type: "application/yaml"
+    targets: "kubernetes_clusters"
+    transformation: "cilium_manifest"
