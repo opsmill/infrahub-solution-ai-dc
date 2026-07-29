@@ -150,9 +150,21 @@ A member yields a record only when **all** hold:
 
 1. `service.layer == "l3"` — excludes L2 members.
 2. The service resolves to a `NetworkServer`.
-3. That server has a session with `address_family == "ipv4_unicast"` whose `device` is the server.
+3. That server has a session with `address_family == "ipv4_unicast"`.
 4. That session has non-null `local_as` **and** `remote_as`.
 5. The server's cabling resolves to a leaf-port IP address.
+
+> **Correction (found during T014).** Check 3 originally also required "whose `device` is the server".
+> That clause is **redundant and must not be implemented**: `NetworkServer.bgp_sessions` is the inverse
+> of `NetworkBGPSession.device` — both carry the schema identifier `device__bgp_session`
+> (`schemas/routing.yml`), while `peer_device` uses the distinct `bgp_session__peer_device`. So every
+> session reachable from a server is already that server's own side of the pair. It is also
+> *unverifiable* from the transform's query, which selects no `device` field. Filtering on
+> `address_family` alone is correct and complete.
+
+> **Note on `peer_name`.** The record above carries `instance_name` but not the per-peer name. The
+> artifact contract needs `peer-<peer_asn>-leaf`, which is derived in the transform from `peer_asn`
+> rather than stored on the record — a rendering concern, not a selection one.
 
 Failing any check **omits** the member — no raise (FR-004, FR-005). This is the one place the feature
 deliberately does not fail loud, and the reason is in the spec: one mid-provisioning member must not
