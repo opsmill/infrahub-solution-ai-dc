@@ -20,12 +20,12 @@ import pytest
 
 from infrahub_solution_ai_dc.servers import (
     peer_endpoint_id,
+    placement_matches_request,
     require_allocated,
     select_free_server_port,
     select_least_utilized_rack,
     upsert_ebgp_session,
     validate_explicit_port,
-    validate_placement_matches_request,
     validate_service,
 )
 
@@ -246,38 +246,53 @@ class TestPeerEndpointId:
         assert peer_endpoint_id(["leaf-a-port", "leaf-b-port", "server-port"], "server-port") is None
 
 
-class TestValidatePlacementMatchesRequest:
-    """An already-placed service may only be reused when the request still asks for that placement."""
+class TestPlacementMatchesRequest:
+    """Whether a placed service's ``rack``/``leaf_interface`` still describe the placement in the graph."""
 
-    def test_accepts_reuse_when_the_request_names_nothing(self) -> None:
-        """Automatic placement: nothing requested, so the existing placement stands."""
-        validate_placement_matches_request(
-            "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
-            requested_rack_id=None, requested_port_id=None,
+    def test_matches_when_the_request_names_nothing(self) -> None:
+        """Automatic placement on a service not yet written back: the existing placement stands."""
+        assert placement_matches_request(
+            placed_rack_id="rack-1",
+            placed_port_id="port-1",
+            requested_rack_id=None,
+            requested_port_id=None,
         )
 
-    def test_accepts_reuse_when_the_request_matches(self) -> None:
-        """An explicit request identical to what was already materialized is a no-op."""
-        validate_placement_matches_request(
-            "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
-            requested_rack_id="rack-1", requested_port_id="port-1",
+    def test_matches_the_values_a_previous_run_wrote_back(self) -> None:
+        """The normal re-run: both fields hold exactly what was materialized, so nothing moves."""
+        assert placement_matches_request(
+            placed_rack_id="rack-1",
+            placed_port_id="port-1",
+            requested_rack_id="rack-1",
+            requested_port_id="port-1",
         )
 
-    def test_rejects_a_rack_change_on_a_placed_service(self) -> None:
-        """Re-placing a cabled server is not supported; fail loud instead of silently ignoring the request."""
-        with pytest.raises(ValueError, match="already placed"):
-            validate_placement_matches_request(
-                "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
-                requested_rack_id="rack-2", requested_port_id=None,
-            )
+    def test_matches_when_only_the_rack_was_requested_and_is_unchanged(self) -> None:
+        """A rack-only request is satisfied by any port the generator picked on that rack."""
+        assert placement_matches_request(
+            placed_rack_id="rack-1",
+            placed_port_id="port-1",
+            requested_rack_id="rack-1",
+            requested_port_id=None,
+        )
 
-    def test_rejects_a_port_change_on_a_placed_service(self) -> None:
+    def test_does_not_match_a_rack_the_operator_moved(self) -> None:
+        """A changed rack is a re-placement request, not a contradiction to refuse."""
+        assert not placement_matches_request(
+            placed_rack_id="rack-1",
+            placed_port_id="port-1",
+            requested_rack_id="rack-2",
+            requested_port_id=None,
+        )
+
+    def test_does_not_match_a_port_the_operator_moved(self) -> None:
         """Same for a new explicit leaf_interface on an already-cabled service."""
-        with pytest.raises(ValueError, match="already placed"):
-            validate_placement_matches_request(
-                "cilium-worker-1", placed_rack_id="rack-1", placed_port_id="port-1",
-                requested_rack_id=None, requested_port_id="port-2",
-            )
+        assert not placement_matches_request(
+            placed_rack_id="rack-1",
+            placed_port_id="port-1",
+            requested_rack_id=None,
+            requested_port_id="port-2",
+        )
 
 
 class _RecordedSession:
@@ -439,6 +454,23 @@ class TestValidateExplicitPort:
 
         with pytest.raises(ValueError, match=r"role.*not 'server'"):
             validate_explicit_port(port, "Rack-A")
+
+    def test_reclaimable_port_waives_the_in_use_check(self) -> None:
+        """An occupied port holding only this service's own leftovers is honored, not refused.
+
+        Whether the occupancy really is ours is an async graph walk
+        (``ServerGenerator.port_is_reclaimable``); this pins that the flag reaches the free check.
+        """
+        port = _interface("Ethernet5", role="server", link=_Related(), ip_address=_Related())
+
+        validate_explicit_port(port, "Rack-A", reclaimable=True)  # must not raise
+
+    def test_reclaimable_does_not_waive_the_role_check(self) -> None:
+        """Reclaiming leftovers never turns a non-server port into a valid attachment point."""
+        port = _interface("Ethernet5", role="uplink", link=_Related())
+
+        with pytest.raises(ValueError, match=r"role.*not 'server'"):
+            validate_explicit_port(port, "Rack-A", reclaimable=True)
 
 
 class TestRequireAllocated:

@@ -38,8 +38,8 @@ joins the `server_services` group.
 | Relationship | Peer | Card. | Kind | Notes |
 |--------------|------|-------|------|-------|
 | `vrf` | NetworkVrf | one | Attribute | **required** (Tenant implied via `vrf.tenant.fabric`) — FR-007 |
-| `rack` | LocationRack | one | Attribute | **optional** explicit placement; honored-or-fail (FR-004) |
-| `leaf_interface` | NetworkInterface | one | Attribute | **optional** explicit leaf port; single-homed v1 |
+| `rack` | LocationRack | one | Attribute | **round-trip** — optional explicit placement, honored-or-fail (FR-004); written back when resolved automatically |
+| `leaf_interface` | NetworkInterface | one | Attribute | **round-trip** — optional explicit leaf port, single-homed v1; written back when resolved automatically |
 | `segment` | NetworkSegment | one | Attribute | **required for L2**, forbidden for L3 (contradiction → invalid) |
 | `server` | NetworkServer | one | Attribute | **generator-set** — the materialized implementation object |
 
@@ -132,6 +132,14 @@ leaf-facing port and the startup-config templates render.
 - **Placement**: `rack` empty ⇒ least-utilized eligible rack in the Fabric (fewest attached servers),
   deterministic tie-break by rack `index`; `leaf_interface` empty ⇒ lowest free leaf port with `role:server`.
   Explicit values honored exactly; invalid ⇒ fail loud, no partial objects (FR-002/003/004, SC-002).
+  Whichever the generator resolves it **writes back**, so a placed service always names its own rack and
+  leaf port rather than leaving them blank.
+- **Re-placement**: because those fields round-trip, editing one on a placed service moves the server —
+  the generator re-cables in place, keeping the `NetworkServer` and its ASN, and tears down the
+  superseded cable, /31 (addresses + prefix, returned to the pool) and, when the leaf changed, the eBGP
+  session pair. Only the side the operator moved is honored, so a stale written-back value on the other
+  side cannot veto the move. A port occupied by another server is never taken (fail loud); a port holding
+  only this service's own leftovers — after a manual `NetworkServer` deletion — is reclaimed.
 - **eBGP pairing**: leaf session `remote_as = server.asn`; server session `remote_as = leaf.asn`
   (= fabric overlay ASN). Both `address_family: ipv4_unicast`, `rr_client: false`. Neighbor address = the
   /31 host on the far side (not a loopback).
@@ -146,8 +154,8 @@ leaf-facing port and the startup-config templates render.
 ```text
 NetworkServerService (GeneratorTarget)
   ├─ vrf  → NetworkVrf (required)            [→ tenant → fabric = scope]
-  ├─ rack → LocationRack (optional, explicit)
-  ├─ leaf_interface → NetworkInterface (optional, explicit)
+  ├─ rack → LocationRack (optional explicit; written back once resolved)
+  ├─ leaf_interface → NetworkInterface (optional explicit; written back once resolved)
   ├─ segment → NetworkSegment (L2 only)      [generator adds chosen rack to Segment.racks]
   └─ server → NetworkServer (generator-set)
 

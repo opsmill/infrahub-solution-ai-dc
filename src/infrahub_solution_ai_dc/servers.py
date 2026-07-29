@@ -98,34 +98,27 @@ def peer_endpoint_id(endpoint_ids: Iterable[str], own_endpoint_id: str) -> str |
     return others[0]
 
 
-def validate_placement_matches_request(
-    service_name: str,
+def placement_matches_request(
     placed_rack_id: str,
     placed_port_id: str,
     requested_rack_id: str | None,
     requested_port_id: str | None,
-) -> None:
-    """Fail loud when an explicit request contradicts the placement a previous run already materialized.
+) -> bool:
+    """Return True when the service's ``rack``/``leaf_interface`` still describe the placement in the graph.
 
-    A service whose server is already cabled is reused as-is (that is what makes the generator
-    idempotent). If the operator has since pointed ``rack``/``leaf_interface`` somewhere else, honoring
-    it would mean moving a live cable, and ignoring it would silently discard the request — so this
-    raises instead. Re-placement is done by deleting the server and letting the generator run again.
+    ``rack`` and ``leaf_interface`` are round-trip fields: the operator may set them to request a
+    placement, and the generator writes back whichever it resolved. So on a re-run they normally
+    *equal* the materialized placement — that is the idempotent case this predicate detects, and the
+    caller then reuses the placement untouched.
+
+    An unset side matches anything: a service that requested nothing (or named only a rack) is placed
+    automatically, and the run that placed it fills the remaining field in. A side that is set and
+    *differs* means the operator re-pointed the service at a new rack or port, and the caller re-cables
+    the server there rather than either ignoring the request or refusing it.
     """
-    if requested_rack_id is not None and requested_rack_id != placed_rack_id:
-        msg = (
-            f"Server service {service_name!r} is already placed on rack {placed_rack_id!r} but now requests "
-            f"rack {requested_rack_id!r}; re-placing a cabled server is not supported (delete its "
-            f"NetworkServer to re-place it)"
-        )
-        raise ValueError(msg)
-    if requested_port_id is not None and requested_port_id != placed_port_id:
-        msg = (
-            f"Server service {service_name!r} is already placed on leaf port {placed_port_id!r} but now "
-            f"requests port {requested_port_id!r}; re-placing a cabled server is not supported (delete "
-            f"its NetworkServer to re-place it)"
-        )
-        raise ValueError(msg)
+    rack_matches = requested_rack_id is None or requested_rack_id == placed_rack_id
+    port_matches = requested_port_id is None or requested_port_id == placed_port_id
+    return rack_matches and port_matches
 
 
 def select_least_utilized_rack(
@@ -148,11 +141,13 @@ def select_least_utilized_rack(
     return min(racks, key=sort_key)
 
 
-def _server_port_is_unused(interface: NetworkInterface) -> bool:
+def port_is_free(interface: NetworkInterface) -> bool:
     """Return True when a ``role: server`` interface is unused — no IP address and no cabled link.
 
-    The "free" half of :func:`select_free_server_port`, factored out so explicit-placement validation
-    (:func:`validate_explicit_port`) can reject an occupied port using the *same* definition of unused.
+    The "free" half of :func:`select_free_server_port`, factored out so every caller decides "in use"
+    the same way: explicit-placement validation (:func:`validate_explicit_port`) rejects an occupied
+    port on it, and the ``ServerGenerator`` uses it to notice that an honored explicit port needs
+    releasing first.
     """
     return not _relationship_is_set(interface.ip_address) and not _relationship_is_set(interface.link)
 
@@ -169,11 +164,7 @@ def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkIn
     (each leaf has an ``Ethernet1/1``). An exact-name tie therefore breaks on the owning device id,
     which keeps selection deterministic regardless of input order.
     """
-    free = [
-        interface
-        for interface in interfaces
-        if interface.role.value == "server" and _server_port_is_unused(interface)
-    ]
+    free = [interface for interface in interfaces if interface.role.value == "server" and port_is_free(interface)]
     if not free:
         return None
 
@@ -184,15 +175,20 @@ def select_free_server_port(interfaces: Iterable[NetworkInterface]) -> NetworkIn
     )
 
 
-def validate_explicit_port(interface: NetworkInterface, rack_name: str) -> None:
+def validate_explicit_port(interface: NetworkInterface, rack_name: str, *, reclaimable: bool = False) -> None:
     """Fail-loud-validate an explicitly requested leaf port (US3/FR-004, ``vendors.py`` convention).
 
     Pure and synchronous so the honor-or-fail decision is directly unit-testable (unlike the async
-    graph checks — rack∈fabric and port-on-a-leaf-of-the-rack — the ``ServerGenerator`` does around
-    it). A valid explicit port must have ``role == "server"`` and be **unused** (the same "free"
-    definition :func:`select_free_server_port` uses). Raises ``ValueError`` naming the port and its
-    rack on either violation; the generator calls this **before** any write, so a rejected explicit
-    placement produces no partial objects. ``rack_name`` is used only for the error message.
+    graph checks — rack∈fabric, port-on-a-leaf-of-the-rack, and who the port is cabled to — the
+    ``ServerGenerator`` does around it). A valid explicit port must have ``role == "server"`` and be
+    **unused** (the same "free" definition :func:`select_free_server_port` uses). Raises ``ValueError``
+    naming the port and its rack on either violation; the generator calls this **before** any write, so
+    a rejected explicit placement produces no partial objects. ``rack_name`` is only for the message.
+
+    ``reclaimable`` waives the unused check for a port whose occupancy is *this service's own*
+    leftovers — a cable to its own server, or a stale IP/half-link a deleted server left behind.
+    ``ServerGenerator.port_is_reclaimable`` decides that (it needs the graph); the port is still
+    required to be ``role: server``, and a port cabled to somebody else is never reclaimable.
     """
     port_name = interface.name.value
     role = interface.role.value
@@ -202,7 +198,7 @@ def validate_explicit_port(interface: NetworkInterface, rack_name: str) -> None:
             f"its role is {role!r}, not 'server'"
         )
         raise ValueError(msg)
-    if not _server_port_is_unused(interface):
+    if not reclaimable and not port_is_free(interface):
         msg = (
             f"Cannot honor explicit leaf_interface {port_name!r} on rack {rack_name!r}: "
             f"the port is already in use (it has an IP address or a cabled link)"

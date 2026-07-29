@@ -47,6 +47,8 @@ nodes:
         kind: Attribute
         cardinality: one
         optional: true
+        description: >-
+          Set it to request a rack, or leave it empty and the ServerGenerator picks one and fills it in. Editing it moves the server.
         identifier: "server_service__rack"
         order_weight: 4000
       - name: leaf_interface
@@ -55,6 +57,8 @@ nodes:
         kind: Attribute
         cardinality: one
         optional: true
+        description: >-
+          Set it to request a port, or leave it empty and the ServerGenerator picks one and fills it in. Editing it moves the server.
         identifier: "server_service__leaf_interface"
         order_weight: 5000
       - name: segment
