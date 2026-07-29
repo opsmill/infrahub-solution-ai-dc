@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from infrahub_sdk.transforms import InfrahubTransform
 
@@ -32,25 +32,30 @@ class CablingPlan(InfrahubTransform):
             ]
         )
         for link in links:
-            [src_interface, dst_interface] = link.endpoints.peers
+            [src_endpoint, dst_endpoint] = link.endpoints.peers
 
             # Fabric cabling only: a server attachment link has a ServerInterface on one end, which has
             # no owning device to report a rack/hostname for.
-            if any(endpoint.peer.get_kind() != "NetworkInterface" for endpoint in (src_interface, dst_interface)):
+            if any(endpoint.peer.get_kind() != "NetworkInterface" for endpoint in (src_endpoint, dst_endpoint)):
                 continue
+
+            # `endpoints` is typed to the NetworkEndpoint generic, which carries neither `device` nor
+            # `name`. The kind check above is what establishes both ends are NetworkInterface.
+            src_interface = cast("NetworkInterface", src_endpoint.peer)
+            dst_interface = cast("NetworkInterface", dst_endpoint.peer)
 
             csv_data.append(
                 [
-                    src_interface.peer.device.peer.rack.peer.name.value  # type: ignore[union-attr]
-                    if src_interface.peer.device.peer.rack.initialized  # type: ignore[union-attr]
+                    src_interface.device.peer.rack.peer.name.value
+                    if src_interface.device.peer.rack.initialized
                     else "",
-                    src_interface.peer.device.peer.hostname.value,  # type: ignore[union-attr]
-                    src_interface.peer.name.value,  # type: ignore[union-attr]
-                    dst_interface.peer.device.peer.rack.peer.name.value  # type: ignore[union-attr]
-                    if dst_interface.peer.device.peer.rack.initialized  # type: ignore[union-attr]
+                    src_interface.device.peer.hostname.value,
+                    src_interface.name.value,
+                    dst_interface.device.peer.rack.peer.name.value
+                    if dst_interface.device.peer.rack.initialized
                     else "",
-                    dst_interface.peer.device.peer.hostname.value,  # type: ignore[union-attr]
-                    dst_interface.peer.name.value,  # type: ignore[union-attr]
+                    dst_interface.device.peer.hostname.value,
+                    dst_interface.name.value,
                 ]
             )
 
