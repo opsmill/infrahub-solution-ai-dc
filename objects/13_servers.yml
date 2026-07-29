@@ -9,25 +9,45 @@ spec:
     # picks the least-utilized rack + lowest free role:server leaf port, cables the server,
     # allocates a /31 (both ends) and a private ASN, and upserts the paired eBGP sessions.
     # Uses the existing "blue-prod" VRF (tenant "Blue") seeded in objects/12_overlay.yml.
+    # Joins the "cilium-demo" cluster seeded in objects/09_kubernetes.yml; nothing else about the
+    # service changes, which is the point — an existing seed becomes a member without a reshape.
     - name: "cilium-worker-1"
       layer: "l3"
       vrf: ["Blue", "blue-prod"]
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    # Two more L3 members, same shape as cilium-worker-1, taking the cluster to three BGP-speaking
+    # members. Leaving rack / leaf_interface empty is what spreads them across racks, so each lands
+    # on a different leaf and the rendered manifest carries distinct peerAddress values.
+    - name: "cilium-worker-2"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    - name: "cilium-worker-3"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      kubernetes_cluster: "cilium-demo"
       member_of_groups: ["server_services"]
     # US2 (P2) seed: one L2 (bridged) server service naming an existing segment under the SAME VRF.
     # No rack / leaf_interface -> automatic placement; the ServerGenerator cables the server and adds
     # the chosen leaf's rack to the segment's placement (no ASN, no /31, no BGP session).
     # "blue-l2" is the L2-only segment of the "blue-prod" VRF seeded in objects/12_overlay.yml.
+    # Also a member of "cilium-demo": the mixed L2/L3 case. It is a cluster member but contributes
+    # no BGP peer, so it must be present in the cluster and absent from the rendered manifest.
     - name: "web-host-1"
       layer: "l2"
       vrf: ["Blue", "blue-prod"]
       segment: "blue-l2"
+      kubernetes_cluster: "cilium-demo"
       member_of_groups: ["server_services"]
     # The same L3/L2 pair on the "Green" tenant, whose fabric (Fabric-D) is Juniper. Nothing about
     # the ServerGenerator is vendor-aware — placement only looks for a free role:server leaf port —
     # so these exist to exercise the *rendering* half on Junos: the L3 one must produce a routed
     # `family inet` port plus a SERVER-EBGP group, and the L2 one a bridged `family ethernet-switching`
     # port and no BGP at all. Names are tenant-prefixed because NetworkServerService.name is unique
-    # and each server's hostname is derived from it.
+    # and each server's hostname is derived from it. Both are left deliberately unclustered — a
+    # service with no Kubernetes cluster stays valid, and these are the seeds that show it.
     - name: "green-cilium-worker-1"
       layer: "l3"
       vrf: ["Green", "green-prod"]

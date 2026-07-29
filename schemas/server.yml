@@ -79,6 +79,17 @@ nodes:
         optional: true
         identifier: "server_service__server"
         order_weight: 7000
+      # `cardinality: one` is what rejects a second cluster — enforced by Infrahub, not by
+      # generator code. `optional: true` keeps an unclustered service valid, so every existing
+      # seeded service loads unchanged. The ServerGenerator never reads this relationship.
+      - name: kubernetes_cluster
+        label: Kubernetes Cluster
+        peer: NetworkKubernetesCluster
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "kubernetes_cluster__members"
+        order_weight: 8000
 
   - name: Server
     namespace: Network
@@ -109,6 +120,21 @@ nodes:
         description: L3 only — allocated from the global Server ASN pool.
         optional: true
         order_weight: 3000
+      # Count-limited replace: strips only the leading `server-` the generator prepends, so a
+      # service legitimately named e.g. `server-side-cache` keeps its inner occurrence.
+      - name: node_selector
+        kind: Text
+        label: Node Selector
+        read_only: true
+        optional: true
+        # Infrahub caps a description at 128 characters, so this is the short form of
+        # data-model.md §3's wording rather than a paraphrase by choice.
+        description: >-
+          Server hostname minus the `server-` prefix. Label the node `infrahub.io/server=<value>` to match the rendered Cilium manifest.
+        computed_attribute:
+          jinja2_template: '{{ hostname__value | replace("server-", "", 1) }}'
+          kind: Jinja2
+        order_weight: 3500
     relationships:
       - name: interfaces
         label: Interfaces
