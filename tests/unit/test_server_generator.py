@@ -77,9 +77,7 @@ class _Recorded:
     async def save(self, **_kwargs: object) -> None:
         self.save_count += 1
         self.saved_relationships = {
-            field: getattr(getattr(self, field, None), "id", None)
-            for field in self._SNAPSHOT
-            if hasattr(self, field)
+            field: getattr(getattr(self, field, None), "id", None) for field in self._SNAPSHOT if hasattr(self, field)
         }
 
     async def delete(self) -> None:
