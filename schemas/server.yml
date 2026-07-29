@@ -1,0 +1,198 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: ServerService
+    namespace: Network
+    label: Server Service
+    description: The design request to connect a server to a leaf (L2 or L3); drives the ServerGenerator.
+    inherit_from:
+      - GeneratorTarget
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+        order_weight: 1000
+      - name: layer
+        kind: Dropdown
+        label: Layer
+        description: >-
+          L2/L3 selector for the attachment. L2 needs a vrf-matching segment; L3 forbids one. Enforced by the ServerGenerator.
+        choices:
+          - name: l2
+            label: L2
+          - name: l3
+            label: L3
+        optional: false
+        order_weight: 2000
+    relationships:
+      - name: vrf
+        label: VRF
+        peer: NetworkVrf
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: "server_service__vrf"
+        order_weight: 3000
+      - name: rack
+        label: Rack
+        peer: LocationRack
+        kind: Attribute
+        cardinality: one
+        optional: true
+        description: >-
+          Set it to request a rack, or leave it empty and the ServerGenerator picks one and fills it in. Editing it moves the server.
+        identifier: "server_service__rack"
+        order_weight: 4000
+      - name: leaf_interface
+        label: Leaf Interface
+        peer: NetworkInterface
+        kind: Attribute
+        cardinality: one
+        optional: true
+        description: >-
+          Set it to request a port, or leave it empty and the ServerGenerator picks one and fills it in. Editing it moves the server.
+        identifier: "server_service__leaf_interface"
+        order_weight: 5000
+      - name: segment
+        label: Segment
+        peer: NetworkSegment
+        kind: Attribute
+        cardinality: one
+        optional: true
+        description: >-
+          L2 only — required with a vrf-matching segment; absent for L3. Enforced by ServerGenerator.validate_service.
+        identifier: "server_service__segment"
+        order_weight: 6000
+      - name: server
+        label: Server
+        peer: NetworkServer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_service__server"
+        order_weight: 7000
+
+  - name: Server
+    namespace: Network
+    label: Server
+    description: The materialized server implementation object (never a startup-config artifact target).
+    inherit_from:
+      - NetworkBGPPeer
+    human_friendly_id:
+      - hostname__value
+    display_label: hostname__value
+    include_in_menu: false
+    order_by: ["hostname__value"]
+    attributes:
+      - name: layer
+        kind: Dropdown
+        label: Layer
+        description: L2/L3, copied from the service for render/query convenience.
+        choices:
+          - name: l2
+            label: L2
+          - name: l3
+            label: L3
+        optional: true
+        order_weight: 2000
+      - name: asn
+        label: ASN
+        kind: Number
+        description: L3 only — allocated from the global Server ASN pool.
+        optional: true
+        order_weight: 3000
+    relationships:
+      - name: interfaces
+        label: Interfaces
+        peer: ServerInterface
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "server__interface"
+        order_weight: 4000
+      - name: rack
+        label: Rack
+        peer: LocationRack
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server__rack"
+        order_weight: 5000
+
+  # A server port is its own kind rather than a NetworkInterface: it shares only the cabling
+  # contract (NetworkEndpoint.link), so NetworkInterface keeps a required device, a single-column
+  # owner and a resolvable human_friendly_id. See dev/adr/0006.
+  - name: Interface
+    namespace: Server
+    label: Server Interface
+    description: A server-owned port, cabled to a leaf's role:server port via a NetworkLink.
+    inherit_from:
+      - NetworkEndpoint
+    uniqueness_constraints:
+      - [server, name__value]
+    human_friendly_id:
+      - server__hostname__value
+      - name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        order_weight: 1000
+      - name: status
+        kind: Dropdown
+        label: Status
+        default_value: inactive
+        choices:
+          - name: active
+          - name: inactive
+          - name: maintenance
+        order_weight: 2000
+      - name: role
+        kind: Dropdown
+        label: Role
+        default_value: production
+        choices:
+          - name: production
+            label: Production
+          - name: management
+            label: Management
+        optional: false
+        order_weight: 3000
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+        order_weight: 4000
+      - name: mtu
+        label: MTU
+        kind: Number
+        optional: true
+        order_weight: 5000
+    relationships:
+      - name: server
+        label: Server
+        peer: NetworkServer
+        kind: Parent
+        cardinality: one
+        optional: false
+        identifier: "server__interface"
+        order_weight: 10000
+      - name: ip_address
+        label: IP Address
+        peer: IpamIPAddress
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "server_interface__ip_address"
+        order_weight: 6000

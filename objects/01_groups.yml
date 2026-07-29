@@ -10,6 +10,9 @@ spec:
     - name: pods
     - name: devices
     - name: tenants
+    # Target group for the ServerGenerator; NetworkServerService objects join it.
+    # (No group for NetworkServer — it must never join devices/{vendor}_devices.)
+    - name: server_services
     # Per-vendor device groups (children of `devices`). Membership is stamped by the
     # generators from each device's manufacturer; the per-vendor startup-config
     # artifacts target these groups.

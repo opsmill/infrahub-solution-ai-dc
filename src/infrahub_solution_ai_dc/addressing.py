@@ -6,36 +6,52 @@ from .protocols import NetworkDevice, NetworkInterface
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
     from ipaddress import IPv4Address
 
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
+    from .protocols import ServerInterface
+
+    # Either side of a p2p link: a fabric switch port or a server port. Both carry link +
+    # ip_address, but they are distinct kinds, so the re-fetch below reads the kind off the node.
+    P2PEndpoint = NetworkInterface | ServerInterface
+
 
 async def assign_ip_address_to_interface(
     client: InfrahubClient,
-    interface: NetworkInterface,
+    interface: P2PEndpoint,
     logger: logging.Logger,
     host_addresses: Generator[IPv4Address],
     prefix_len: int,
+    update_group_context: bool = True,
 ) -> None:
     ip_address = await client.create(kind="IpamIPAddress", address=str(next(host_addresses)) + f"/{prefix_len}")
-    await ip_address.save(allow_upsert=True)
-    interface = await client.get(NetworkInterface, id=interface.id, include=["link"])
+    await ip_address.save(allow_upsert=True, update_group_context=update_group_context)
+    interface = await client.get(interface.get_kind(), id=interface.id, include=["link"])  # type: ignore[assignment]
     interface.ip_address = ip_address  # type: ignore[assignment]
-    await interface.save(allow_upsert=True)
+    await interface.save(allow_upsert=True, update_group_context=update_group_context)
     logger.info(f"Assigned {ip_address.address.value} to {interface.display_label}")  # type: ignore[union-attr]
 
 
 async def assign_ip_addresses_to_p2p_connections(
     client: InfrahubClient,
     logger: logging.Logger,
-    connections: list[tuple[NetworkInterface, NetworkInterface]],
+    connections: Sequence[tuple[P2PEndpoint, P2PEndpoint]],
     prefix_len: int,
     prefix_role: str,
     pool: CoreIPPrefixPool,
+    update_group_context: bool = True,
 ) -> None:
+    """Carve a p2p prefix per connection and address both ends.
+
+    ``update_group_context`` must be ``False`` for a caller that addresses an interface it does not
+    own. Group membership is what the generator's cleanup prunes against, so tracking a foreign
+    interface means that the first run which stops producing it *deletes* it — which is exactly what
+    happens to a leaf port when the ServerGenerator moves a server off it. The fabric generators own
+    the interfaces they address and produce the same set every run, so they keep the default.
+    """
     for src_interface, dst_interface in connections:
         # allocate a new prefix for the p2p connection
         prefix = await client.allocate_next_ip_prefix(
@@ -53,7 +69,9 @@ async def assign_ip_addresses_to_p2p_connections(
         host_addresses = prefix.prefix.value.hosts()  # type: ignore[union-attr]
 
         for interface in [src_interface, dst_interface]:
-            await assign_ip_address_to_interface(client, interface, logger, host_addresses, prefix_len)
+            await assign_ip_address_to_interface(
+                client, interface, logger, host_addresses, prefix_len, update_group_context
+            )
 
 
 async def assign_vtep_loopback_to_device(

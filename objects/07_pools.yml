@@ -29,3 +29,11 @@ spec:
       node_attribute: l3_vlan_id
       start_range: 3900
       end_range: 4094
+    # Global server ASN pool for L3 (BGP-speaking) servers. 32-bit private ASN range,
+    # deliberately distinct from the 16-bit overlay ASN range (64512-65534) because
+    # server<->leaf peering is eBGP (server ASN must differ from the fabric ASN).
+    - name: "Server ASN Pool"
+      node: NetworkServer
+      node_attribute: asn
+      start_range: 4200000000
+      end_range: 4294967294

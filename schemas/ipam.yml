@@ -34,6 +34,8 @@ nodes:
             label: Overlay Supernet
           - name: tenant_subnet
             label: Tenant Subnet
+          - name: server_p2p
+            label: Server P2P
   - name: IPAddress
     namespace: Ipam
     inherit_from:

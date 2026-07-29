@@ -185,3 +185,11 @@ nodes:
         optional: true
         identifier: "pod__vtep_pool"
         order_weight: 8000
+      - name: server_prefix_pool
+        peer: CoreIPPrefixPool
+        branch: aware
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: "pod__server_prefix_pool"
+        order_weight: 9000

@@ -40,16 +40,18 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 - `addressing.py` — IP addressing utilities
 - `sorting.py` — Device/interface sorting utilities
 - `overlay.py` — Overlay helpers: route-target/route-reflector logic, iBGP EVPN session upserts, segment-to-leaf placement
+- `servers.py` — Server helpers: least-utilized rack + free-port selection, fail-loud service/placement validation, eBGP (`ipv4_unicast`) session upserts
 - `vendors.py` — Vendor resolution: maps a device's manufacturer to its `{vendor}_devices` group (fail-loud)
 
 ### Generators (`generators/`)
 
-Four generators that create infrastructure objects via `InfrahubGenerator` + `GeneratorMixin`:
+Five generators that create infrastructure objects via `InfrahubGenerator` + `GeneratorMixin`:
 
 - `generate_fabric.py` — Creates super-spine devices for a fabric; allocates the overlay ASN
 - `generate_pod.py` — Creates spine devices for a pod; materializes iBGP EVPN sessions
 - `generate_rack.py` — Creates leaf devices for a rack; allocates VTEP loopbacks
 - `generate_tenant.py` — `OverlayGenerator` (registered as `generate-tenant`, targets the `tenants` group): allocates overlay identifiers (VNI/VLAN/ASN/route target) and materializes tenant/VRF/segment placement
+- `generate_server.py` — `ServerGenerator` (registered as `generate-server`, targets the `server_services` group): connects an L2/L3 `NetworkServerService` to a leaf — picks rack/port, cables it, and for L3 allocates a /31 + server ASN and upserts paired eBGP sessions
 
 Each generator has a paired `.gql` query file and a `*_query.py` generated query model file. Configured in `.infrahub.yml`.
 

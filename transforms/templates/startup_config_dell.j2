@@ -27,7 +27,7 @@ interface {{ interface.name.value }}
 {% if interface.description.value %}
   description {{ interface.description.value }}
 {% endif %}
-{% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.ip_address.node %}
+{% if interface.role.value in ["super_spine", "spine", "leaf", "server"] and interface.ip_address.node %}
   no switchport
 {% endif %}
 {% if interface.ip_address.node %}
@@ -94,6 +94,22 @@ router bgp {{ overlay_asn }}
 !
 {% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
   {% set session = session_edge.node %}
+{% if session.address_family.value == "ipv4_unicast" %}
+  {% set sns = namespace(addr="") %}
+  {% for iface_edge in session.peer_device.node.interfaces.edges %}
+    {% if not sns.addr and iface_edge.node.ip_address.node %}
+      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
+    {% endif %}
+  {% endfor %}
+{% if sns.addr %}
+  neighbor {{ sns.addr }}
+    remote-as {{ session.remote_as.value }}
+    no shutdown
+    address-family ipv4 unicast
+      activate
+!
+{% endif %}
+{% else %}
   neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }}
     remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
     update-source loopback0
@@ -104,6 +120,7 @@ router bgp {{ overlay_asn }}
       route-reflector-client
 {% endif %}
 !
+{% endif %}
 {% endfor %}
 {% for vrf in vns.vrfs %}
   vrf {{ vrf.name.value }}

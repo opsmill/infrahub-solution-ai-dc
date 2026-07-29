@@ -1,6 +1,28 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
+generics:
+  - name: BGPPeer
+    namespace: Network
+    label: BGP Peer
+    description: A BGP session endpoint — a fabric device or an attached server.
+    display_label: hostname__value
+    include_in_menu: false
+    attributes:
+      - name: hostname
+        kind: Text
+        label: Hostname
+        unique: true
+        order_weight: 1000
+    relationships:
+      - name: bgp_sessions
+        label: BGP Sessions
+        peer: NetworkBGPSession
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: "device__bgp_session"
+        order_weight: 2000
 nodes:
   - name: BGPSession
     namespace: Network
@@ -51,7 +73,7 @@ nodes:
     relationships:
       - name: device
         label: Device
-        peer: NetworkDevice
+        peer: NetworkBGPPeer
         kind: Parent
         cardinality: one
         optional: false
@@ -59,7 +81,7 @@ nodes:
         order_weight: 6000
       - name: peer_device
         label: Peer Device
-        peer: NetworkDevice
+        peer: NetworkBGPPeer
         kind: Attribute
         cardinality: one
         optional: false

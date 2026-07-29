@@ -1,0 +1,111 @@
+query ServerGeneratorQuery($name: String!) {
+  NetworkServerService(name__value: $name) {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        checksum {
+          value
+        }
+        layer {
+          value
+        }
+        server {
+          node {
+            __typename
+            id
+            hostname {
+              value
+            }
+          }
+        }
+        rack {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            index {
+              value
+            }
+          }
+        }
+        leaf_interface {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            role {
+              value
+            }
+            device {
+              node {
+                __typename
+                id
+                hostname {
+                  value
+                }
+                role {
+                  value
+                }
+              }
+            }
+          }
+        }
+        segment {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            vrf {
+              node {
+                __typename
+                id
+              }
+            }
+          }
+        }
+        vrf {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            tenant {
+              node {
+                __typename
+                id
+                name {
+                  value
+                }
+                fabric {
+                  node {
+                    __typename
+                    id
+                    name {
+                      value
+                    }
+                    ... on NetworkFabric {
+                      overlay_asn {
+                        value
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

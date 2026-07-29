@@ -77,3 +77,9 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "rack__device"
+      - name: servers
+        peer: NetworkServer
+        branch: aware
+        kind: Generic
+        cardinality: many
+        identifier: "server__rack"
