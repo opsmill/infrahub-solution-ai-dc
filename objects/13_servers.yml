@@ -22,3 +22,18 @@ spec:
       vrf: ["Blue", "blue-prod"]
       segment: "blue-l2"
       member_of_groups: ["server_services"]
+    # The same L3/L2 pair on the "Green" tenant, whose fabric (Fabric-D) is Juniper. Nothing about
+    # the ServerGenerator is vendor-aware — placement only looks for a free role:server leaf port —
+    # so these exist to exercise the *rendering* half on Junos: the L3 one must produce a routed
+    # `family inet` port plus a SERVER-EBGP group, and the L2 one a bridged `family ethernet-switching`
+    # port and no BGP at all. Names are tenant-prefixed because NetworkServerService.name is unique
+    # and each server's hostname is derived from it.
+    - name: "green-cilium-worker-1"
+      layer: "l3"
+      vrf: ["Green", "green-prod"]
+      member_of_groups: ["server_services"]
+    - name: "green-web-host-1"
+      layer: "l2"
+      vrf: ["Green", "green-prod"]
+      segment: "green-l2"
+      member_of_groups: ["server_services"]
