@@ -161,7 +161,7 @@ A member yields a record only when **all** hold:
 > session reachable from a server is already that server's own side of the pair. It is also
 > *unverifiable* from the transform's query, which selects no `device` field. Filtering on
 > `address_family` alone is correct and complete.
-
+>
 > **Note on `peer_name`.** The record above carries `instance_name` but not the per-peer name. The
 > artifact contract needs `peer-<peer_asn>-leaf`, which is derived in the transform from `peer_asn`
 > rather than stored on the record — a rendering concern, not a selection one.
