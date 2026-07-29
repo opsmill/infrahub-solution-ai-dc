@@ -89,6 +89,10 @@ jinja2_transforms:
     description: "Dell device config transform"
     query: "network_device_startup_config"
     template_path: "./transforms/templates/startup_config_dell.j2"
+  - name: juniper_device_startup_config
+    description: "Juniper device config transform"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_juniper.j2"
 
 python_transforms:
   - name: computed_interface_description
@@ -127,6 +131,13 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "dell_devices"
     transformation: "dell_device_startup_config"
+  - name: "juniper_startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "juniper_devices"
+    transformation: "juniper_device_startup_config"
   - name: "cabling_plan"
     artifact_name: "Cabling Plan"
     parameters:

@@ -2,7 +2,7 @@
 
 Every device is built from an object template that carries a ``device_type`` and therefore a
 manufacturer. This module maps that manufacturer to the vendor device group the device belongs
-to (``cisco_devices`` / ``arista_devices`` / ``dell_devices``). Resolution is fail-loud: an
+to (``{manufacturer}_devices``, lowercased -- e.g. ``cisco_devices``). Resolution is fail-loud: an
 unresolvable or unsupported manufacturer raises, so data gaps surface instead of silently
 dropping a device's config (spec FR-004 / SC-004).
 """
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient  # type: ignore[import-not-found]
 
 # Manufacturers that have both a vendor device group and a per-vendor config template.
-SUPPORTED_VENDORS: tuple[str, ...] = ("cisco", "arista", "dell")
+SUPPORTED_VENDORS: tuple[str, ...] = ("cisco", "arista", "dell", "juniper")
 
 
 def vendor_group_for_manufacturer(manufacturer_name: str | None, *, device_label: str) -> str:

@@ -41,7 +41,7 @@ The contrast between what you define and what Generators produce illustrates the
 
 **Design inputs** (loaded by `inv load`):
 
-- 3 single-vendor fabrics (Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell), 9 pods, 24 racks
+- 4 single-vendor fabrics (Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell, Fabric-D Juniper), 12 pods, 32 racks
 - Per-vendor device templates (defining interface layouts and roles)
 - 1 IP supernet (`10.0.0.0/8`) with a `FabricSupernetPool`, plus overlay resource pools (ASN, VNI, VLAN)
 - A seed overlay tenant (`Blue` on Fabric-A) with a VRF and segments
@@ -139,7 +139,7 @@ The proposed change shows a diff of every object the Generators created — devi
 
 Creating the proposed change also triggers Infrahub's CI pipeline, which runs the Transforms and artifact definitions registered from the repository. Once the pipeline completes, the following artifacts are available:
 
-- **Startup configuration** — a text artifact per device, rendered from that device's vendor template. Fabric-A is Cisco, so its devices render from the Cisco template; Fabric-B (Arista) and Fabric-C (Dell) render from theirs. See [Multivendor configuration](./multivendor-config).
+- **Startup configuration** — a text artifact per device, rendered from that device's vendor template. Fabric-A is Cisco, so its devices render from the Cisco template; Fabric-B (Arista), Fabric-C (Dell) and Fabric-D (Juniper) render from theirs. See [Multivendor configuration](./multivendor-config).
 - **Cabling plan** — a CSV artifact per fabric, produced by a Python Transformation
 
 Browse the generated artifacts from the proposed change view or from individual device and fabric objects.
@@ -226,7 +226,7 @@ For the full model, allocation rules, and rendered-configuration contract, see [
 - **Proposed change review** — a diff of every generated object, with CI-triggered artifact generation (startup configs, cabling plans)
 - **Day-two change support** — adding a rack produced only new objects with no rebuild of existing infrastructure
 - **Multi-tenant overlay** — declaring a tenant's intent produced a full EVPN/VXLAN control and data plane, with all identifiers auto-allocated and leaf-only state
-- **Multivendor rendering** — the same design produced Cisco, Arista, and Dell configuration, each device routed to its vendor's template
+- **Multivendor rendering** — the same design produced Cisco, Arista, Dell, and Juniper Junos configuration, each device routed to its vendor's template
 - **Branch-based workflow** — all changes happened on a branch, reviewable and mergeable through Infrahub's standard workflow
 
 ### Next steps

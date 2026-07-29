@@ -14,6 +14,7 @@ class TestVendorGroupForManufacturer:
             ("Cisco", "cisco_devices"),
             ("Arista", "arista_devices"),
             ("Dell", "dell_devices"),
+            ("Juniper", "juniper_devices"),
             ("  DELL  ", "dell_devices"),  # trimmed + case-insensitive
         ],
     )
@@ -31,5 +32,5 @@ class TestVendorGroupForManufacturer:
 
     def test_unsupported_manufacturer_raises_naming_device(self) -> None:
         with pytest.raises(ValueError, match="leaf-1") as exc:
-            vendor_group_for_manufacturer("Juniper", device_label="leaf-1")
-        assert "Juniper" in str(exc.value)
+            vendor_group_for_manufacturer("Nokia", device_label="leaf-1")
+        assert "Nokia" in str(exc.value)

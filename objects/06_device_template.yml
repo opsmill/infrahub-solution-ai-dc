@@ -208,3 +208,70 @@ spec:
           - template_name: "Arista7050X4LeafStorageSwitchEthernet[49-52]"
             name: "Ethernet[49-52]"
             profiles: ["profile-interface-spine"]
+    # Juniper QFX5230-64CD (64x 400G QSFP56-DD) — spine & super-spine
+    - template_name: "juniper-qfx5230-64cd-spine-switch"
+      device_type: ["Juniper", "QFX5230-64CD"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "JuniperQFX5230SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "JuniperQFX5230SpineSwitchet-0/0/[0-31]"
+            name: "et-0/0/[0-31]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "JuniperQFX5230SpineSwitchet-0/0/[32-63]"
+            name: "et-0/0/[32-63]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "juniper-qfx5230-64cd-super-spine-switch"
+      device_type: ["Juniper", "QFX5230-64CD"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "JuniperQFX5230SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "JuniperQFX5230SuperSpineSwitchet-0/0/[0-63]"
+            name: "et-0/0/[0-63]"
+            profiles: ["profile-interface-spine"]
+    # Juniper QFX5120-48Y-8C (48x 10/25G SFP28 + 8x 100G QSFP28) — leaf.
+    - template_name: "juniper-qfx5120-48y-8c-leaf-switch-compute"
+      device_type: ["Juniper", "QFX5120-48Y-8C"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "JuniperQFX5120LeafComputeSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "JuniperQFX5120LeafComputeSwitchxe-0/0/[0-47]"
+            name: "xe-0/0/[0-47]"
+            profiles: ["profile-interface-server"]
+          - template_name: "JuniperQFX5120LeafComputeSwitchet-0/0/[48-55]"
+            name: "et-0/0/[48-55]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "juniper-qfx5120-48y-8c-leaf-switch-storage"
+      device_type: ["Juniper", "QFX5120-48Y-8C"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "JuniperQFX5120LeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "JuniperQFX5120LeafStorageSwitchxe-0/0/[0-47]"
+            name: "xe-0/0/[0-47]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "JuniperQFX5120LeafStorageSwitchet-0/0/[48-55]"
+            name: "et-0/0/[48-55]"
+            profiles: ["profile-interface-spine"]

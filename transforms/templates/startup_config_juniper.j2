@@ -1,0 +1,206 @@
+{% set device = data.NetworkDevice.edges[0].node %}
+{% set fabric = device.pod.node.parent.node %}
+{% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
+{# Materialized VRFs (leaf-only): derived once so both the BGP and overlay sections can reference them. #}
+{% set vns = namespace(vrf_names=[], vrfs=[]) %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
+    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
+    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
+  {% endif %}
+{% endfor %}
+{% set is_rr = device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0 %}
+{# Junos uses colon-delimited MACs; normalize whatever format the fabric stores. #}
+{% set raw_mac = (fabric.anycast_gateway_mac.value if fabric.anycast_gateway_mac.value else "0000.5e00.0001") | replace('.', '') | replace(':', '') %}
+{% set anycast_mac = raw_mac | list | batch(2) | map('join') | join(':') %}
+{# --- System --- #}
+system {
+    host-name {{ device.hostname.value }};
+}
+{# --- Interfaces --- #}
+{# Junos nests every interface under one `interfaces` block, and models BOTH loopbacks as units
+   of a single `lo0`. Interface *role* is the discriminator -- `Loopback0`/`Loopback1` are logical
+   names in the data model and are never rendered literally. #}
+interfaces {
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+  {% if interface.role.value in ["super_spine", "spine", "leaf"] %}
+    {{ interface.name.value }} {
+    {% if interface.description.value %}
+        description "{{ interface.description.value }}";
+    {% endif %}
+    {% if interface.status.value == "inactive" %}
+        disable;
+    {% endif %}
+    {% if interface.ip_address.node %}
+        unit 0 {
+            family inet {
+                address {{ interface.ip_address.node.address.value }};
+            }
+        }
+    {% endif %}
+    }
+  {% elif interface.role.value in ["server", "storage", "access"] %}
+    {{ interface.name.value }} {
+    {% if interface.description.value %}
+        description "{{ interface.description.value }}";
+    {% endif %}
+    {% if interface.status.value == "inactive" %}
+        disable;
+    {% endif %}
+        unit 0 {
+            family ethernet-switching;
+        }
+    }
+  {% endif %}
+{% endfor %}
+    lo0 {
+        unit 0 {
+            family inet {
+                address {{ device.loopback_ip.node.address.ip }}/32;
+            }
+        }
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+  {% if interface.role.value == "vtep" and interface.ip_address.node %}
+        unit 1 {
+            family inet {
+                address {{ interface.ip_address.node.address.value }};
+            }
+        }
+  {% endif %}
+{% endfor %}
+    }
+{% if device.segments.edges %}
+    irb {
+  {% for segment_edge in device.segments.edges %}
+    {% set segment = segment_edge.node %}
+    {% if segment.gateway.node %}
+        unit {{ segment.vlan_id.value }} {
+            description "Anycast gateway for {{ segment.name.value }}";
+            family inet {
+                address {{ segment.gateway.node.address.value }};
+            }
+            mac {{ anycast_mac }};
+        }
+    {% endif %}
+  {% endfor %}
+    }
+{% endif %}
+    em0 {
+        unit 0 {
+            family inet {
+                address {{ device.loopback_ip.node.address.ip }}/32;
+            }
+        }
+    }
+}
+{# --- Routing options --- #}
+routing-options {
+    router-id {{ device.loopback_ip.node.address.ip }};
+{% if overlay_asn is not none %}
+    autonomous-system {{ overlay_asn }};
+{% endif %}
+}
+{# --- Protocols: one block carries the underlay IGP and the EVPN control plane --- #}
+protocols {
+    ospf {
+        area 0.0.0.0 {
+            interface lo0.0 {
+                passive;
+            }
+{% for interface_edge in device.interfaces.edges %}
+  {% set interface = interface_edge.node %}
+  {% if interface.role.value in ["super_spine", "spine", "leaf"] and interface.ip_address.node and interface.status.value != "inactive" %}
+            interface {{ interface.name.value }}.0 {
+                interface-type p2p;
+            }
+  {% endif %}
+{% endfor %}
+        }
+    }
+{# EVPN control plane: iBGP L2VPN-EVPN sessions modeled as data (NetworkBGPSession, ADR-0005) #}
+{% if overlay_asn is not none %}
+    bgp {
+        group EVPN-OVERLAY {
+            type internal;
+            local-address {{ device.loopback_ip.node.address.ip }};
+            family evpn {
+                signaling;
+            }
+  {% if is_rr %}
+            cluster {{ device.loopback_ip.node.address.ip }};
+  {% endif %}
+  {% for session_edge in device.bgp_sessions.edges | sort(attribute="node.peer_device.node.hostname.value") %}
+    {% set session = session_edge.node %}
+            neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} {
+                peer-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }};
+            }
+  {% endfor %}
+        }
+    }
+{# `protocols evpn` is VTEP-only: it requires `switch-options vtep-source-interface`, so a
+   route-reflecting spine must not carry it. #}
+  {% if device.segments.edges %}
+    evpn {
+        encapsulation vxlan;
+        extended-vni-list [ {% for segment_edge in device.segments.edges %}{{ segment_edge.node.l2vni.value }}{{ " " if not loop.last else "" }}{% endfor %} ];
+        vni-options {
+    {% for segment_edge in device.segments.edges %}
+      {% set segment = segment_edge.node %}
+            vni {{ segment.l2vni.value }} {
+                vrf-target target:{{ segment.route_target.value }};
+            }
+    {% endfor %}
+        }
+    }
+  {% endif %}
+{% endif %}
+}
+{% if device.segments.edges %}
+{# --- Tenant overlay (leaf-only): VTEP, MAC-VRFs and IP-VRFs --- #}
+switch-options {
+    vtep-source-interface lo0.1;
+    route-distinguisher {{ device.loopback_ip.node.address.ip }}:1;
+    vrf-target auto;
+}
+vlans {
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+    {{ segment.name.value }} {
+        vlan-id {{ segment.vlan_id.value }};
+  {% if segment.gateway.node %}
+        l3-interface irb.{{ segment.vlan_id.value }};
+  {% endif %}
+        vxlan {
+            vni {{ segment.l2vni.value }};
+        }
+    }
+{% endfor %}
+}
+{% if vns.vrfs %}
+routing-instances {
+{% for vrf in vns.vrfs %}
+    {{ vrf.name.value }} {
+        instance-type vrf;
+  {% for segment_edge in device.segments.edges %}
+    {% set segment = segment_edge.node %}
+    {% if segment.gateway.node and segment.vrf.node.name.value == vrf.name.value %}
+        interface irb.{{ segment.vlan_id.value }};
+    {% endif %}
+  {% endfor %}
+        route-distinguisher {{ device.loopback_ip.node.address.ip }}:{{ vrf.l3vni.value }};
+        vrf-target target:{{ vrf.route_target.value }};
+        protocols {
+            evpn {
+                irb-symmetric-routing {
+                    vni {{ vrf.l3vni.value }};
+                }
+            }
+        }
+    }
+{% endfor %}
+}
+{% endif %}
+{% endif %}

@@ -16,3 +16,7 @@ spec:
       manufacturer: ["Arista"]
     - name: "7050X4-48Y-4DF"
       manufacturer: ["Arista"]
+    - name: "QFX5230-64CD"
+      manufacturer: ["Juniper"]
+    - name: "QFX5120-48Y-8C"
+      manufacturer: ["Juniper"]

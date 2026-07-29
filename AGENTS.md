@@ -57,7 +57,7 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 
 - `cabling_plan.py` — CSV cabling plan generation (`InfrahubTransform`)
 - `computed_interface_description.py` — Interface description transform
-- `templates/startup_config_{cisco,arista,dell}.j2` — Per-vendor Jinja2 templates for device startup configs. `.infrahub.yml` wires one Jinja2 transform and one artifact definition per vendor, each targeting the matching `{vendor}_devices` group
+- `templates/startup_config_{cisco,arista,dell,juniper}.j2` — Per-vendor Jinja2 templates for device startup configs. `.infrahub.yml` wires one Jinja2 transform and one artifact definition per vendor, each targeting the matching `{vendor}_devices` group.
 
 ### Data Files
 

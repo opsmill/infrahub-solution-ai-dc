@@ -74,9 +74,9 @@ The sections rendered depend on the device's role:
 | L3VNI routing (`vrf context`, transit SVI) | yes | — | — |
 | Anycast gateway SVI | yes (routed segments) | — | — |
 
-Configuration is rendered **per vendor**: each device is routed to its vendor's template (Cisco NX-OS, Arista EOS, or Dell OS10), so the same overlay model produces the correct syntax for whichever fabric a device belongs to. In the demo data each fabric is single-vendor — Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell. See [Multivendor configuration](./multivendor-config) for how vendor is resolved and rendered.
+Configuration is rendered **per vendor**: each device is routed to its vendor's template (Cisco NX-OS, Arista EOS, Dell OS10, or Juniper Junos), so the same overlay model produces the correct syntax for whichever fabric a device belongs to. In the demo data each fabric is single-vendor — Fabric-A Cisco, Fabric-B Arista, Fabric-C Dell, Fabric-D Juniper. See [Multivendor configuration](./multivendor-config) for how vendor is resolved and rendered.
 
-The leaf overlay block below is the **Cisco NX-OS** example (the Arista and Dell templates render the equivalent constructs in their own syntax). The shape (see the [configuration artifact contract](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/contracts/config-artifact.md) for the full definition):
+The leaf overlay block below is the **Cisco NX-OS** example (the Arista, Dell and Juniper templates render the equivalent constructs in their own syntax). The shape (see the [configuration artifact contract](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/contracts/config-artifact.md) for the full definition):
 
 ```text
 router bgp <asn>
@@ -118,7 +118,7 @@ The [overlay quickstart](https://github.com/opsmill/infrahub-solution-ai-dc/blob
 
 ## Learn more
 
-- [Multivendor configuration](./multivendor-config) — how the overlay (and underlay) configuration is rendered per vendor (Cisco/Arista/Dell).
+- [Multivendor configuration](./multivendor-config) — how the overlay (and underlay) configuration is rendered per vendor (Cisco/Arista/Dell/Juniper).
 - [`CONTEXT.md`](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/CONTEXT.md) — the domain language for the overlay (tenant, VRF, segment, VTEP, anycast gateway, route reflector).
 - Architecture Decision Records [`dev/adr/0001`–`0005`](https://github.com/opsmill/infrahub-solution-ai-dc/tree/main/dev/adr) — the rationale behind the design split, the OverlayGenerator's ownership, hierarchical route reflection, and the stored BGP-session and route-reflector model.
 - The feature [specification](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/spec.md) and [implementation plan](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/001-evpn-overlay/plan.md) for the full requirements and design.

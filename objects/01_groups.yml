@@ -19,3 +19,5 @@ spec:
       parent: devices
     - name: dell_devices
       parent: devices
+    - name: juniper_devices
+      parent: devices

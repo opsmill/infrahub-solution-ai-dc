@@ -25,7 +25,7 @@ idempotent and triggered by checksum changes.
 
 **Vendor group**:
 A `CoreStandardGroup` child of the `devices` group — one per **Manufacturer**
-(`cisco_devices` / `arista_devices` / `dell_devices`) — whose direct members are the generated devices
+(`{manufacturer}_devices`, lowercased — e.g. `cisco_devices`) — whose direct members are the generated devices
 of that make; the per-vendor startup-config artifacts target it. Membership is stamped by the generators
 from each device's `device_type` manufacturer. _"Vendor" is used interchangeably with **Manufacturer** in
 conversation; the stored entity is the Manufacturer._
@@ -68,7 +68,8 @@ The OSPF-routed IP fabric that provides loopback-to-loopback reachability betwee
 The iBGP L2VPN-EVPN control plane and VXLAN data plane carried on top of the underlay.
 
 **VTEP**:
-A VXLAN Tunnel Endpoint — only **leaf** switches; sources VXLAN from a dedicated VTEP loopback (loopback1).
+A VXLAN Tunnel Endpoint — only **leaf** switches; sources VXLAN from a dedicated VTEP loopback
+(role `vtep`, named `Loopback1` in the data model).
 Spines and super-spines are never VTEPs.
 
 **L2VNI**:
@@ -121,7 +122,9 @@ renders `router bgp` neighbors from these sessions.
 - "VLAN" was used loosely for both the L2 broadcast domain and the overlay service — resolved: the service
   is a **Segment**; "VLAN" refers only to its `vlan_id` attribute (and a VRF's `l3_vlan_id` transit VLAN).
 - "Loopback" was ambiguous between the routing loopback and the tunnel source — resolved: **loopback0** is
-  the router-id / iBGP source; **loopback1** (role `vtep`) is the VTEP source.
+  the router-id / iBGP source; **loopback1** (role `vtep`) is the VTEP source. `Loopback0`/`Loopback1` are
+  **logical names carried in the data model**, not per-vendor interface names — the config transform renders
+  them in vendor syntax (Junos: `lo0` unit 0 / unit 1). Interface **role** is the reliable discriminator.
 - "Route reflector" was initially derived from tier ordering at render time — revised (ADR-0005): it is now
   **stored** as `NetworkDevice.route_reflector` plus a per-session `rr_client` flag; the tier ordering
   (super-spine → spine → leaf) is applied once by the generators when populating sessions.

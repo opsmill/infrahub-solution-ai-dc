@@ -46,6 +46,7 @@ inspectable
 Ipam
 IPs
 Jinja
+Juniper
 Junos
 loopback
 loopbacks
