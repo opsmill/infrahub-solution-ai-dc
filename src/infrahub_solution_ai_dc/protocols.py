@@ -304,6 +304,7 @@ class LocationRack(LocationPhysical, GeneratorTarget):
     parent: RelatedNode
     pod: RelatedNode
     profiles: RelationshipManager
+    servers: RelationshipManager
     subscriber_of_groups: RelationshipManager
 
 
@@ -503,6 +504,7 @@ class ProfileLocationRack(LineageSource, CoreProfile, CoreNode):
     leaf_switch_template: RelatedNode
     member_of_groups: RelationshipManager
     related_nodes: RelationshipManager
+    servers: RelationshipManager
     subscriber_of_groups: RelationshipManager
 
 

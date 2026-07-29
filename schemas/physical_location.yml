@@ -77,3 +77,11 @@ nodes:
         kind: Generic
         cardinality: many
         identifier: "rack__device"
+      # Reverse of NetworkServer.rack (same identifier, so Infrahub keeps one edge, not two):
+      # the ServerGenerator writes only server.rack and this side follows automatically.
+      - name: servers
+        peer: NetworkServer
+        branch: aware
+        kind: Generic
+        cardinality: many
+        identifier: "server__rack"
