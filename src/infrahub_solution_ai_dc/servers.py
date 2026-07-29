@@ -219,6 +219,10 @@ async def upsert_ebgp_session(
     Sessions are named ``"<device>__<peer>"`` (the upsert key), so re-running a generator refreshes
     the existing session instead of duplicating it. Unlike the iBGP EVPN sessions, a server<->leaf
     eBGP session carries distinct ``local_as``/``remote_as`` and is never a route-reflector client.
+
+    Saved with ``update_group_context=False``, like every other ``ServerGenerator`` write: the pair a
+    move leaves behind is deleted explicitly (``ServerGenerator.delete_ebgp_pair``), so leaning on the
+    generator group's cleanup to do it instead would only make the blast radius of that cleanup wider.
     """
     session = await client.create(
         kind=NetworkBGPSession,
@@ -230,5 +234,5 @@ async def upsert_ebgp_session(
         address_family="ipv4_unicast",
         rr_client=False,
     )
-    await session.save(allow_upsert=True)
+    await session.save(allow_upsert=True, update_group_context=False)
     logger.info(f"eBGP session {session.name.value} (local_as={local_as}, remote_as={remote_as})")

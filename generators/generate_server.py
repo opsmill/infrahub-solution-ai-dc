@@ -584,35 +584,41 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
     async def release_leaf_port(self, old_leaf_port: NetworkInterface, server_port: ServerInterface) -> str | None:
         """Empty one superseded leaf port and return the id of the leaf that owned it.
 
-        Removes, in dependency order:
+        The port is **detached first** and only then is what it pointed at deleted. The other order
+        does not work: the port has to be saved anyway (to go back to ``inactive``), and a save re-sends
+        every relationship the node still holds — so a cable or address deleted beforehand makes that
+        save fail on a dangling reference. Clearing a to-one relationship with ``None`` is how the SDK
+        emits an explicit unset.
 
-        * the ``NetworkLink`` — first, because the server port's endpoint relationship is cardinality 1
-          and the new cable cannot coexist with the old one;
-        * the ``/31`` — both ``IpamIPAddress`` ends and the prefix that contained them, which returns it
-          to the pool. Leaving it would leak a prefix per move, since the next allocation keys on a new
-          ``identifier`` (the port-id pair, which the new port changes).
-
-        The port itself goes back to ``inactive``, matching the state the rack generator created it in.
+        Then goes the ``NetworkLink`` — the server port's endpoint relationship is cardinality 1, so the
+        new cable cannot coexist with the old one — followed by the ``/31``: both ``IpamIPAddress`` ends
+        and the prefix that contained them, which returns it to the pool. Leaving the prefix would leak
+        one per move, since the next allocation keys on a new ``identifier`` (the port-id pair, which
+        the new port changes).
         """
         old_leaf_port = await self.client.get(
             kind=NetworkInterface, id=old_leaf_port.id, include=["ip_address", "link", "device"]
         )
+        server_side = await self.client.get(kind=ServerInterface, id=server_port.id, include=["ip_address", "link"])
+        link_id = old_leaf_port.link.id
+        leaf_id = old_leaf_port.device.id
+        address_ids = [side.ip_address.id for side in (old_leaf_port, server_side) if side.ip_address.id is not None]
 
-        if old_leaf_port.link.id is not None:
-            link = await self.client.get(kind=NetworkLink, id=old_leaf_port.link.id)
+        old_leaf_port.ip_address = None  # type: ignore[assignment]
+        old_leaf_port.link = None  # type: ignore[assignment]
+        old_leaf_port.status.value = "inactive"
+        await old_leaf_port.save(allow_upsert=True, update_group_context=False)
+
+        if link_id is not None:
+            link = await self.client.get(kind=NetworkLink, id=link_id)
             await link.delete()
             self.logger.info(f"Released cable {link.name.value}")
 
-        await self.release_p2p_prefix(old_leaf_port, server_port)
+        await self.release_p2p_prefix(address_ids)
+        return leaf_id
 
-        old_leaf_port.status.value = "inactive"
-        await old_leaf_port.save(allow_upsert=True, update_group_context=False)
-        return old_leaf_port.device.id
-
-    async def release_p2p_prefix(self, old_leaf_port: NetworkInterface, server_port: ServerInterface) -> None:
-        """Delete both ends of the superseded ``/31`` and the prefix holding them (L2: nothing to do)."""
-        server_port = await self.client.get(kind=ServerInterface, id=server_port.id, include=["ip_address", "link"])
-        address_ids = [side.ip_address.id for side in (old_leaf_port, server_port) if side.ip_address.id is not None]
+    async def release_p2p_prefix(self, address_ids: list[str]) -> None:
+        """Delete the superseded ``/31``'s addresses and the prefix holding them (L2: nothing to do)."""
         if not address_ids:
             return
 
@@ -673,6 +679,9 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
             prefix_len=SERVER_P2P_PREFIX_LEN,
             prefix_role=SERVER_P2P_PREFIX_ROLE,
             pool=pool,
+            # The leaf port belongs to the rack generator. Group-tracking it here would make the
+            # cleanup of a run that moved the server off it delete the port outright.
+            update_group_context=False,
         )
 
         # eBGP pair: the leaf peers the server's ASN; the server peers the fabric overlay ASN.

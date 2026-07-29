@@ -59,16 +59,28 @@ class _Peers(NamedTuple):
 
 
 class _Recorded:
-    """Base for stubs the generator may write to or delete."""
+    """Base for stubs the generator may write to or delete.
+
+    ``save`` snapshots the node's to-one relationship ids, because a real ``save`` re-sends whatever
+    the node still holds — so *when* a relationship was cleared relative to the peer's deletion is
+    behaviour worth asserting, not an implementation detail.
+    """
 
     id: str
+    _SNAPSHOT = ("ip_address", "link")
 
     def __init__(self) -> None:
         self.deleted = False
         self.save_count = 0
+        self.saved_relationships: dict[str, str | None] = {}
 
     async def save(self, **_kwargs: object) -> None:
         self.save_count += 1
+        self.saved_relationships = {
+            field: getattr(getattr(self, field, None), "id", None)
+            for field in self._SNAPSHOT
+            if hasattr(self, field)
+        }
 
     async def delete(self) -> None:
         self.deleted = True
@@ -565,6 +577,19 @@ class TestReleasePlacement:
         assert parts["link"].deleted
         assert parts["leaf_port"].status.value == "inactive"  # type: ignore[attr-defined]
         assert parts["leaf_port"].save_count == 1
+
+    async def test_detaches_the_port_before_deleting_what_it_pointed_at(self) -> None:
+        """Regression: the port's save must not still reference the cable and address being deleted.
+
+        The port has to be saved anyway to go back to ``inactive``, and a save re-sends every
+        relationship the node holds — so deleting first made that save fail against a real Infrahub
+        with "Unable to find the node ... / IpamIPAddress in the database".
+        """
+        client, parts = self._cabled()
+
+        await self._release(client, parts, new_leaf_id="leaf-1")
+
+        assert parts["leaf_port"].saved_relationships == {"ip_address": None, "link": None}
 
     async def test_returns_the_whole_p2p_prefix_to_the_pool(self) -> None:
         """Both /31 ends *and* the prefix go — leaving it would leak one prefix per move."""

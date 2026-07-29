@@ -354,7 +354,9 @@ class TestUpsertEbgpSession:
         assert created["peer_device"] == {"id": "server-id"}
         assert created["address_family"] == "ipv4_unicast"
         assert created["rr_client"] is False
-        assert client.sessions[0].saved_with == {"allow_upsert": True}
+        # Never group-tracked: the ServerGenerator deletes a superseded pair itself, and anything it
+        # tracks is something the generator group's cleanup may delete on a run that stops producing it.
+        assert client.sessions[0].saved_with == {"allow_upsert": True, "update_group_context": False}
 
     async def test_ebgp_pairing_swaps_local_and_remote_as(self) -> None:
         """The leaf<->server pair carries mirrored AS: each side's remote_as is the other's local_as."""
