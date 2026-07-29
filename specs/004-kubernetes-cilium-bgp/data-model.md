@@ -89,6 +89,12 @@ never reads the new relationship — this is the mechanical basis of FR-009.
   order_weight: 3500
 ```
 
+> **Implementation note (found during T005/T009):** Infrahub rejects a `description` longer than
+> **128 characters** (`string_too_long`), so the wording above and in §1 is longer than the schema will
+> accept. Both shipped descriptions are shortened forms that keep the operator-facing instruction
+> (`infrahub.io/server=<value>`); see `schemas/server.yml` and `schemas/kubernetes.yml` for the
+> as-loaded text. The prose here is the intent, not a literal string to paste.
+
 **Derivation**: `hostname` is `server-{service_name}` (`generators/generate_server.py:52-54`), so the
 selector is the service name. Because `NetworkServerService.name` is `unique: true`, selector values
 are unique by construction — this is what makes the spec's "node selector collision: impossible" edge
