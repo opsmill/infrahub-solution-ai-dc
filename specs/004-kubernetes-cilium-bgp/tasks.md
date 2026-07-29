@@ -40,8 +40,8 @@ Existing Infrahub solution repository layout (per `plan.md` Structure Decision):
 
 **Purpose**: Establish a known-good baseline and the one new directory.
 
-- [ ] T001 Confirm a clean baseline by running `inv lint` and `inv test` and recording that both pass before any change — every later "existing suite still passes" check (FR-009) is meaningless without this reference point
-- [ ] T002 [P] Create the `queries/` directory at the repository root with a `.gitkeep`, per `plan.md` Structure Decision (it holds the standalone `ArtifactIDs` read surface, which backs neither a generator nor a transform)
+- [X] T001 Confirm a clean baseline by running `inv lint` and `inv test` and recording that both pass before any change — every later "existing suite still passes" check (FR-009) is meaningless without this reference point — **baseline recorded 2026-07-29, clean**: `uv run pytest tests/unit -q` → `107 passed in 0.14s`; `uv run inv lint` → rumdl "No issues found in 75 files", yamllint clean, ruff "All checks passed!", mypy "no issues found in 42 source files". `tests/integration` collects 15 tests, **all `@pytest.mark.skip`-marked**, and spins its own `infrahub_testcontainers` stack — which is why plain `inv test` runs for many minutes. Prefer `pytest tests/unit` for the fast inner loop
+- [X] T002 [P] Create the `queries/` directory at the repository root with a `.gitkeep`, per `plan.md` Structure Decision (it holds the standalone `ArtifactIDs` read surface, which backs neither a generator nor a transform) — **already satisfied**: `queries/.gitkeep` is present and tracked (committed in `946dbfb`), so `plan.md`'s "the one genuinely new location is `queries/`" is stale. Nothing to create; the location is confirmed available for T0xx's `artifact_ids.gql`
 
 ---
 
