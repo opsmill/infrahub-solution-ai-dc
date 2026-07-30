@@ -6,7 +6,8 @@ mirroring tests/unit/test_servers.py. The module turns a cluster's members into 
 ends up in the published artifact.
 
 Scope note: this file covers the happy path plus the two determinism properties the artifact
-checksum depends on (interface selection within a member, ordering across members). The full
+checksum depends on (interface selection within a member, ordering across members) — the latter both
+as a selector ordering (US1) and as full record invariance under shuffled input (US2). The full
 eligibility matrix of data-model.md §5 is exercised separately.
 """
 
@@ -241,6 +242,25 @@ class TestBuildCiliumPeerings:
             "cilium-worker-2",
             "cilium-worker-3",
         ]
+
+    def test_shuffled_input_order_yields_identical_records(self) -> None:
+        """The *whole* record list is invariant under input order, not just its ``node_selector`` column.
+
+        Sorting by selector is only half of checksum stability: if any other field were carried over
+        from a neighbouring member, the artifact would still be ordered and still churn. Reversal plus
+        one rotation covers both a full flip and an off-by-one shift, and both are deterministic — a
+        randomised shuffle here could pass on a lucky permutation.
+        """
+        members = [
+            _l3_member("cilium-worker-1", "cilium-worker-1", 4200000001, "10.0.0.1/31"),
+            _l3_member("cilium-worker-2", "cilium-worker-2", 4200000002, "10.0.0.3/31"),
+            _l3_member("cilium-worker-3", "cilium-worker-3", 4200000003, "10.0.0.5/31"),
+        ]
+
+        expected = build_cilium_peerings(members)
+
+        assert build_cilium_peerings(list(reversed(members))) == expected
+        assert build_cilium_peerings([*members[1:], members[0]]) == expected
 
     def test_no_members_yields_no_records(self) -> None:
         """A zero-member cluster is valid and produces nothing to render (FR-005)."""

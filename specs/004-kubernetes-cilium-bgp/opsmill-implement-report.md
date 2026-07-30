@@ -146,10 +146,10 @@ orchestrator's own read-only review of each chunk, so they are not a substitute 
 
 | Severity | File | Finding | Disposition |
 |---|---|---|---|
-| Medium | `transforms/cilium_manifest.py` | The `_NodeView`/`_Related`/`_Manager`/`_Absent` adapter (~65 lines) makes parsed GraphQL models impersonate `InfrahubNode`s, and `cluster_members` casts the result to `NetworkServerService` — a lie to the type checker. It is verifiably shape-translation-only (no member decisions), and the rationale is sound, but the cleaner factoring is arguably for `clusters.py` to accept the query model directly. **Deferred** for the real review pass. |
-| Low | `src/infrahub_solution_ai_dc/clusters.py:123` | Pyright reports `"Never" is not iterable` on `link.endpoints.peers`, from TypeVar inference through the generic `_related_peer`. mypy (the CI gate) passes, and the behaviour is covered by tests. Pyright is not in CI. **Accepted.** |
-| Low | `pyproject.toml` | Two new mypy overrides (`protocols` → `disable_error_code=["assignment"]`; `yaml` → `ignore_missing_imports`). Both are tightly scoped to one module and one code, and each carries a written rationale. **Accepted** — reviewed and judged proportionate. |
-| Low | `transforms/cabling_plan.py` | Modified outside its task's stated scope (8 `type: ignore[union-attr]` replaced by 2 `cast`s after the existing kind guard). Semantically identical, covered by 4 passing tests, and forced by T009's mypy gate. **Accepted** — a genuine improvement. |
+| Medium | `transforms/cilium_manifest.py` | The `_NodeView`/`_Related`/`_Manager`/`_Absent` adapter (~65 lines) makes parsed GraphQL models impersonate `InfrahubNode`s, and `cluster_members` casts the result to `NetworkServerService` — a lie to the type checker. It is verifiably shape-translation-only (no member decisions), and the rationale is sound, but the cleaner factoring is arguably for `clusters.py` to accept the query model directly. | **Deferred** for the real review pass. |
+| Low | `src/infrahub_solution_ai_dc/clusters.py:123` | Pyright reports `"Never" is not iterable` on `link.endpoints.peers`, from TypeVar inference through the generic `_related_peer`. mypy (the CI gate) passes, and the behaviour is covered by tests. Pyright is not in CI. | **Accepted.** |
+| Low | `pyproject.toml` | Two new mypy overrides (`protocols` → `disable_error_code=["assignment"]`; `yaml` → `ignore_missing_imports`). Both are tightly scoped to one module and one code, and each carries a written rationale. | **Accepted** — reviewed and judged proportionate. |
+| Low | `transforms/cabling_plan.py` | Modified outside its task's stated scope (8 `type: ignore[union-attr]` replaced by 2 `cast`s after the existing kind guard). Semantically identical, covered by 4 passing tests, and forced by T009's mypy gate. | **Accepted** — a genuine improvement. |
 
 ## 6. Autonomous decisions
 

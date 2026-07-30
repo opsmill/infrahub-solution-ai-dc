@@ -114,13 +114,20 @@ Existing Infrahub solution repository layout (per `plan.md` Structure Decision):
 
 ### Unit tests for User Story 2
 
-- [ ] T022 [P] [US2] Add to `tests/unit/test_cilium_manifest.py` a fixture-differencing test for member count — render N-member and N+1-member fixtures, assert the `CiliumBGPClusterConfig` count differs by exactly one, and assert the `CiliumBGPPeerConfig` and `CiliumBGPAdvertisement` documents are byte-identical between the two renders (FR-006, US2 scenarios 1–2)
-- [ ] T023 [P] [US2] Add to `tests/unit/test_cilium_manifest.py` a move test — render a fixture whose member is cabled to a different leaf with a different /31 and assert `peerAddress` follows the new leaf while every other field is unchanged (FR-006, US2 scenario 3)
-- [ ] T024 [P] [US2] Add to `tests/unit/test_clusters.py` an ordering-stability test — build the same members in shuffled input order and assert the returned records are identical, proving checksum stability does not depend on fetch order
+- [X] T022 [P] [US2] Add to `tests/unit/test_cilium_manifest.py` a fixture-differencing test for member count — render N-member and N+1-member fixtures, assert the `CiliumBGPClusterConfig` count differs by exactly one, and assert the `CiliumBGPPeerConfig` and `CiliumBGPAdvertisement` documents are byte-identical between the two renders (FR-006, US2 scenarios 1–2)
+- [X] T023 [P] [US2] Add to `tests/unit/test_cilium_manifest.py` a move test — render a fixture whose member is cabled to a different leaf with a different /31 and assert `peerAddress` follows the new leaf while every other field is unchanged (FR-006, US2 scenario 3)
+- [X] T024 [P] [US2] Add to `tests/unit/test_clusters.py` an ordering-stability test — build the same members in shuffled input order and assert the returned records are identical, proving checksum stability does not depend on fetch order
 
 ### Verification for User Story 2
 
-- [ ] T025 [US2] Record in `tasks.md` progress notes (or the PR description) that FR-006's **trigger half** — that Infrahub actually re-renders on add / remove / move — is verified only manually via `quickstart.md` step 6, not by T022–T024, which verify only that the manifest is a function of its members. Per critique finding P4, this split must be stated so the unit tests are not mistaken for full FR-006 coverage
+- [X] T025 [US2] Record in `tasks.md` progress notes (or the PR description) that FR-006's **trigger half** — that Infrahub actually re-renders on add / remove / move — is verified only manually via `quickstart.md` step 6, not by T022–T024, which verify only that the manifest is a function of its members. Per critique finding P4, this split must be stated so the unit tests are not mistaken for full FR-006 coverage
+
+**FR-006 coverage split (T025, per critique finding P4)**: T022–T024 verify only that the manifest is a
+pure function of its members — add one member and exactly one `CiliumBGPClusterConfig` appears with the
+shared documents byte-identical, remove it and no other document changes, re-cable a member and only
+`peerAddress` moves. They say nothing about whether Infrahub re-renders the artifact when a member
+changes; that rests on artifact data-dependency tracking (`research.md` R7) and is verified **only
+manually**, via `quickstart.md` step 6. Do not read a green unit suite as full FR-006 coverage.
 
 **Checkpoint**: US1 and US2 both verified.
 

@@ -1,4 +1,4 @@
-"""Tests for the rendered Cilium manifest (transforms/cilium_manifest.py) — US1 unit tests.
+"""Tests for the rendered Cilium manifest (transforms/cilium_manifest.py) — US1 and US2 unit tests.
 
 The manifest is the **published contract with Vidra**: every value asserted here is applied verbatim
 to a Kubernetes cluster, so the assertions mirror ``contracts/cilium-manifest-artifact.md`` field for
@@ -12,10 +12,17 @@ Two deliberate choices:
   not just the dict building.
 - **Assertions are on parsed structure**, via ``yaml.safe_load_all`` — never on rendered whitespace,
   key order within a document, or template internals. Cilium reads the parsed documents; so do we.
+
+The US2 classes at the bottom (:class:`TestMemberCountDifferencing`, :class:`TestMemberMove`) verify one
+half of FR-006 only: that the body is a pure *function* of the cluster's members, so adding, removing or
+moving one changes exactly what it should. That Infrahub re-renders the artifact at all when a member
+changes rests on artifact data-dependency tracking (``research.md`` R7) and is verified manually via
+``quickstart.md`` step 6 — nothing here tests it.
 """
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 import yaml
@@ -144,6 +151,24 @@ def _two_l3_members() -> list[dict[str, Any]]:
         _member("cilium-worker-1", local_as=4200000001, leaf_address="10.0.0.1/31"),
         _member("cilium-worker-2", local_as=4200000002, leaf_address="10.0.0.3/31"),
     ]
+
+
+def _three_l3_members() -> list[dict[str, Any]]:
+    """The US1 fixture grown by one member — the N + 1 side of the US2 differencing tests (N = 3)."""
+    return [
+        *_two_l3_members(),
+        _member("cilium-worker-3", local_as=4200000003, leaf_address="10.0.0.5/31"),
+    ]
+
+
+def _of_kind(documents: list[dict[str, Any]], kind: str) -> list[dict[str, Any]]:
+    """The rendered documents of one Cilium kind, in render order."""
+    return [document for document in documents if document["kind"] == kind]
+
+
+def _shared_documents(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The two documents that are shared across the whole cluster, independent of its members."""
+    return _of_kind(documents, "CiliumBGPPeerConfig") + _of_kind(documents, "CiliumBGPAdvertisement")
 
 
 def _expected_cluster_config(node_selector: str, local_asn: int, peer_address: str) -> dict[str, Any]:
@@ -301,3 +326,76 @@ class TestSharedDocuments:
         labels = documents[3]["metadata"]["labels"]
 
         assert selector.items() <= labels.items()
+
+
+class TestMemberCountDifferencing:
+    """Growing or shrinking a cluster by one touches exactly one document (FR-006, US2 scenarios 1 and 2).
+
+    The two renders differ only in their fixture's member count, so any other difference between the
+    bodies would be the renderer carrying state it should not.
+    """
+
+    def test_adding_a_member_adds_exactly_one_cluster_config(self) -> None:
+        """N + 1 members render N + 1 cluster configs — no more, and none merged away."""
+        before = _documents(_two_l3_members())
+        after = _documents(_three_l3_members())
+
+        added = len(_of_kind(after, "CiliumBGPClusterConfig")) - len(_of_kind(before, "CiliumBGPClusterConfig"))
+
+        assert added == 1
+
+    def test_the_shared_documents_are_byte_identical_across_the_two_renders(self) -> None:
+        """The peer config and advertisement are cluster-wide, so member count cannot perturb them.
+
+        Asserted on the parsed documents *and* on their re-serialised text: an operator adding a worker
+        must not see the shared half of the manifest re-applied.
+        """
+        before = _shared_documents(_documents(_two_l3_members()))
+        after = _shared_documents(_documents(_three_l3_members()))
+
+        assert before == after
+        assert yaml.safe_dump_all(before, sort_keys=False) == yaml.safe_dump_all(after, sort_keys=False)
+
+    def test_removing_a_member_changes_no_other_document(self) -> None:
+        """Dropping the added member from the N + 1 body reproduces the N body exactly.
+
+        Whole-document equality is the assertion US2 scenario 2 asks for: it catches both a surviving
+        member's document changing and the removed member leaving an orphaned peer behind.
+        """
+        grown = _documents(_three_l3_members())
+        shrunk = _documents(_two_l3_members())
+
+        surviving = [document for document in grown if document["metadata"]["name"] != "cilium-worker-3"]
+
+        assert surviving == shrunk
+
+
+class TestMemberMove:
+    """Re-placing a member on another leaf moves its ``peerAddress`` and nothing else (US2 scenario 3).
+
+    ``peerAddress`` is read from the cabling rather than stored on the session, so it follows a move for
+    free — these tests are what pins that down.
+    """
+
+    def test_only_the_peer_address_differs_after_a_move(self) -> None:
+        """The strongest form of "every other field is unchanged".
+
+        The expected document is the pre-move one with ``peerAddress`` substituted, so ``localASN``,
+        ``peerASN``, ``nodeSelector``, ``metadata.name`` and the instance and peer names are all asserted
+        unchanged by construction — a move re-places a server, it does not re-number it.
+        """
+        before = _documents([_member("cilium-worker-1", leaf_address="10.0.0.1/31")])[0]
+        after = _documents([_member("cilium-worker-1", leaf_address="10.9.0.7/31")])[0]
+
+        expected = deepcopy(before)
+        expected["spec"]["bgpInstances"][0]["peers"][0]["peerAddress"] = "10.9.0.7"
+
+        assert before["spec"]["bgpInstances"][0]["peers"][0]["peerAddress"] == "10.0.0.1"
+        assert after == expected
+
+    def test_a_move_leaves_the_shared_documents_untouched(self) -> None:
+        """Nothing in the shared half of the manifest derives from where a member is cabled."""
+        before = _documents([_member("cilium-worker-1", leaf_address="10.0.0.1/31")])
+        after = _documents([_member("cilium-worker-1", leaf_address="10.9.0.7/31")])
+
+        assert _shared_documents(before) == _shared_documents(after)
