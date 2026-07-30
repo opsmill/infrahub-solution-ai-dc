@@ -444,7 +444,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-sdk"
-version = "1.22.0"
+version = "1.23.0b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dulwich" },
@@ -456,9 +456,9 @@ dependencies = [
     { name = "ujson" },
     { name = "whenever" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/2b/49dfceb46cc63063f19c73b09fab8ea857ea0348de3d4f861d5beef621c7/infrahub_sdk-1.22.0.tar.gz", hash = "sha256:2aec69be27ba21fb5af3c9de73b39eed833ca3b12beb15880160bab68ced9373", size = 1084359, upload-time = "2026-06-23T16:30:46.994Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/49/ddf9cce790d5d3dd52bf298d9be17e111f4000aab30bcd78a58ead1922c2/infrahub_sdk-1.23.0b0.tar.gz", hash = "sha256:41f82af443e66330d9c171cacfeeffb334b7d9b1087211ed81186c4e0f102948", size = 1427234, upload-time = "2026-07-29T10:43:51.444Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/f3/d9867ffc09bf461608a73728373180fd4c963a934ca1c78b00b5dd39fb40/infrahub_sdk-1.22.0-py3-none-any.whl", hash = "sha256:3a062da0d6158b135acfad3ba2c9e010135c41576212e9904f4d059e3f57d54c", size = 270938, upload-time = "2026-06-23T16:30:45.489Z" },
+    { url = "https://files.pythonhosted.org/packages/88/d1/9bc3de6b52404a7c75e650ef87e86e0ab9df29858895914df49cebc62214/infrahub_sdk-1.23.0b0-py3-none-any.whl", hash = "sha256:9b3b6bee99b8d93ce9309a3becb2d077f147d10387bc0dd76fe9ce4b379a986e", size = 298853, upload-time = "2026-07-29T10:43:49.752Z" },
 ]
 
 [package.optional-dependencies]
@@ -501,8 +501,8 @@ requires-dist = [{ name = "httpx", specifier = ">=0.28.1" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.22.0" },
-    { name = "infrahub-testcontainers", specifier = ">=1.10.0" },
+    { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.23.0b0" },
+    { name = "infrahub-testcontainers", specifier = ">=1.11.0b0" },
     { name = "invoke", specifier = ">=2.2.0" },
     { name = "mypy", specifier = ">=1.17.1" },
     { name = "pytest", specifier = ">=8.4.1" },
@@ -514,7 +514,7 @@ dev = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.10.0"
+version = "1.11.0b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -524,9 +524,9 @@ dependencies = [
     { name = "pytest" },
     { name = "testcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/5e/783de438ed2e7decfefd18dc99c57b8c7fa2f1e523267813274f373f9c6f/infrahub_testcontainers-1.10.0.tar.gz", hash = "sha256:a91c6cc483c6d5b6604d33faab5ad31d0c3812de530b01a1f3a072e0aa68801d", size = 17933, upload-time = "2026-06-24T11:21:43.02Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/14/c3213a631b87239358d31bf4356ddb5ef26054a343529ce950977c5bd56b/infrahub_testcontainers-1.11.0b0.tar.gz", hash = "sha256:f02d66b3150e485d86ebc353795399546785f994465dfe754f6fd2ab9ca9ba33", size = 19045, upload-time = "2026-07-29T08:32:08.192Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/a6/2ee4bc0e8380234723f7c06649dedcc26d8f086c727530f315c23caed74a/infrahub_testcontainers-1.10.0-py3-none-any.whl", hash = "sha256:383fa7bf4c717461522ccaf024350def78b9a31316dc862c22cd394849153e25", size = 24211, upload-time = "2026-06-24T11:21:43.943Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/5e/f707fd5752e8a14cdee2454b2815c35365c36e125a64f6d6d3b98c83e156/infrahub_testcontainers-1.11.0b0-py3-none-any.whl", hash = "sha256:eecb2bc182cdb349df15ba20e3116bdc7a48759e2b211cb3886a20b9033daac4", size = 25047, upload-time = "2026-07-29T08:32:07.166Z" },
 ]
 
 [[package]]
@@ -969,8 +969,8 @@ name = "pendulum"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil" },
-    { name = "tzdata" },
+    { name = "python-dateutil", marker = "python_full_version < '3.13'" },
+    { name = "tzdata", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/23/7c/009c12b86c7cc6c403aec80f8a4308598dfc5995e5c523a5491faaa3952e/pendulum-3.1.0.tar.gz", hash = "sha256:66f96303560f41d097bee7d2dc98ffca716fbb3a832c4b3062034c2d45865015", size = 85930, upload-time = "2025-04-19T14:30:01.675Z" }
 wheels = [
