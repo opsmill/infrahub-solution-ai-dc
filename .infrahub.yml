@@ -36,6 +36,9 @@ queries:
   - name: cilium_manifest
     file_path: "./transforms/cilium_manifest.gql"
 
+  - name: ArtifactIDs
+    file_path: "./queries/artifact_ids.gql"
+
 
 # Every generator below imports from the shared src/infrahub_solution_ai_dc/ package. The
 # dependency closure Infrahub detects for a Python definition is the directory holding its

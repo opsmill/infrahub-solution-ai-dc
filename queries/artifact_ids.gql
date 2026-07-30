@@ -1,0 +1,18 @@
+query ArtifactIDs($artifactname: [String]) {
+  CoreArtifact(name__values: $artifactname) {
+    edges {
+      node {
+        id
+        storage_id {
+          id
+        }
+        checksum {
+          value
+        }
+        name {
+          value
+        }
+      }
+    }
+  }
+}
