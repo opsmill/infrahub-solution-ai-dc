@@ -67,9 +67,7 @@ class TestRequirePodPoolFailsLoud:
     def test_the_message_names_the_rack_the_pod_and_the_pool(self) -> None:
         """The whole point of the guard: an AttributeError named none of these three."""
         with pytest.raises(RuntimeError) as excinfo:
-            require_pod_pool(
-                _PoolRelationship(node=None), pool_name="prefix_pool", rack="Rack-B2-1", pod="Pod-B2"
-            )
+            require_pod_pool(_PoolRelationship(node=None), pool_name="prefix_pool", rack="Rack-B2-1", pod="Pod-B2")
 
         message = str(excinfo.value)
         assert "Rack-B2-1" in message
