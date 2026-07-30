@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub_sdk.generator import InfrahubGenerator  # type: ignore[import-not-found]
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: ignore[import-not-found]
@@ -22,6 +22,55 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 EXCLUDED_RACK_TYPES: list[str] = []
+
+
+class _HasId(Protocol):
+    """Structural view of a pool node — only its ``id`` matters here.
+
+    Declared read-only (a property, not an attribute) so the protocol is covariant: a mutable
+    attribute would be invariant, and no concrete node type would satisfy it.
+    """
+
+    @property
+    def id(self) -> str | None: ...
+
+
+class _PoolRelationship(Protocol):
+    """Structural view of a to-one pool relationship on the pod, as the generator query returns it."""
+
+    @property
+    def node(self) -> _HasId | None: ...
+
+
+def require_pod_pool(
+    pool: _PoolRelationship | None,
+    *,
+    pool_name: str,
+    rack: str,
+    pod: str,
+) -> str:
+    """Return the id of the pod's ``pool_name``, or fail loud naming what is not ready yet.
+
+    A rack's leaf switches draw their loopback address and their leaf<->spine /31s from pools the
+    **PodGenerator** allocates on the pod. A rack whose pod has not finished generating therefore
+    arrives here with the relationship unset, and dereferencing it straight through died with
+    ``AttributeError: 'NoneType' object has no attribute 'id'`` — naming neither the rack, the pod,
+    nor the pool.
+
+    Unlike the pod's ``vtep_pool`` (best-effort, see :meth:`RackGenerator.configure_overlay`) these
+    two cannot be skipped: without them there is no address to give a leaf, so this raises rather
+    than warning. ``RuntimeError`` matches the sibling "the pod doesn't seem to be fully generated"
+    check in :meth:`RackGenerator.generate` — both mean the cascade above this rack is incomplete.
+    """
+    node = pool.node if pool is not None else None
+    pool_id = node.id if node is not None else None
+    if pool_id is None:
+        msg = (
+            f"Cannot run rack generator on {rack}: pod {pod} has no {pool_name} allocated yet. "
+            f"The PodGenerator allocates it — let {pod} finish generating, then re-run this rack."
+        )
+        raise RuntimeError(msg)
+    return pool_id
 
 
 class RackGenerator(InfrahubGenerator):
@@ -70,8 +119,20 @@ class RackGenerator(InfrahubGenerator):
         self.pod_name: str = rack.pod.node.name.value.lower()  # type: ignore[union-attr]
         self.pod_amount_of_spines: int = rack.pod.node.amount_of_spines.value  # type: ignore[union-attr, assignment]
 
-        self.loopback_pool_id: str = rack.pod.node.loopback_pool.node.id  # type: ignore[union-attr]
-        self.prefix_pool_id: str = rack.pod.node.prefix_pool.node.id  # type: ignore[union-attr]
+        # Guarded rather than dereferenced straight through: both pools are allocated by the
+        # PodGenerator, so a rack whose pod is still mid-cascade arrives here with them unset.
+        self.loopback_pool_id: str = require_pod_pool(
+            rack.pod.node.loopback_pool,  # type: ignore[union-attr]
+            pool_name="loopback_pool",
+            rack=f"{self.rack_name}-{self.rack_id}",
+            pod=self.pod_name,
+        )
+        self.prefix_pool_id: str = require_pod_pool(
+            rack.pod.node.prefix_pool,  # type: ignore[union-attr]
+            pool_name="prefix_pool",
+            rack=f"{self.rack_name}-{self.rack_id}",
+            pod=self.pod_name,
+        )
 
         self.loopback_pool = await self.client.get(kind=CoreIPAddressPool, id=self.loopback_pool_id)
         self.prefix_pool = await self.client.get(kind=CoreIPPrefixPool, id=self.prefix_pool_id)
