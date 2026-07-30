@@ -34,13 +34,17 @@ NetworkKubernetesCluster(name__value: $name)
         } } }
         interfaces { edges { node {                    # the cabling path to the leaf's /31
           id
+          name { value }                               # REQUIRED: deterministic interface ordering sorts on it
           link { node {
             id
             endpoints { edges { node {
               id
               __typename                               # discriminate ServerInterface vs NetworkInterface
               ... on NetworkInterface {
-                ip_address { node { address { value } } }   # -> peerAddress (strip /31)
+                ip_address { node {
+                  id                                   # REQUIRED: a null relationship id is how "unset" is detected
+                  address { value }                    # -> peerAddress (strip /31)
+                } }
               }
             } } }
           } }
@@ -63,6 +67,16 @@ NetworkKubernetesCluster(name__value: $name)
 - **`address.value` carries the prefix length** (`10.0.0.1/31`). Strip it; Cilium wants a bare address.
 - A member whose `server` is null (mid-provisioning) must not break the query — `server` is an optional
   to-one, so it returns `node: null` and the transform treats it as ineligible.
+- **`id` must be selected at every node level, and `name` on the server's interfaces.** Both were
+  missing from an earlier draft of this contract and each would have silently dropped *every* member
+  (found while implementing T017/T018):
+  - `id` is how "is this relationship set" is tested — the same non-null-`id` check `servers.py` uses.
+    A node selected without `id` reads as unset, so the member is treated as incomplete and omitted.
+  - `name` on `interfaces` is what deterministic interface ordering sorts on. Without it there is
+    nothing to sort by, and the ordering guarantee that keeps the artifact checksum stable is lost.
+
+  Both failure modes are silent — a smaller manifest, not an error — which is precisely why they are
+  called out here rather than left to be rediscovered.
 
 **Registration**: `.infrahub.yml` → `queries:` as `cilium_manifest`.
 
