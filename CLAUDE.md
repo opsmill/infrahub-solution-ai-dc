@@ -10,5 +10,5 @@ Active features:
 
 For technologies, project structure, and design decisions, read each feature's
 `plan.md` (and its `research.md`, `data-model.md`, `contracts/`, `quickstart.md`).
-Domain language: `CONTEXT.md`; decision rationale: `dev/adr/0001`–`0006`.
+Domain language: `CONTEXT.md`; decision rationale: `dev/adr/0001`–`0007`.
 <!-- SPECKIT END -->
