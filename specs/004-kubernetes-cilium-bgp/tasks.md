@@ -9,7 +9,7 @@ description: "Task list for feature implementation"
 
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`, `critiques/critique-20260729-195324.md`
 
-**Tests**: Unit tests only, per the source PRD's agreed Testing Decisions. **No integration or contract test tasks are generated** — the Server service's own integration suite is entirely `@pytest.mark.skip`-marked (verified, `research.md` R6b), so adding cluster integration tests would add skipped tests rather than coverage. Acceptance is manual via `quickstart.md`.
+**Tests**: Unit tests only, per the source PRD's agreed Testing Decisions. **No integration or contract test tasks are generated** — the Server service *journeys* this feature would have mirrored are `@pytest.mark.skip`-marked, so cluster equivalents modelled on them would be born skipped. Acceptance is manual via `quickstart.md`. **Corrected 2026-07-30**: an earlier version of this line said the integration suite was *entirely* skip-marked. It is not — 15 collected, 6 skipped, **9 pass** against a real stack. See `research.md` R6b for the measured breakdown and what it does and does not change.
 
 **Organization**: Tasks are grouped by user story. Note the honest caveat below on independence.
 
@@ -40,7 +40,7 @@ Existing Infrahub solution repository layout (per `plan.md` Structure Decision):
 
 **Purpose**: Establish a known-good baseline and the one new directory.
 
-- [X] T001 Confirm a clean baseline by running `inv lint` and `inv test` and recording that both pass before any change — every later "existing suite still passes" check (FR-009) is meaningless without this reference point — **baseline recorded 2026-07-29, clean**: `uv run pytest tests/unit -q` → `107 passed in 0.14s`; `uv run inv lint` → rumdl "No issues found in 75 files", yamllint clean, ruff "All checks passed!", mypy "no issues found in 42 source files". `tests/integration` collects 15 tests, **all `@pytest.mark.skip`-marked**, and spins its own `infrahub_testcontainers` stack — which is why plain `inv test` runs for many minutes. Prefer `pytest tests/unit` for the fast inner loop
+- [X] T001 Confirm a clean baseline by running `inv lint` and `inv test` and recording that both pass before any change — every later "existing suite still passes" check (FR-009) is meaningless without this reference point — **baseline recorded 2026-07-29, clean**: `uv run pytest tests/unit -q` → `107 passed in 0.14s`; `uv run inv lint` → rumdl "No issues found in 75 files", yamllint clean, ruff "All checks passed!", mypy "no issues found in 42 source files". `tests/integration` collects 15 tests and spins its own `infrahub_testcontainers` stack — which is why plain `inv test` runs for many minutes. Prefer `pytest tests/unit` for the fast inner loop. **Corrected 2026-07-30**: this line originally claimed all 15 were `@pytest.mark.skip`-marked. Measured in CI: 6 skipped, **9 pass** — see `research.md` R6b
 - [X] T002 [P] Create the `queries/` directory at the repository root with a `.gitkeep`, per `plan.md` Structure Decision (it holds the standalone `ArtifactIDs` read surface, which backs neither a generator nor a transform) — **already satisfied**: `queries/.gitkeep` is present and tracked (committed in `946dbfb`), so `plan.md`'s "the one genuinely new location is `queries/`" is stale. Nothing to create; the location is confirmed available for T0xx's `artifact_ids.gql`
 
 ---

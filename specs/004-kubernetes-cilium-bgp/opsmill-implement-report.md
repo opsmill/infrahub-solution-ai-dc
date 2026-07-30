@@ -156,10 +156,18 @@ Every test added by this run has an observed pass with a verbatim runner line. *
 **FR-009 check**: `uv run pytest tests/unit/test_servers.py tests/unit/test_server_generator.py -q` →
 `62 passed in 0.09s`, both files confirmed unmodified. Clustering did not leak into member provisioning.
 
-**No integration or E2E tests were added, by design** — the PRD's agreed testing decisions exclude them,
-because `tests/integration` is entirely `@pytest.mark.skip`-marked pending stack foundations. This is
-*not* a "local E2E not supported" deferral: the suite runs in CI, it is simply skipped. The consequence
-is that acceptance rests entirely on T037, which did not run (§3).
+**No integration or E2E tests were added, by design** — the PRD's agreed testing decisions exclude them.
+The consequence is that acceptance rests entirely on T037, which did not run (§3).
+
+> **Correction (measured in CI, 2026-07-30).** This section originally justified that with
+> "`tests/integration` is entirely `@pytest.mark.skip`-marked". **That was wrong** — I inferred it from
+> `grep` hit counts (one hit was a docstring mentioning the marker, not applying it) and never ran the
+> suite. CI's `integration-test` job runs `pytest tests/` and reports **215 passed, 6 skipped**: of 15
+> integration tests, **9 genuinely pass** against a real testcontainers stack. The claim propagated into
+> `plan.md`, `research.md` R6b, `tasks.md` and every subagent briefing in this run; all are now corrected.
+>
+> The decision itself stands — it was agreed in the source PRD, and the specific Server service journeys
+> this feature would have mirrored are among the 6 skipped. But the stated ground for it was too broad.
 
 ## 5. Review findings
 
@@ -190,8 +198,11 @@ read-only review of each chunk, and are not a substitute for it.
    `_omit`/`_omitted` rename that proved to be a stale mid-edit snapshot.
 5. **Corrected five design/context docs from implementation findings** as they arose, rather than letting
    the specs drift from the code: `data-model.md` (×3), `contracts/graphql-queries.md`, `CLAUDE.md`.
-6. **Did not run the full `inv test`.** The integration suite is entirely skip-marked and stands up its
-   own testcontainers stack. Consistent with the agreed testing decisions, but it means no E2E class ran.
+6. **Did not run the full `inv test`.** It stands up its own testcontainers stack and takes ~13 minutes,
+   so every local gate in this run used `pytest tests/unit`. Two costs surfaced later, both in CI: the
+   integration suite is **not** entirely skip-marked as I had claimed (9 of 15 pass — see §4), and
+   `inv lint` does not run `ruff format --check`, so a formatting drift reached CI and failed
+   `python-lint` on both 3.11 and 3.14. Fixed in `7c99880`.
 7. **Did not touch `.envrc`.** Untracked, gitignored, personal to the user, and shared with their 1.11
    work. Its drift from the rebuilt stack is reported in §1 instead.
 

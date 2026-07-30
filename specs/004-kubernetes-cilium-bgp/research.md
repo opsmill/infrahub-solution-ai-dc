@@ -266,12 +266,31 @@ sharper constraint than the PRD implied, and it dictates task ordering: schema c
 `protocols.py` regeneration must land before the transform that consumes them, or CI is red in a way
 no amount of test-writing fixes.
 
-**(b) "the Server service's integration suite is still skipped" — accurate, verified.**
-Every test in `tests/integration/test_server_service.py` carries `@pytest.mark.skip`, as does
-`test_overlay_daytwo.py:88`. So the PRD's decision to add **no** integration tests here stands: doing
-otherwise would add skipped tests, not coverage. Note that CI's `integration-test` job *does* build a
-real Infrahub image and run `pytest tests/` — the suite is skipped by marker, not absent for lack of a
-stack. Recording this so a future reader does not mistake the deferral for a missing capability.
+**(b) "the Server service's integration suite is still skipped" — partly true; my first reading of it
+was wrong.**
+
+What I originally wrote here — that *every* test in `tests/integration/test_server_service.py` carries
+`@pytest.mark.skip` — was **false**. It was inferred from `grep` hit counts without running the suite,
+and one of those hits was a docstring *mentioning* the marker rather than applying it.
+
+Measured against a real testcontainers stack in CI on 2026-07-30 (`pytest tests/` →
+`215 passed, 6 skipped`):
+
+| File | Collected | Skipped | Pass |
+|---|---|---|---|
+| `test_infrahub.py` | 3 | 0 | 3 |
+| `test_overlay_daytwo.py` | 4 | 1 | 3 |
+| `test_server_service.py` | 8 | 5 | 3 |
+| **Total** | **15** | **6** | **9** |
+
+So the integration foundation **partly works** — 9 tests genuinely execute and pass, not zero.
+
+The PRD's unit-tests-only decision still stands, but on narrower ground than stated: the specific
+Server service *journeys* this feature would have mirrored (`test_l3_server_journey` and friends) are
+among the 5 skipped, so cluster equivalents modelled on them would indeed have been born skipped. What
+is no longer true is the sweeping claim that there is no working integration foundation at all. A future
+reader deciding whether to add cluster integration tests should treat that as more viable than this
+document first implied.
 
 ---
 

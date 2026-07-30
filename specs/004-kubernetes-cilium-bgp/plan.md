@@ -37,9 +37,20 @@ SDK transitive dependency — **no new dependency**, matching the PRD's governan
 **Storage**: Infrahub graph (schema YAML in `schemas/`, seed objects in `objects/`)
 
 **Testing**: pytest — **unit tests only** in this feature. No integration or contract tests: the Server
-service's own integration suite is entirely `@pytest.mark.skip`-marked pending stack foundations
-(verified, `research.md` R6b), so adding cluster integration tests would add skipped tests rather than
-coverage. Acceptance is manual via `quickstart.md`.
+Server service's *headline journeys* are `@pytest.mark.skip`-marked pending stack foundations, so
+cluster integration tests modelled on them would add skipped tests rather than coverage. Acceptance is
+manual via `quickstart.md`.
+
+> **Correction (measured in CI, 2026-07-30).** An earlier version of this plan claimed the integration
+> suite was *entirely* skip-marked. That was wrong — inferred from `grep` hits, one of which was a
+> docstring mention, without ever running the suite. Actual state: **15 collected, 6 skipped, 9 pass**
+> against a real testcontainers stack (`test_infrahub.py` 3/3 pass, `test_overlay_daytwo.py` 3 of 4,
+> `test_server_service.py` 3 of 8). So the integration foundation partly *does* work.
+>
+> This weakens, but does not overturn, the unit-tests-only decision: that was an agreed decision in the
+> source PRD and the specific Server service journeys this feature would have mirrored are still
+> skipped. A future reader should know the foundation is further along than the original rationale
+> implied, and that adding cluster integration tests is more viable than this plan first assumed.
 
 Be precise about what that covers, so the unit tests are not mistaken for full coverage:
 
