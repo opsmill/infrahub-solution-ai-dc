@@ -1,0 +1,88 @@
+query CiliumManifestQuery($name: String!) {
+  NetworkKubernetesCluster(name__value: $name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        members {
+          edges {
+            node {
+              id
+              name {
+                value
+              }
+              layer {
+                value
+              }
+              server {
+                node {
+                  id
+                  hostname {
+                    value
+                  }
+                  node_selector {
+                    value
+                  }
+                  asn {
+                    value
+                  }
+                  bgp_sessions {
+                    edges {
+                      node {
+                        id
+                        address_family {
+                          value
+                        }
+                        local_as {
+                          value
+                        }
+                        remote_as {
+                          value
+                        }
+                      }
+                    }
+                  }
+                  interfaces {
+                    edges {
+                      node {
+                        id
+                        name {
+                          value
+                        }
+                        link {
+                          node {
+                            id
+                            endpoints {
+                              edges {
+                                node {
+                                  id
+                                  __typename
+                                  ... on NetworkInterface {
+                                    ip_address {
+                                      node {
+                                        id
+                                        address {
+                                          value
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

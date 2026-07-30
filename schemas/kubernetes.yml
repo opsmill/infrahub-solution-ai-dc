@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  # The cluster design object: groups the Server services whose servers form one Kubernetes
+  # cluster, and carries the rendered Cilium manifest as an artifact.
+  #
+  # Inherits CoreArtifactTarget only. Deliberately NOT a GeneratorTarget — the cluster adds no
+  # generator, the existing ServerGenerator provisions its members unchanged (dev/adr/0002).
+  - name: KubernetesCluster
+    namespace: Network
+    label: Kubernetes Cluster
+    description: A Kubernetes cluster whose members are Server services; carries the rendered Cilium BGP manifest.
+    inherit_from:
+      - CoreArtifactTarget
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    include_in_menu: false
+    order_by: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+        order_weight: 2000
+    relationships:
+      # `optional: true` keeps a zero-member cluster valid. Not a Component relationship:
+      # deleting a cluster must not delete the services that were its members.
+      - name: members
+        label: Members
+        peer: NetworkServerService
+        kind: Generic
+        cardinality: many
+        optional: true
+        # Infrahub caps a description at 128 characters, so this is the short form of
+        # data-model.md §1's wording rather than a paraphrase by choice.
+        description: >-
+          Server services forming this cluster. L3 members become BGP peers in the rendered manifest; L2 members are skipped.
+        identifier: "kubernetes_cluster__members"
+        order_weight: 3000

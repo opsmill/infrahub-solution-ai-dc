@@ -4,36 +4,49 @@ kind: Object
 spec:
   kind: NetworkServerService
   data:
-    # US1 (P1) seed: one L3 (BGP-speaking, e.g. Cilium worker) server service.
-    # No rack / leaf_interface / segment -> fully automatic placement: the ServerGenerator
-    # picks the least-utilized rack + lowest free role:server leaf port, cables the server,
-    # allocates a /31 (both ends) and a private ASN, and upserts the paired eBGP sessions.
-    # Uses the existing "blue-prod" VRF (tenant "Blue") seeded in objects/12_overlay.yml.
+# ---------- Blue Prod (Fabric-A) ----------
+    # The three cilium-demo L3 members, spread across Pod-A2 and Pod-A3. Landing on different leaves
+    # is also what gives each member a distinct /31, and so a distinct `peerAddress` in the cluster's
+    # rendered Cilium manifest.
     - name: "cilium-worker-1"
       layer: "l3"
       vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A2-2"
+      kubernetes_cluster: "cilium-demo"
       member_of_groups: ["server_services"]
-    # US2 (P2) seed: one L2 (bridged) server service naming an existing segment under the SAME VRF.
-    # No rack / leaf_interface -> automatic placement; the ServerGenerator cables the server and adds
-    # the chosen leaf's rack to the segment's placement (no ASN, no /31, no BGP session).
-    # "blue-l2" is the L2-only segment of the "blue-prod" VRF seeded in objects/12_overlay.yml.
+    - name: "cilium-worker-2"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A2-3"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    - name: "cilium-worker-3"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A3-1"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    # The cluster's L2 member: a full member that emits no BGP peering, so it must appear nowhere in
+    # the rendered manifest. The generator adds its rack to the `blue-l2` segment's placement.
     - name: "web-host-1"
       layer: "l2"
       vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A3-2"
       segment: "blue-l2"
+      kubernetes_cluster: "cilium-demo"
       member_of_groups: ["server_services"]
-    # The same L3/L2 pair on the "Green" tenant, whose fabric (Fabric-D) is Juniper. Nothing about
-    # the ServerGenerator is vendor-aware — placement only looks for a free role:server leaf port —
-    # so these exist to exercise the *rendering* half on Junos: the L3 one must produce a routed
-    # `family inet` port plus a SERVER-EBGP group, and the L2 one a bridged `family ethernet-switching`
-    # port and no BGP at all. Names are tenant-prefixed because NetworkServerService.name is unique
-    # and each server's hostname is derived from it.
+
+# ---------- Green Prod (Fabric-D) ----------
+    # Unclustered on purpose: a Server service with no Kubernetes cluster stays valid, and these two
+    # are the evidence for it. They also exercise the rendering half on Junos.
     - name: "green-cilium-worker-1"
       layer: "l3"
       vrf: ["Green", "green-prod"]
+      rack: "Rack-D2-1"
       member_of_groups: ["server_services"]
     - name: "green-web-host-1"
       layer: "l2"
       vrf: ["Green", "green-prod"]
+      rack: "Rack-D2-2"
       segment: "green-l2"
       member_of_groups: ["server_services"]

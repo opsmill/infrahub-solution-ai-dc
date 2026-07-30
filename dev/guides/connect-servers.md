@@ -43,6 +43,20 @@ loud** with no partial objects (occupied/wrong-role port, rack with no free port
 the rack, rack outside the VRF's Fabric). Last-free-port contention is deterministic: at most one writer
 wins, the loser's `save` fails rather than double-allocating.
 
+> **Auto-selection is not safe for several services at once.** "At most one writer wins" prevents
+> double-allocation, but it does not prevent the *failure*: services materializing together each read the
+> same "lowest-numbered free port" before any of them has claimed it, so they converge on one port and
+> all but one run fails. Port selection is a read-then-write, not a pool allocation.
+>
+> Until port allocation goes through a resource pool, **pin an explicit Rack per service and do not reuse
+> a rack** — one server per rack puts them on separate leaves, where there is nothing to contend for. The
+> shipped seed in `objects/13_servers.yml` does exactly that, and says so.
+>
+> When pinning, note that only racks whose `leaf_switch_template` ends in `-compute` have `role: server`
+> ports at all. The `-storage` templates use `profile-interface-compute`, which is role `storage`, so a
+> service pinned to one fails loud with no free port. `rack_type` does not track this — a rack can be
+> `rack_type: storage` yet carry a compute template, and vice versa. Only the template is authoritative.
+
 ## L3 vs. L2
 
 - **L3** (BGP-speaking, e.g. a Kubernetes/Cilium worker): allocate a `server_p2p` **/31** on both ends
