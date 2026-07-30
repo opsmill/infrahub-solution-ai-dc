@@ -5,4 +5,8 @@ spec:
   kind: CoreRepository
   data:
     - name: test-repository
-      location: "/upstream"
+      # Bare mirror published by `inv publish-upstream`; a bind-mounted worktree
+      # cannot be cloned directly (its .git is a file pointing outside the mount).
+      location: "/upstream/.upstream.git"
+      # The mirror's `main` is the host's current checkout, whatever it is named there.
+      default_branch: "main"
