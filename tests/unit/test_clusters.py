@@ -1,22 +1,32 @@
-"""Tests for the cluster peering helpers (src/infrahub_solution_ai_dc/clusters.py) — US1 unit tests.
+"""Tests for the cluster peering helpers (src/infrahub_solution_ai_dc/clusters.py) — US1 and US3 unit tests.
 
 These exercise the *pure* peering module with plain stubs (no Infrahub client, no network),
 mirroring tests/unit/test_servers.py. The module turns a cluster's members into the ordered
 ``CiliumPeering`` records the manifest transform renders, so everything asserted here is a value that
 ends up in the published artifact.
 
-Scope note: this file covers the happy path plus the two determinism properties the artifact
-checksum depends on (interface selection within a member, ordering across members) — the latter both
-as a selector ordering (US1) and as full record invariance under shuffled input (US2). The full
-eligibility matrix of data-model.md §5 is exercised separately.
+Scope note: this file covers the happy path, the two determinism properties the artifact checksum
+depends on (interface selection within a member, ordering across members) — the latter both as a
+selector ordering (US1) and as full record invariance under shuffled input (US2) — and the full
+eligibility matrix of data-model.md §5 (US3, at the bottom). Whether the *rendered body* leaves an
+ineligible member out is tests/unit/test_cilium_manifest.py; here it is whether the record exists.
 """
 
 from __future__ import annotations
 
+import logging
 from ipaddress import ip_interface
 from typing import TYPE_CHECKING, NamedTuple, cast
 
+import pytest
+
 from infrahub_solution_ai_dc.clusters import (
+    OMISSION_NO_ASN,
+    OMISSION_NO_LEAF_ADDRESS,
+    OMISSION_NO_NODE_SELECTOR,
+    OMISSION_NO_SERVER,
+    OMISSION_NO_SESSION,
+    OMISSION_NOT_L3,
     CiliumPeering,
     build_cilium_peerings,
     instance_name,
@@ -25,7 +35,7 @@ from infrahub_solution_ai_dc.clusters import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from infrahub_solution_ai_dc.protocols import NetworkServer, NetworkServerService
 
@@ -158,6 +168,128 @@ def _server(
 def _l3_member(name: str, node_selector: str, local_as: int, leaf_address: str) -> NetworkServerService:
     server = _server(node_selector, local_as, leaf_address, server_id=f"server-{name}")
     return cast("NetworkServerService", _ServiceStub(name, "l3", server))
+
+
+def _eligible_member() -> NetworkServerService:
+    """The reference eligible member, for contrasting against each ineligible one."""
+    return _l3_member("cilium-worker-1", "cilium-worker-1", 4200000001, "10.0.0.1/31")
+
+
+# --- The ineligible members, one per eligibility check of data-model.md §5 -------------------------
+#
+# Each builder makes a member that fails exactly one check and satisfies every other, so a test that
+# sees it omitted has isolated that check. `_l2_member` in particular is fully provisioned — its
+# server has an ipv4_unicast session with both ASNs and a cabled leaf port — because "L2 but
+# otherwise complete" is the only shape that can tell a layer filter apart from the missing-data
+# filters that were already in place.
+
+
+def _l2_member() -> NetworkServerService:
+    """Check 1: an L2 member whose data is otherwise complete. It has no BGP to express."""
+    server = _server("cilium-worker-l2", 4200000009, "10.0.0.9/31", server_id="server-cilium-worker-l2")
+    return cast("NetworkServerService", _ServiceStub("cilium-worker-l2", "l2", server))
+
+
+def _member_without_server() -> NetworkServerService:
+    """Check 2: the service's ``server`` relationship is unset — the generator has not run yet."""
+    return cast("NetworkServerService", _ServiceStub("no-server", "l3", None))
+
+
+def _member_without_any_session() -> NetworkServerService:
+    """Check 3: the server exists and is cabled, but no session has been written yet."""
+    server = _ServerStub("no-session", sessions=[], interfaces=[_cabled_interface("eth1", "10.0.0.11/31")])
+    return cast("NetworkServerService", _ServiceStub("no-session", "l3", server))
+
+
+def _member_without_an_ipv4_unicast_session() -> NetworkServerService:
+    """Check 3: the server has a session, but of another address family, so it is not the one."""
+    server = _ServerStub(
+        "wrong-address-family",
+        sessions=[_SessionStub("l2vpn_evpn", 4200000013, OVERLAY_ASN)],
+        interfaces=[_cabled_interface("eth1", "10.0.0.13/31")],
+    )
+    return cast("NetworkServerService", _ServiceStub("wrong-address-family", "l3", server))
+
+
+def _member_with_a_null_local_as() -> NetworkServerService:
+    """Check 4: no ``localASN`` to render — a half-written session."""
+    server = _ServerStub(
+        "null-local-as",
+        sessions=[_SessionStub("ipv4_unicast", None, OVERLAY_ASN)],
+        interfaces=[_cabled_interface("eth1", "10.0.0.15/31")],
+    )
+    return cast("NetworkServerService", _ServiceStub("null-local-as", "l3", server))
+
+
+def _member_with_a_null_remote_as() -> NetworkServerService:
+    """Check 4: no ``peerASN`` to render."""
+    server = _ServerStub(
+        "null-remote-as",
+        sessions=[_SessionStub("ipv4_unicast", 4200000017, None)],
+        interfaces=[_cabled_interface("eth1", "10.0.0.17/31")],
+    )
+    return cast("NetworkServerService", _ServiceStub("null-remote-as", "l3", server))
+
+
+def _member_without_a_node_selector() -> NetworkServerService:
+    """Not one of the five checks, but the same treatment: no selector, no document to name."""
+    server = _ServerStub(
+        None,
+        sessions=[_SessionStub("ipv4_unicast", 4200000019, OVERLAY_ASN)],
+        interfaces=[_cabled_interface("eth1", "10.0.0.19/31")],
+    )
+    return cast("NetworkServerService", _ServiceStub("no-node-selector", "l3", server))
+
+
+def _member_with_no_interfaces() -> NetworkServerService:
+    """Check 5: nothing is cabled yet, so there is no leaf port to peer with."""
+    server = _ServerStub(
+        "no-interfaces",
+        sessions=[_SessionStub("ipv4_unicast", 4200000021, OVERLAY_ASN)],
+        interfaces=[],
+    )
+    return cast("NetworkServerService", _ServiceStub("no-interfaces", "l3", server))
+
+
+def _member_with_an_uncabled_interface() -> NetworkServerService:
+    """Check 5: the port exists but no link reaches a leaf."""
+    server = _ServerStub(
+        "uncabled",
+        sessions=[_SessionStub("ipv4_unicast", 4200000023, OVERLAY_ASN)],
+        interfaces=[_ServerInterfaceStub("eth1")],
+    )
+    return cast("NetworkServerService", _ServiceStub("uncabled", "l3", server))
+
+
+def _member_whose_leaf_port_has_no_ip() -> NetworkServerService:
+    """Check 5: cabled to a leaf port that holds no address — the /31 is not allocated yet."""
+    server = _ServerStub(
+        "no-leaf-ip",
+        sessions=[_SessionStub("ipv4_unicast", 4200000025, OVERLAY_ASN)],
+        interfaces=[_cabled_interface("eth1", leaf_address=None)],
+    )
+    return cast("NetworkServerService", _ServiceStub("no-leaf-ip", "l3", server))
+
+
+#: Every ineligible shape as (test id, builder, the reason the module must report for it).
+INELIGIBLE_CASES: list[tuple[str, Callable[[], NetworkServerService], str]] = [
+    ("l2-member", _l2_member, OMISSION_NOT_L3),
+    ("no-server", _member_without_server, OMISSION_NO_SERVER),
+    ("no-session", _member_without_any_session, OMISSION_NO_SESSION),
+    ("wrong-address-family", _member_without_an_ipv4_unicast_session, OMISSION_NO_SESSION),
+    ("null-local-as", _member_with_a_null_local_as, OMISSION_NO_ASN),
+    ("null-remote-as", _member_with_a_null_remote_as, OMISSION_NO_ASN),
+    ("no-node-selector", _member_without_a_node_selector, OMISSION_NO_NODE_SELECTOR),
+    ("no-interfaces", _member_with_no_interfaces, OMISSION_NO_LEAF_ADDRESS),
+    ("uncabled-interface", _member_with_an_uncabled_interface, OMISSION_NO_LEAF_ADDRESS),
+    ("leaf-port-without-ip", _member_whose_leaf_port_has_no_ip, OMISSION_NO_LEAF_ADDRESS),
+]
+
+#: Builder plus expected reason, for the omission-logging tests.
+INELIGIBLE_MEMBERS = [pytest.param(builder, reason, id=case_id) for case_id, builder, reason in INELIGIBLE_CASES]
+
+#: Just the builder, for the tests that do not care which check was failed.
+INELIGIBLE_BUILDERS = [pytest.param(builder, id=case_id) for case_id, builder, _ in INELIGIBLE_CASES]
 
 
 class TestBuildCiliumPeerings:
@@ -317,3 +449,123 @@ class TestInstanceName:
     def test_instance_name_is_derived_from_the_local_asn(self) -> None:
         """Deterministic and unique within the document, which is all Cilium requires."""
         assert instance_name(4200000001) == "instance-4200000001"
+
+
+class TestEligibility:
+    """The full exclusion matrix of data-model.md §5 (FR-004, FR-005, US3).
+
+    Every case is a member that must be dropped and must not raise. The two properties are asserted
+    separately on purpose: a filter that raised would also produce no record, so "omitted" alone
+    cannot tell an omission apart from a failure that took the whole cluster's artifact with it.
+    """
+
+    @pytest.mark.parametrize("build_member", INELIGIBLE_BUILDERS)
+    def test_an_ineligible_member_yields_no_record(self, build_member: Callable[[], NetworkServerService]) -> None:
+        """Each failed check omits the member — and only that member."""
+        assert build_cilium_peerings([build_member()]) == []
+
+    @pytest.mark.parametrize("build_member", INELIGIBLE_BUILDERS)
+    def test_an_ineligible_member_does_not_suppress_an_eligible_one(
+        self, build_member: Callable[[], NetworkServerService]
+    ) -> None:
+        """The reason omission beats raising: one mid-provisioning member must not withhold the rest.
+
+        Asserting the surviving record in full also rules out the ineligible member leaking a field
+        into its neighbour.
+        """
+        peerings = build_cilium_peerings([build_member(), _eligible_member()])
+
+        assert peerings == [
+            CiliumPeering(
+                node_selector="cilium-worker-1",
+                local_asn=4200000001,
+                peer_asn=OVERLAY_ASN,
+                peer_address="10.0.0.1",
+                instance_name="instance-4200000001",
+            )
+        ]
+
+    def test_a_cluster_of_only_ineligible_members_yields_no_records_and_no_error(self) -> None:
+        """The all-L2 / all-incomplete cluster: an empty list, never an exception (FR-005)."""
+        members = [builder() for _, builder, _ in INELIGIBLE_CASES]
+
+        assert build_cilium_peerings(members) == []
+
+    def test_an_l2_member_is_dropped_even_though_its_data_is_complete(self) -> None:
+        """The layer check is load-bearing on its own, not a by-product of missing data (FR-004).
+
+        ``_l2_member``'s server carries a complete ipv4_unicast session and a cabled leaf port, so
+        every other check passes and only ``layer`` can be what excludes it.
+        """
+        assert build_cilium_peerings([_l2_member()]) == []
+
+
+class TestOmissionLogging:
+    """Omission is silent in the artifact but not in the logs (critique finding E2).
+
+    Without a log line a permanently broken member is detectable only by comparing member count to
+    document count by hand. These tests pin the line down without letting it change any output.
+    """
+
+    @pytest.mark.parametrize(("build_member", "expected_reason"), INELIGIBLE_MEMBERS)
+    def test_each_omitted_member_is_logged_with_the_check_it_failed(
+        self,
+        build_member: Callable[[], NetworkServerService],
+        expected_reason: str,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """One line per omitted member, naming the member and the specific check.
+
+        The reason matters as much as the count: "member X was dropped" without it sends an operator
+        back to reading the graph by hand, which is the state E2 exists to end.
+        """
+        member = build_member()
+        logger = logging.getLogger("test.clusters")
+
+        with caplog.at_level(logging.INFO, logger="test.clusters"):
+            build_cilium_peerings([member], logger=logger)
+
+        assert len(caplog.records) == 1
+        assert expected_reason in caplog.records[0].message
+
+    @pytest.mark.parametrize("build_member", INELIGIBLE_BUILDERS)
+    def test_the_log_line_names_the_omitted_member(
+        self, build_member: Callable[[], NetworkServerService], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The service name is the only handle an operator has back to the object they declared."""
+        member = build_member()
+        service_name = str(member.name.value)
+        logger = logging.getLogger("test.clusters")
+
+        with caplog.at_level(logging.INFO, logger="test.clusters"):
+            build_cilium_peerings([member], logger=logger)
+
+        assert service_name in caplog.records[0].message
+
+    def test_an_eligible_member_logs_nothing(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A healthy cluster stays quiet, so every line in the log is a member worth looking at."""
+        logger = logging.getLogger("test.clusters")
+
+        with caplog.at_level(logging.INFO, logger="test.clusters"):
+            build_cilium_peerings([_eligible_member()], logger=logger)
+
+        assert caplog.records == []
+
+    def test_without_a_logger_nothing_is_logged(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The module stays pure by default: no logger passed, no logger reached for."""
+        with caplog.at_level(logging.INFO):
+            build_cilium_peerings([_l2_member()])
+
+        assert caplog.records == []
+
+    def test_logging_changes_no_returned_record(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Passing a logger is observability only — the records, and so the artifact, are identical."""
+        members = [_l2_member(), _eligible_member(), _member_without_server()]
+        logger = logging.getLogger("test.clusters")
+
+        with caplog.at_level(logging.INFO, logger="test.clusters"):
+            with_logger = build_cilium_peerings(members, logger=logger)
+        without_logger = build_cilium_peerings(members)
+
+        assert with_logger == without_logger
+        assert len(caplog.records) == 2

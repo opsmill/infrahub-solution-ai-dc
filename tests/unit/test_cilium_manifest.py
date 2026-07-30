@@ -1,4 +1,4 @@
-"""Tests for the rendered Cilium manifest (transforms/cilium_manifest.py) — US1 and US2 unit tests.
+"""Tests for the rendered Cilium manifest (transforms/cilium_manifest.py) — US1, US2 and US3 unit tests.
 
 The manifest is the **published contract with Vidra**: every value asserted here is applied verbatim
 to a Kubernetes cluster, so the assertions mirror ``contracts/cilium-manifest-artifact.md`` field for
@@ -13,11 +13,15 @@ Two deliberate choices:
 - **Assertions are on parsed structure**, via ``yaml.safe_load_all`` — never on rendered whitespace,
   key order within a document, or template internals. Cilium reads the parsed documents; so do we.
 
-The US2 classes at the bottom (:class:`TestMemberCountDifferencing`, :class:`TestMemberMove`) verify one
-half of FR-006 only: that the body is a pure *function* of the cluster's members, so adding, removing or
-moving one changes exactly what it should. That Infrahub re-renders the artifact at all when a member
-changes rests on artifact data-dependency tracking (``research.md`` R7) and is verified manually via
+The US2 classes (:class:`TestMemberCountDifferencing`, :class:`TestMemberMove`) verify one half of
+FR-006 only: that the body is a pure *function* of the cluster's members, so adding, removing or moving
+one changes exactly what it should. That Infrahub re-renders the artifact at all when a member changes
+rests on artifact data-dependency tracking (``research.md`` R7) and is verified manually via
 ``quickstart.md`` step 6 — nothing here tests it.
+
+The US3 classes at the bottom (:class:`TestMixedCluster`, :class:`TestIncompleteMember`,
+:class:`TestEmptyCluster`) assert the *rendered* consequences of exclusion. Which members are eligible,
+and why each is dropped, is tests/unit/test_clusters.py; here it is only that the body is what remains.
 """
 
 from __future__ import annotations
@@ -140,9 +144,19 @@ def _cluster_result(members: list[dict[str, Any]], name: str = "cilium-demo") ->
     }
 
 
+def _body(members: list[dict[str, Any]]) -> str:
+    """Render the manifest for ``members`` and return the raw body text.
+
+    Used only where the assertion is genuinely about the *whole text* — "this string appears nowhere"
+    cannot be expressed against the parsed documents, since a leaked selector could surface in any
+    field of any document.
+    """
+    return render_cluster_manifest(_cluster_result(members))
+
+
 def _documents(members: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Render the manifest for ``members`` and return its parsed documents."""
-    return list(yaml.safe_load_all(render_cluster_manifest(_cluster_result(members))))
+    return list(yaml.safe_load_all(_body(members)))
 
 
 def _two_l3_members() -> list[dict[str, Any]]:
@@ -399,3 +413,150 @@ class TestMemberMove:
         after = _documents([_member("cilium-worker-1", leaf_address="10.9.0.7/31")])
 
         assert _shared_documents(before) == _shared_documents(after)
+
+
+L2_SELECTOR = "cilium-worker-l2"
+
+
+def _mixed_members() -> list[dict[str, Any]]:
+    """The US3 fixture: two eligible L3 members and one L2 member, the L2 one in the middle.
+
+    Its data is complete apart from ``layer`` — it has a server, an ipv4_unicast session with both
+    ASNs and a cabled leaf port — so only the layer check can be what excludes it. It sits between the
+    two L3 members and sorts between them by selector, so a filter applied at the wrong point would
+    leave a visible gap rather than a trailing one.
+    """
+    return [
+        _member("cilium-worker-1", local_as=4200000001, leaf_address="10.0.0.1/31"),
+        _member(L2_SELECTOR, layer="l2", local_as=4200000009, leaf_address="10.0.0.9/31"),
+        _member("cilium-worker-2", local_as=4200000002, leaf_address="10.0.0.3/31"),
+    ]
+
+
+class TestMixedCluster:
+    """A cluster holding both L2 and L3 members renders only the L3 ones (FR-004, US3 scenario 1)."""
+
+    def test_exactly_two_cluster_configs_are_rendered_for_three_members(self) -> None:
+        """One document per *eligible* member — the L2 member is a member but has no peering."""
+        documents = _documents(_mixed_members())
+
+        assert len(_of_kind(documents, "CiliumBGPClusterConfig")) == 2
+
+    def test_the_rendered_cluster_configs_are_the_two_l3_members(self) -> None:
+        """Named and ordered exactly as the all-L3 fixture would be — the L2 member leaves no gap."""
+        documents = _documents(_mixed_members())
+
+        assert [document["metadata"]["name"] for document in _of_kind(documents, "CiliumBGPClusterConfig")] == [
+            "cilium-worker-1",
+            "cilium-worker-2",
+        ]
+
+    def test_the_l2_members_node_selector_appears_nowhere_in_the_body(self) -> None:
+        """The strongest form of "appears nowhere": a substring check over the whole rendered text.
+
+        Counting documents cannot catch the L2 member leaking into a *field* of a document that is
+        otherwise correctly counted — a ``nodeSelector``, a peer name, a label.
+        """
+        body = _body(_mixed_members())
+
+        assert L2_SELECTOR not in body
+
+    def test_the_mixed_cluster_renders_exactly_what_the_l3_members_alone_would(self) -> None:
+        """Whole-document equality against the two-L3 fixture: the L2 member perturbs nothing.
+
+        Subsumes the count and naming assertions above, and additionally rules out the L2 member
+        shifting a surviving member's ASN or address.
+        """
+        assert _documents(_mixed_members()) == _documents(_two_l3_members())
+
+
+class TestIncompleteMember:
+    """An L3 member still mid-provisioning is dropped; its neighbours are unaffected (US3 scenario 3)."""
+
+    def test_a_member_without_a_stored_session_is_dropped_and_the_complete_one_remains(self) -> None:
+        """``local_as=None`` models a session written before the ASN was allocated."""
+        members = [
+            _member("cilium-worker-1", local_as=4200000001, leaf_address="10.0.0.1/31"),
+            _member("cilium-worker-9", local_as=None, leaf_address="10.0.0.9/31"),
+        ]
+
+        documents = _documents(members)
+
+        assert [document["metadata"]["name"] for document in _of_kind(documents, "CiliumBGPClusterConfig")] == [
+            "cilium-worker-1"
+        ]
+        assert "cilium-worker-9" not in _body(members)
+
+    def test_a_member_without_a_leaf_address_is_dropped_and_the_complete_one_remains(self) -> None:
+        """``leaf_address=None`` models a cabled port whose /31 is not allocated yet."""
+        members = [
+            _member("cilium-worker-1", local_as=4200000001, leaf_address="10.0.0.1/31"),
+            _member("cilium-worker-9", local_as=4200000009, leaf_address=None),
+        ]
+
+        documents = _documents(members)
+
+        assert [document["metadata"]["name"] for document in _of_kind(documents, "CiliumBGPClusterConfig")] == [
+            "cilium-worker-1"
+        ]
+        assert "cilium-worker-9" not in _body(members)
+
+    def test_one_complete_member_still_renders_the_full_document_set(self) -> None:
+        """The survivor gets its cluster config *and* the shared pair — it is not a degraded render."""
+        members = [
+            _member("cilium-worker-1", local_as=4200000001, leaf_address="10.0.0.1/31"),
+            _member("cilium-worker-9", local_as=None, leaf_address=None),
+        ]
+
+        documents = _documents(members)
+
+        assert [document["kind"] for document in documents] == [
+            "CiliumBGPClusterConfig",
+            "CiliumBGPPeerConfig",
+            "CiliumBGPAdvertisement",
+        ]
+
+
+class TestEmptyCluster:
+    """No eligible members means **zero** documents — not the shared pair on its own (FR-005, US3 scenario 2).
+
+    Emitting the peer config and advertisement alone would leave a peer config nothing references and
+    an advertisement nothing advertises: inert clutter that Vidra would nonetheless apply.
+    """
+
+    def test_an_all_l2_cluster_renders_zero_documents(self) -> None:
+        members = [
+            _member("cilium-worker-l2-a", layer="l2"),
+            _member("cilium-worker-l2-b", layer="l2", local_as=4200000002, leaf_address="10.0.0.3/31"),
+        ]
+
+        assert _documents(members) == []
+
+    def test_an_all_l2_cluster_does_not_emit_the_shared_documents(self) -> None:
+        """Stated separately from the count because it is the specific mistake FR-005 names."""
+        members = [_member("cilium-worker-l2-a", layer="l2")]
+
+        assert _shared_documents(_documents(members)) == []
+
+    def test_a_zero_member_cluster_renders_zero_documents(self) -> None:
+        assert _documents([]) == []
+
+    def test_a_zero_member_cluster_does_not_emit_the_shared_documents(self) -> None:
+        assert _shared_documents(_documents([])) == []
+
+    def test_a_cluster_of_only_incomplete_l3_members_renders_zero_documents(self) -> None:
+        """The empty case is about *eligibility*, not about layer — an unprovisioned cluster hits it too."""
+        members = [
+            _member("cilium-worker-1", local_as=None),
+            _member("cilium-worker-2", local_as=4200000002, leaf_address=None),
+        ]
+
+        assert _documents(members) == []
+
+    def test_an_empty_render_produces_no_documents_and_raises_nothing(self) -> None:
+        """The body itself: whatever text ``safe_dump_all`` produces, it must parse to nothing.
+
+        Asserted through ``safe_load_all`` rather than against ``""`` so the test survives a change in
+        how PyYAML renders an empty stream, while still pinning down that Cilium receives no resource.
+        """
+        assert list(yaml.safe_load_all(_body([]))) == []

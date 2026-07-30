@@ -17,6 +17,7 @@ Two properties this module is responsible for:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, cast
 
 import yaml
@@ -235,17 +236,25 @@ def cluster_members(parsed: CiliumManifestQuery) -> list[NetworkServerService]:
     ]
 
 
-def render_cluster_manifest(data: dict[str, Any]) -> str:
+def render_cluster_manifest(data: dict[str, Any], logger: logging.Logger | None = None) -> str:
     """Render one cluster's manifest from the raw ``cilium_manifest`` query result.
 
     The whole transform, minus the SDK plumbing: parse, hand the members to the peering module, render
     what it returns. Kept as a function so it is exercised directly by the unit tests.
+
+    ``logger`` reaches the peering module only, where it reports each member omitted for ineligibility.
+    It changes no rendered output.
     """
-    return render_manifest(build_cilium_peerings(cluster_members(CiliumManifestQuery(**data))))
+    return render_manifest(build_cilium_peerings(cluster_members(CiliumManifestQuery(**data)), logger))
 
 
 class CiliumManifest(InfrahubTransform):
     query = "cilium_manifest"
 
+    #: ``InfrahubTransform`` provides no logger of its own, unlike ``InfrahubGenerator``. Naming the
+    #: same logger the generators use (``generators/generate_server.py``) puts a member omitted here
+    #: in the same stream as the run that failed to provision it.
+    logger = logging.getLogger("infrahub.tasks")
+
     async def transform(self, data: dict[str, Any]) -> str:
-        return render_cluster_manifest(data)
+        return render_cluster_manifest(data, self.logger)

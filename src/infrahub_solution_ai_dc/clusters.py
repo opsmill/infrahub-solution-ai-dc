@@ -12,6 +12,13 @@ byte-identically:
 - **Across members**: :func:`build_cilium_peerings` sorts by ``node_selector``.
 - **Within a member**: :func:`leaf_port_address` walks the server's interfaces in name order rather
   than in query order.
+
+This module also owns **eligibility** (``data-model.md`` §5): which members yield a peering at all.
+It is the one place in the feature that deliberately does not fail loud — an ineligible member is
+omitted, never raised on, so that one mid-provisioning member never withholds valid config from the
+rest of the cluster. Omission is silent in the *artifact* but not in the *logs*: pass a ``logger`` and
+each dropped member is reported with the check it failed, which is the difference between an invisible
+failure and a diagnosable one.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Iterable
     from ipaddress import IPv4Interface, IPv6Interface
 
@@ -37,6 +45,31 @@ SERVER_ADDRESS_FAMILY = "ipv4_unicast"
 
 #: The kind of the *leaf* end of a server attachment link; the server end is a ``ServerInterface``.
 LEAF_INTERFACE_KIND = "NetworkInterface"
+
+#: The only ``NetworkServerService.layer`` that speaks BGP, and so the only one that peers.
+L3_LAYER = "l3"
+
+# Why a member yielded no peering, one string per eligibility check of `data-model.md` §5. Held as
+# module constants rather than inline literals so the tests assert the reason an operator will read
+# rather than a paraphrase of it.
+
+#: Check 1 — the member is L2, so it has no BGP to express.
+OMISSION_NOT_L3 = f"its layer is not {L3_LAYER}"
+
+#: Check 2 — the service resolves to no ``NetworkServer``; the Server generator has not run yet.
+OMISSION_NO_SERVER = "it resolves to no server"
+
+#: Check 3 — the server has no session of the address family the generator writes.
+OMISSION_NO_SESSION = f"its server has no {SERVER_ADDRESS_FAMILY} BGP session"
+
+#: Check 4 — the session exists but is half-written, so an ASN would have to be invented.
+OMISSION_NO_ASN = f"its {SERVER_ADDRESS_FAMILY} BGP session is missing local_as or remote_as"
+
+#: Not one of the five checks, but the same treatment: no selector, nothing to name the document.
+OMISSION_NO_NODE_SELECTOR = "its server has no node_selector"
+
+#: Check 5 — nothing cabled, or cabled to a leaf port with no address allocated yet.
+OMISSION_NO_LEAF_ADDRESS = "its cabling resolves to no leaf-port address"
 
 _PeerT = TypeVar("_PeerT")
 
@@ -160,29 +193,73 @@ def leaf_port_address(server: NetworkServer) -> str | None:
     return None
 
 
-def peering_for_member(service: NetworkServerService) -> CiliumPeering | None:
+def _member_label(service: NetworkServerService) -> str:
+    """Return the name an operator knows the member by, for the omission log line.
+
+    The service name is the handle back to the object the operator declared. Read defensively — a
+    member with nothing else resolved is exactly the case being logged, so a missing name must not
+    turn a diagnostic into an ``AttributeError``.
+    """
+    name = getattr(service.name, "value", None)
+    return str(name) if name is not None else "<unnamed>"
+
+
+def _omitted(service: NetworkServerService, reason: str, logger: logging.Logger | None) -> CiliumPeering | None:
+    """Report why a member yields no peering and return ``None`` so the caller drops it.
+
+    Always ``None``; the return type is ``CiliumPeering | None`` only so each eligibility check can be
+    written as ``return _omitted(...)``. That form keeps the reason next to the check that knows it, and
+    leaves no branch able to log an omission without performing it.
+    """
+    if logger is not None:
+        logger.info(f"Omitting cluster member {_member_label(service)} from the Cilium manifest: {reason}")
+    return None
+
+
+def peering_for_member(
+    service: NetworkServerService,
+    logger: logging.Logger | None = None,
+) -> CiliumPeering | None:
     """Return the ``CiliumPeering`` for one cluster member, or ``None`` when it yields none.
 
-    A member with incomplete data is **omitted, never raised on** (FR-004/FR-005): one member still
-    mid-provisioning must not withhold valid config from the rest of the cluster.
+    Applies the five eligibility checks of ``data-model.md`` §5 in order — layer, server, session,
+    ASNs, leaf address — plus a null ``node_selector`` guard. An ineligible member is **omitted, never
+    raised on** (FR-004/FR-005): one member still mid-provisioning must not withhold valid config from
+    the rest of the cluster.
+
+    The layer check comes first because it is the only one that is not about missing data: an L2 member
+    can be fully provisioned, with a session and a cabled leaf port, and still must not appear. Its
+    server-side session, if any, belongs to the L2 attachment and describes no Cilium peering.
+
+    Note that check 3's original "a session whose ``device`` is the server" clause is deliberately not
+    implemented — see :func:`server_side_session`.
+
+    Pass ``logger`` to have each omission reported with the check it failed; without one the function
+    is entirely pure and silent.
     """
+    if service.layer.value != L3_LAYER:
+        return _omitted(service, OMISSION_NOT_L3, logger)
+
     server = _related_peer(service.server)
     if server is None:
-        return None
+        return _omitted(service, OMISSION_NO_SERVER, logger)
 
     session = server_side_session(server)
     if session is None:
-        return None
+        return _omitted(service, OMISSION_NO_SESSION, logger)
 
     local_asn = session.local_as.value
     peer_asn = session.remote_as.value
+    if local_asn is None or peer_asn is None:
+        return _omitted(service, OMISSION_NO_ASN, logger)
+
     node_selector = server.node_selector.value
-    if local_asn is None or peer_asn is None or node_selector is None:
-        return None
+    if node_selector is None:
+        return _omitted(service, OMISSION_NO_NODE_SELECTOR, logger)
 
     peer_address = leaf_port_address(server)
     if peer_address is None:
-        return None
+        return _omitted(service, OMISSION_NO_LEAF_ADDRESS, logger)
 
     return CiliumPeering(
         node_selector=node_selector,
@@ -193,11 +270,17 @@ def peering_for_member(service: NetworkServerService) -> CiliumPeering | None:
     )
 
 
-def build_cilium_peerings(members: Iterable[NetworkServerService]) -> list[CiliumPeering]:
+def build_cilium_peerings(
+    members: Iterable[NetworkServerService],
+    logger: logging.Logger | None = None,
+) -> list[CiliumPeering]:
     """Return the cluster's peering records, ordered by ``node_selector``.
 
-    Members yielding no record are dropped, so an empty cluster — or one whose members are all
-    ineligible — returns an empty list rather than raising (FR-005).
+    Members yielding no record are dropped, so an empty cluster — or one whose members are all L2 or
+    all mid-provisioning — returns an empty list rather than raising (FR-005).
+
+    ``logger`` is threaded through to :func:`peering_for_member` and affects logging only; the returned
+    records, and so the rendered artifact, are identical with and without it.
     """
-    peerings = [peering for member in members if (peering := peering_for_member(member)) is not None]
+    peerings = [peering for member in members if (peering := peering_for_member(member, logger)) is not None]
     return sorted(peerings, key=lambda peering: peering.node_selector)
