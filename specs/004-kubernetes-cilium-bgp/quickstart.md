@@ -97,8 +97,13 @@ server-facing neighbour:
 100% agreement across all three members, with nothing reconciled by hand, is SC-002.
 
 **Also expected** (US3 / FR-004): `web-host-1` appears **nowhere** in the manifest — not as a document,
-not as a selector value. And the three `peerAddress` values are distinct, because automatic placement
-spread the members across racks and therefore across leaves.
+not as a selector value. And the three `peerAddress` values are distinct, because each member is pinned
+to its own rack (`Rack-A2-2`, `Rack-A2-3`, `Rack-A3-1`) and so sits on a different leaf.
+
+Placement is pinned in `objects/13_servers.yml` rather than left to the generator, because several
+services materializing at once all pick the same lowest-numbered free port and collide. See the
+"Placement is pinned" section of `contracts/infrahub-registration.md` for the constraints on changing
+those racks — in particular that a storage-template rack has no `role: server` ports at all.
 
 ## 6. Add and remove a member (US2 / FR-006)
 

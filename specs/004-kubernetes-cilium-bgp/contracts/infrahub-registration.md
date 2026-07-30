@@ -101,22 +101,43 @@ spec:
 **`objects/13_servers.yml`** *(extends)* — retrofit the existing seeds as members and add enough to
 demonstrate the multi-member and mixed cases (resolving the PRD's first open question):
 
-| Service | Layer | Cluster | Purpose |
-|---|---|---|---|
-| `cilium-worker-1` *(existing)* | l3 | `cilium-demo` | retrofitted; proves an existing seed joins without change to its other fields |
-| `cilium-worker-2` *(new)* | l3 | `cilium-demo` | second member → multi-member manifest (US1, N ≥ 2) |
-| `cilium-worker-3` *(new)* | l3 | `cilium-demo` | third member → matches US1's three-member acceptance scenario |
-| `web-host-1` *(existing)* | l2 | `cilium-demo` | retrofitted; the mixed L2/L3 case (US3) — present as a member, absent from the manifest |
-| `green-cilium-worker-1` *(existing)* | l3 | *(none)* | left unclustered; proves FR-001's "valid with none" |
-| `green-web-host-1` *(existing)* | l2 | *(none)* | left unclustered |
+| Service | Layer | Cluster | Rack | Purpose |
+|---|---|---|---|---|
+| `cilium-worker-1` *(existing)* | l3 | `cilium-demo` | `Rack-A2-2` | retrofitted; proves an existing seed joins without change to its other fields |
+| `cilium-worker-2` *(new)* | l3 | `cilium-demo` | `Rack-A2-3` | second member → multi-member manifest (US1, N ≥ 2) |
+| `cilium-worker-3` *(new)* | l3 | `cilium-demo` | `Rack-A3-1` | third member → matches US1's three-member acceptance scenario |
+| `web-host-1` *(existing)* | l2 | `cilium-demo` | `Rack-A3-2` | retrofitted; the mixed L2/L3 case (US3) — present as a member, absent from the manifest |
+| `green-cilium-worker-1` *(existing)* | l3 | *(none)* | `Rack-D2-1` | left unclustered; proves FR-001's "valid with none" |
+| `green-web-host-1` *(existing)* | l2 | *(none)* | `Rack-D2-2` | left unclustered |
 
 The three L3 members plus one L2 member make the manifest render **3 + 2 = 5** documents, which is
 exactly the fixture `quickstart.md` verifies against.
 
-The new `cilium-worker-2` / `-3` services keep the existing seeds' shape: `layer: l3`, `vrf: ["Blue",
-"blue-prod"]`, no rack / leaf_interface / segment, so the `ServerGenerator` places them automatically
-across racks — which is also what makes the members land on *different* leaves and give the manifest
-distinct `peerAddress` values.
+### Placement is pinned, and must stay pinned
+
+Every seeded service names an explicit `rack`, and **no two share one**. This is a deliberate
+workaround, not a stylistic choice.
+
+Leaving `rack` empty makes the `ServerGenerator` pick the least-utilized rack and the lowest-numbered
+free `role: server` port on its leaf. Several services materializing together each read the same
+"lowest free port" before any has claimed it, so they converge on the same port and collide. Until port
+allocation goes through a resource pool, one server per rack keeps them on separate leaves where there
+is nothing to contend for. Pinning also makes the members' distinct `peerAddress` values deterministic
+rather than a side effect of whichever rack the generator happened to pick.
+
+Two constraints bind any reassignment:
+
+- **The rack's leaf template must end in `-compute`.** Those carry `profile-interface-server`
+  (role `server`); the `-storage` templates carry `profile-interface-compute` (role `storage`) and have
+  no server-role ports at all, so a service pinned there fails loud with no free port. That rules out
+  `Rack-A2-4` and `Rack-A3-3` in Fabric-A, and `Rack-D3-3` and `Rack-D3-4` in Fabric-D. Note
+  `rack_type` does **not** track this — `Rack-D2-4` is `rack_type: storage` but carries a compute
+  template, so it is usable.
+- **The rack must belong to the fabric behind the service's VRF** — Blue → Fabric-A (Pod-A2/Pod-A3),
+  Green → Fabric-D (Pod-D2/Pod-D3) — or placement fails loud.
+
+`Rack-A2-1` is deliberately left free: it is the rack the `blue-dmz` rack-scoped segment demo pins in
+`objects/12_overlay.yml`.
 
 ## `triggers.yml`
 
