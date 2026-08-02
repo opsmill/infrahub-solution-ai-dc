@@ -72,6 +72,7 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 
 - `.agents/skills/` — vendor-neutral source of truth for AI agent skills: the `infrahub-*` skills (installed from `opsmill/infrahub-skills`, pinned in `skills-lock.json`) and the `speckit-*` skills
 - `.claude/skills` — committed symlink view of `.agents/skills` for Claude Code discovery
+- `.mcp.json` — committed MCP client config for the `infrahub-mcp` sidecar in `docker-compose.override.yml`: how agents reach live Infrahub data (`mcp__infrahub__*` tools; token from `INFRAHUB_API_TOKEN`)
 - `.specify/` — spec-kit workflow engine (constitution, templates, scripts)
 - `dev/` — human-facing reference: `adr/` (MADR decision records), `guides/`, `guidelines/`, `knowledge/`
 
