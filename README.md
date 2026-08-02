@@ -89,7 +89,7 @@ The stack includes an Infrahub MCP server as a sidecar, so an AI agent opened at
 To present your own Infrahub API token:
 
 ```bash
-export INFRAHUB_API_TOKEN=<token>
+export INFRAHUB_API_TOKEN="<token>"
 ```
 
 If port 8001 is already taken, `INFRAHUB_MCP_PORT` moves both the published port and the address the client uses:

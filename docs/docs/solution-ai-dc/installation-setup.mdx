@@ -41,10 +41,15 @@ This installs all Python dependencies including `infrahub-sdk` (which provides `
 ```bash
 export INFRAHUB_USERNAME="admin"
 export INFRAHUB_PASSWORD="infrahub"
-export INFRAHUB_API_TOKEN="<token>"
 ```
 
-`INFRAHUB_USERNAME` and `INFRAHUB_PASSWORD` are used by `infrahubctl` to authenticate with the Infrahub API. `INFRAHUB_API_TOKEN` is the token an MCP client presents to the [Infrahub MCP server](#infrahub-mcp-server). `VERSION` sets the Infrahub image tag. If not using direnv, source the file manually or export these variables:
+`INFRAHUB_USERNAME` and `INFRAHUB_PASSWORD` are used by `infrahubctl` to authenticate with the Infrahub API. `VERSION` sets the Infrahub image tag. If not using direnv, source the file manually or export these variables.
+
+One optional variable belongs to the MCP server rather than to `infrahubctl`, so keep it out of the block above: `INFRAHUB_API_TOKEN` sets the token an MCP client presents to the [Infrahub MCP server](#infrahub-mcp-server). Setting it takes precedence over `INFRAHUB_USERNAME` / `INFRAHUB_PASSWORD` for `infrahubctl` too, so export it only once you have a token to use:
+
+```bash
+export INFRAHUB_API_TOKEN="<token>"
+```
 
 Alternatively, you can use [direnv](https://direnv.net) and define the environment variables in a `.envrc` file at the root of the project.
 
@@ -99,6 +104,8 @@ curl http://localhost:8001/health
 export INFRAHUB_MCP_VERSION="v1.1.8"
 uv run inv start
 ```
+
+**Other settings.** `INFRAHUB_MCP_LOG_LEVEL` (default `info`) sets how much the container logs, readable with `docker compose logs infrahub-mcp`. `INFRAHUB_MCP_READ_ONLY=true` unmounts the write tools, so agents can query the graph but not change it.
 
 **Other MCP clients.** Any client that speaks the `streamable-http` transport can use the same endpoint:
 
@@ -242,7 +249,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 ### Services fail to start
 
 - Check Docker is running: `docker info`
-- Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687
+- Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687, and 8001 for the MCP server
 - View logs: `docker compose logs infrahub-server` or `docker compose logs task-worker`
 - Full reset: `uv run inv destroy && uv run inv start`
 
@@ -261,6 +268,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 ### MCP port already in use
 
 - Move both the published port and the client address with one variable: `export INFRAHUB_MCP_PORT=8011`, then `uv run inv start`
+- Export it in the shell your agent runs in as well, and restart the agent — it reads the port when it loads `.mcp.json`
 - Confirm what the container publishes: `docker compose ps infrahub-mcp`
 
 ### MCP image fails to pull

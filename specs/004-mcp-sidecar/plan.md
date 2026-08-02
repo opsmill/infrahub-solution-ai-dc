@@ -22,9 +22,15 @@ image); the existing Infrahub 1.10.0 stack from the downloaded `docker-compose.y
 
 **Storage**: N/A — the sidecar is stateless; agent writes land in Infrahub's graph.
 
-**Testing**: `uv run inv lint` (yamllint covers the override file) plus the manual
-end-to-end walkthrough in [quickstart.md](./quickstart.md). No unit-testable code is added,
-so no pytest changes.
+**Testing**: `uv run inv lint` (rumdl, yamllint, ruff, mypy) and `uv run inv test`, which
+now includes `tests/unit/test_mcp_config.py` — the guard over the config invariants described
+in "Implementation shape §4" — plus the manual end-to-end walkthrough in
+[quickstart.md](./quickstart.md). No application code is added, so nothing else is coverable.
+
+On this host both invoke tasks need an explicit shell:
+`INVOKE_RUN_SHELL=/etc/profiles/per-user/wim/bin/bash uv run inv lint`. Without it invoke
+looks for `/bin/bash`, which NixOS does not provide, and fails in a way that looks like a
+lint failure but is not one.
 
 **Target Platform**: Docker Compose on a developer machine (Linux or macOS).
 
