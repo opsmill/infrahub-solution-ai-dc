@@ -95,6 +95,8 @@ README.md                     # MODIFIED — informational section after Quick s
 AGENTS.md                     # MODIFIED — one line in Agentic Layout
 docs/docs/solution-ai-dc/
 └── installation-setup.mdx    # MODIFIED — env var, MCP subsection, troubleshooting
+tests/unit/
+└── test_mcp_config.py        # NEW — guards FR-001, FR-002, FR-008 as file-shape invariants
 ```
 
 **Structure Decision**: No source tree changes. `docker-compose.yml` stays untouched
@@ -138,6 +140,12 @@ FR-007 (`INFRAHUB_MCP_PORT`), FR-009 (`INFRAHUB_MCP_BRANCH_PATTERN`), FR-010 (pl
 service, no `profiles:`). No `command:` — the image's own `CMD` runs the server with
 `--transport streamable-http` on `0.0.0.0:8001`.
 
+`INFRAHUB_ADDRESS` is deliberately a literal here, not the `${INFRAHUB_ADDRESS:-…}` form the
+base compose file uses for `task-worker`. `installation-setup.mdx` teaches users to export
+shell variables, and an exported `INFRAHUB_ADDRESS=http://localhost:8000` would resolve
+inside this container to the container itself, breaking the sidecar for exactly the user the
+feature targets. Keep it literal; the deviation is the point.
+
 ### 2. `.mcp.json` (new, repository root)
 
 ```json
@@ -162,13 +170,34 @@ work with no manual step), FR-007 (same port variable as the service), FR-008 (s
 
 | File | Change |
 |------|--------|
-| `README.md` | New `## AI agent access (MCP server)` section after **Quick start**: the sidecar starts with `inv start`, `.mcp.json` is already wired, `export INFRAHUB_API_TOKEN=<token>` to use your own, `INFRAHUB_MCP_PORT` if the port is taken. Informational — never a prerequisite (SC-001). |
-| `docs/docs/solution-ai-dc/installation-setup.mdx` | (a) add `INFRAHUB_API_TOKEN` to **Configure environment variables** (~line 39); (b) new `### Infrahub MCP server` subsection after **Start Infrahub** — what the sidecar is, `curl http://localhost:8001/health`, pinning/bumping `INFRAHUB_MCP_VERSION`, a non-Claude client snippet, and that agent writes land on `mcp/session-*` branches reviewed through a proposed change; (c) two **Troubleshooting** entries — tool calls failing authentication, and the port already in use. |
+| `README.md` | New `## AI agent access (MCP server)` section after **Quick start**: the sidecar starts with `inv start`, `.mcp.json` is already wired, approve the `infrahub` server at the one-time prompt on first run, `export INFRAHUB_API_TOKEN=<token>` to use your own, `INFRAHUB_MCP_PORT` if the port is taken. Informational — never a prerequisite (SC-001). |
+| `docs/docs/solution-ai-dc/installation-setup.mdx` | (a) add `INFRAHUB_API_TOKEN` to **Configure environment variables** (~line 39); (b) new `### Infrahub MCP server` subsection after **Start Infrahub** — what the sidecar is, `curl http://localhost:8001/health`, the one-time approval on first run, pinning/bumping `INFRAHUB_MCP_VERSION`, one factual sentence that the endpoint is published on all interfaces like Infrahub's own port, a non-Claude client snippet, and that agent writes land on `mcp/session-*` branches reviewed through a proposed change; (c) three **Troubleshooting** entries — tool calls failing authentication (check `echo $INFRAHUB_API_TOKEN`), the port already in use (`export INFRAHUB_MCP_PORT=…`), and an image pull failure (`INFRAHUB_MCP_VERSION` / `INFRAHUB_MCP_DOCKER_IMAGE`). |
 | `AGENTS.md` | One line in **Agentic Layout**: `.mcp.json` plus the `infrahub-mcp` sidecar as how agents reach live Infrahub data. |
 
 Write mechanically (FR-003): show `export INFRAHUB_API_TOKEN=<token>` and stop. No caveat,
 warning, or commentary about the committed demo credential anywhere. Never write "overlay"
 for the compose override file.
+
+### 4. `tests/unit/test_mcp_config.py` (new)
+
+Three requirements are file-shape invariants that a future edit could silently break, so
+they get an automated guard in the existing suite (`pytest tests` via `inv test`):
+
+- `.mcp.json` parses as strict JSON, registers exactly the server key `infrahub`, and that
+  entry has `type: http` (FR-008).
+- The `Authorization` header references `${INFRAHUB_API_TOKEN`, so the token comes from the
+  environment rather than a pasted literal (FR-002).
+- The `infrahub-mcp` service block in `docker-compose.override.yml` contains no key or value
+  matching `token`, `password`, or `username` (FR-001).
+
+Read the two files as text/YAML from the repository root — no Docker, no network, no running
+stack, so it stays in the fast unit suite. mypy runs in strict mode, so annotate the test
+functions (`-> None`).
+
+### 5. Not modified
+
+`tasks.py`, `docker-compose.yml` (downloaded), `CONTEXT.md`, and the vendored
+`.agents/skills/infrahub-*` skills.
 
 ## Complexity Tracking
 

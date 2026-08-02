@@ -36,9 +36,10 @@ Infrahub. Delivers the agent-query capability on its own, with no dependency on 
 
 1. **Given** a fresh clone, no personal API token exported, no host MCP toolchain, and the
    stack brought up and loaded with the documented commands, **When** the user opens their
-   agent at the repository root and asks a question about the demo fabric, **Then** the
-   agent lists the Infrahub MCP server as connected, answers from live Infrahub data, and
-   the user has typed no credentials and started no local process.
+   agent at the repository root, approves the server at the one-time prompt, and asks a
+   question about the demo fabric, **Then** the agent lists the Infrahub MCP server as
+   connected, answers from live Infrahub data, and the user has typed no credentials,
+   exported no variable, edited no file, and started no local process.
 2. **Given** the stack is running but demo data has not been loaded, **When** the user asks
    the same question, **Then** the tools respond successfully with empty results rather
    than a connection or authentication error.
@@ -52,9 +53,11 @@ lands on an isolated, identifiable session branch under the permissions of which
 credential the client presented, and a proposed change appears for a human to review.
 Nothing is merged automatically.
 
-**Why this priority**: Writes are what the service-catalog style workflows need, and they
-exercise a path Story 1 does not — per-client credentials reaching Infrahub's own
-permission model. It ships on the same server as Story 1 but needs its own verification.
+**Why this priority**: Writing is the natural next thing a user asks for once reading works,
+and it exercises a path Story 1 does not — the client's own credential reaching Infrahub's
+permission model, and the session-branch plus proposed-change review loop. It ships on the
+same server as Story 1 but needs its own verification. The consumer here is an ad-hoc agent
+request; no bundled workflow in this repository drives it.
 
 **Independent Test**: With the stack running and demo data loaded, ask the agent to create
 one object and open a proposed change; confirm the session branch and the proposed change
@@ -133,7 +136,8 @@ exist and that nothing merged.
 ### Measurable Outcomes
 
 - **SC-001**: A newcomer following the existing Quick start reaches a working Infrahub MCP
-  read call with zero MCP-specific steps — no extra command, no export, no file edit.
+  read call with no extra command, no export, and no file edit — the only MCP-specific
+  action is approving the server once when the agent asks on first run.
 - **SC-002**: The only Infrahub credentials present in tracked files are the public demo
   defaults already shipped with the stack; a user's own token never needs to enter a
   tracked file.
@@ -151,6 +155,11 @@ exist and that nothing merged.
   1.10+ are satisfied.
 - Claude Code is the primary client: a config file at the repository root is auto-detected,
   and `${VAR}` / `${VAR:-default}` expansion works in both the address and the headers.
+- Detection is not approval: a server defined in a project-scoped config waits at
+  "pending approval" until the user accepts it in an interactive session, and a cloned
+  repository cannot approve its own servers — approval settings committed to the repository
+  are ignored in a folder the user has not trusted. Every user therefore approves the server
+  once, per clone. This is the single step SC-001 allows for.
 - The demo stack is disposable; a user's own token value lives in `.envrc`, which is
   already gitignored.
 - Session branches are data-only upstream (no git branch is created), so they do not

@@ -23,17 +23,27 @@ merges with the downloaded `docker-compose.yml`; `inv lint` runs yamllint over i
 
 ## 2. No credentials in the service
 
-```bash
-docker compose config | sed -n '/infrahub-mcp/,/^  [a-z]/p' | grep -iE 'token|password|username'
-```
-
-Expected: **no output** — proves FR-001 against the *resolved* config, not just the file.
+Assert against structured output rather than a line-range grep, so the check cannot pass by
+accident or fail on key ordering:
 
 ```bash
-docker compose config | grep -A2 'infrahub-mcp' | grep 'image:'
+docker compose config --format json \
+  | python -c "import json,sys; s=json.load(sys.stdin)['services']['infrahub-mcp']; \
+env=s.get('environment',{}); \
+bad=[k for k in env if any(w in k.lower() for w in ('token','password','username'))]; \
+print('credential keys:', bad or 'none'); print('image:', s['image'])"
 ```
 
-Expected: an explicit `v1.1.7` tag, never `latest` (FR-004, SC-003).
+Expected: `credential keys: none` (FR-001, SC-002) and an image line carrying an explicit
+`v1.1.7` tag, never `latest` (FR-004, SC-003). This inspects the *resolved* configuration,
+not just the file text.
+
+```bash
+uv run inv test
+```
+
+Expected: the suite passes, including `tests/unit/test_mcp_config.py`, which guards the same
+invariants without needing Docker (FR-001, FR-002, FR-008).
 
 ## 3. The stack comes up with the sidecar
 
@@ -78,13 +88,17 @@ unset INFRAHUB_API_TOKEN
 claude mcp list
 ```
 
-Expected: `infrahub` listed and connected, with **no** missing-variable warning — the
-`.mcp.json` fallback covers it (FR-002, FR-005).
+Expected on a clone that has not been trusted yet: `infrahub` listed as
+`⏸ Pending approval` — **not** a failure. A project-scoped server waits for a one-time
+approval, and a cloned repository cannot approve its own servers. There must be **no**
+missing-variable warning: the `.mcp.json` token fallback covers that (FR-002, FR-005).
 
 Then, in a Claude Code session started at the repository root:
 
-1. Run `/mcp` — the `infrahub` server and its tools are listed.
-2. Ask a question that can only be answered from Infrahub, e.g. *"how many leaf switches are
+1. Accept the trust and server-approval prompt for `infrahub` — the one MCP-specific action
+   SC-001 allows for. After this, `claude mcp list` shows it connected.
+2. Run `/mcp` — the `infrahub` server and its tools are listed.
+3. Ask a question that can only be answered from Infrahub, e.g. *"how many leaf switches are
    in Fabric-A?"*
 
 Expected: the answer comes from `mcp__infrahub__*` tool calls (FR-008), with no local server
@@ -134,7 +148,7 @@ Expected: no `infrahub-mcp` container remains. If one lingers, the compose comma
 | Step | Requirements / criteria |
 |------|------------------------|
 | 1 | Lint and syntax gates |
-| 2 | FR-001, FR-004, SC-002, SC-003 |
+| 2 | FR-001, FR-002, FR-004, FR-008, SC-002, SC-003 |
 | 3 | FR-010 |
 | 4 | FR-006 (fail-closed half), endpoint contract |
 | 5 | FR-002, FR-005, FR-008, SC-001, SC-004 |
