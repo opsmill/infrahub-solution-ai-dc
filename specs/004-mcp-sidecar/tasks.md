@@ -39,7 +39,7 @@ Repository root paths. No `src/` changes in this feature; the only Python additi
 
 **Purpose**: Confirm the pinned dependency is actually available before writing config against it
 
-- [ ] T001 Confirm the pinned image tag resolves anonymously: `docker manifest inspect registry.opsmill.io/opsmill/infrahub-mcp:v1.1.7`. If it fails, stop and re-pin using the tag list procedure in [research.md](./research.md) — do not fall back to `latest` (FR-004)
+- [X] T001 Confirm the pinned image tag resolves anonymously: `docker manifest inspect registry.opsmill.io/opsmill/infrahub-mcp:v1.1.7`. If it fails, stop and re-pin using the tag list procedure in [research.md](./research.md) — do not fall back to `latest` (FR-004)
 
 ---
 
