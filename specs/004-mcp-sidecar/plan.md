@@ -187,8 +187,10 @@ they get an automated guard in the existing suite (`pytest tests` via `inv test`
   entry has `type: http` (FR-008).
 - The `Authorization` header references `${INFRAHUB_API_TOKEN`, so the token comes from the
   environment rather than a pasted literal (FR-002).
-- The `infrahub-mcp` service block in `docker-compose.override.yml` contains no key or value
-  matching `token`, `password`, or `username` (FR-001).
+- The `infrahub-mcp` service block in `docker-compose.override.yml` declares no **key**
+  matching `token`, `password`, or `username` (FR-001). Keys only, deliberately: the service
+  legitimately carries `INFRAHUB_MCP_AUTH_MODE: token-passthrough`, whose *value* contains
+  "token". Scanning values would flag the very setting that removes the credentials.
 
 Read the two files as text/YAML from the repository root — no Docker, no network, no running
 stack, so it stays in the fast unit suite. mypy runs in strict mode, so annotate the test
