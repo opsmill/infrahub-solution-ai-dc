@@ -1,0 +1,52 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkServerService
+  data:
+# ---------- Blue Prod (Fabric-A) ----------
+    # The three cilium-demo L3 members, spread across Pod-A2 and Pod-A3. Landing on different leaves
+    # is also what gives each member a distinct /31, and so a distinct `peerAddress` in the cluster's
+    # rendered Cilium manifest.
+    - name: "cilium-worker-1"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A2-2"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    - name: "cilium-worker-2"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A2-3"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    - name: "cilium-worker-3"
+      layer: "l3"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A3-1"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+    # The cluster's L2 member: a full member that emits no BGP peering, so it must appear nowhere in
+    # the rendered manifest. The generator adds its rack to the `blue-l2` segment's placement.
+    - name: "web-host-1"
+      layer: "l2"
+      vrf: ["Blue", "blue-prod"]
+      rack: "Rack-A3-2"
+      segment: "blue-l2"
+      kubernetes_cluster: "cilium-demo"
+      member_of_groups: ["server_services"]
+
+# ---------- Green Prod (Fabric-D) ----------
+    # Unclustered on purpose: a Server service with no Kubernetes cluster stays valid, and these two
+    # are the evidence for it. They also exercise the rendering half on Junos.
+    - name: "green-cilium-worker-1"
+      layer: "l3"
+      vrf: ["Green", "green-prod"]
+      rack: "Rack-D2-1"
+      member_of_groups: ["server_services"]
+    - name: "green-web-host-1"
+      layer: "l2"
+      vrf: ["Green", "green-prod"]
+      rack: "Rack-D2-2"
+      segment: "green-l2"
+      member_of_groups: ["server_services"]

@@ -25,7 +25,7 @@ idempotent and triggered by checksum changes.
 
 **Vendor group**:
 A `CoreStandardGroup` child of the `devices` group — one per **Manufacturer**
-(`cisco_devices` / `arista_devices` / `dell_devices`) — whose direct members are the generated devices
+(`{manufacturer}_devices`, lowercased — e.g. `cisco_devices`) — whose direct members are the generated devices
 of that make; the per-vendor startup-config artifacts target it. Membership is stamped by the generators
 from each device's `device_type` manufacturer. _"Vendor" is used interchangeably with **Manufacturer** in
 conversation; the stored entity is the Manufacturer._
@@ -68,7 +68,8 @@ The OSPF-routed IP fabric that provides loopback-to-loopback reachability betwee
 The iBGP L2VPN-EVPN control plane and VXLAN data plane carried on top of the underlay.
 
 **VTEP**:
-A VXLAN Tunnel Endpoint — only **leaf** switches; sources VXLAN from a dedicated VTEP loopback (loopback1).
+A VXLAN Tunnel Endpoint — only **leaf** switches; sources VXLAN from a dedicated VTEP loopback
+(role `vtep`, named `Loopback1` in the data model).
 Spines and super-spines are never VTEPs.
 
 **L2VNI**:
@@ -92,6 +93,46 @@ A directional `NetworkBGPSession` from a device toward a peer (local/remote AS, 
 `rr_client`). Populated by the fabric/pod/rack generators along the actual cabling; the config transform
 renders `router bgp` neighbors from these sessions.
 
+### Server attachment
+
+**Server**:
+A host attached to the fabric — a compute endpoint, never a network device. Owns its own ports (a
+`ServerInterface`, ADR-0006), is excluded from **vendor groups** and from startup-config rendering, and
+carries a **node selector**.
+_Avoid_: device (a **NetworkDevice** is a switch), host, node (a Kubernetes "node" is this Server seen
+from the cluster's side).
+
+**Server service**:
+A design object declaring one Server's attachment to the fabric: which **Segment** it joins, at which
+layer (L2 or L3), and optionally which **Kubernetes cluster** it belongs to. Its Generator picks the
+**Rack** and the free leaf port, cables it, and for an L3 service allocates a /31 and a server ASN and
+stores the eBGP **BGP sessions** — the operator supplies no addressing.
+_Avoid_: connection, attachment, port assignment (those are the implementation objects it produces).
+
+### Kubernetes clustering
+
+**Kubernetes cluster**:
+A design object grouping the **Server services** whose servers form one Kubernetes cluster. Owned by the
+operator, with a lifecycle independent of its members — it may exist with none. It is what the Cilium BGP
+manifest is rendered _for_, one artifact per cluster, via the `kubernetes_clusters` group. It adds no
+Generator of its own.
+_Avoid_: k8s, group (a **vendor group** is unrelated), tenant (a **Tenant** is overlay tenancy and
+unrelated).
+
+**Cluster member**:
+A **Server service** that points at a **Kubernetes cluster** — a name for a role, **not** a stored
+entity of its own. A member is _eligible_ when it is L3 and fully provisioned; only eligible members
+appear in the cluster's manifest, and an ineligible one is omitted rather than raised on, so a
+half-provisioned member never withholds config from the rest.
+_Avoid_: node, worker (those name the server as Kubernetes sees it, not the fabric-side record).
+
+**Node selector**:
+A Server's identity as Kubernetes sees it — read-only, derived from its hostname with the Generator's
+`server-` prefix removed (`server-cilium-worker-1` ⇒ `cilium-worker-1`). It is the value the manifest
+matches on through the `infrahub.io/server` label, and the name of that member's cluster-config
+document. Putting the label on the node happens outside this repository.
+_Avoid_: label, hostname (the selector is _derived_ from the hostname; the label is where it is used).
+
 ## Relationships
 
 - A **Fabric** contains many **Pods**; a **Pod** references many **Racks**; a **Rack** holds the **leaf**
@@ -104,6 +145,13 @@ renders `router bgp` neighbors from these sessions.
   empty); the OverlayGenerator materializes this as a Device↔Segment relationship.
 - Only **leaf** switches are **VTEPs**; **spines**/**super-spines** participate in the **overlay** control
   plane (as **route reflectors**) but never encapsulate.
+- A **Server service** attaches exactly one **Server** to one **Segment** through one **leaf** port, and
+  belongs to at most one **Kubernetes cluster**.
+- A **Kubernetes cluster** has zero or more **cluster members** (its **Server services**), each on its own
+  **leaf** and its own /31, and each contributing one document to the cluster's manifest when eligible.
+- A **Server** has exactly one **node selector**; the **BGP sessions** an L3 **Server service** stores are
+  the single source that both the leaf's config and the cluster's manifest render from — opposite sides of
+  the same peering.
 
 ## Example dialogue
 
@@ -121,7 +169,9 @@ renders `router bgp` neighbors from these sessions.
 - "VLAN" was used loosely for both the L2 broadcast domain and the overlay service — resolved: the service
   is a **Segment**; "VLAN" refers only to its `vlan_id` attribute (and a VRF's `l3_vlan_id` transit VLAN).
 - "Loopback" was ambiguous between the routing loopback and the tunnel source — resolved: **loopback0** is
-  the router-id / iBGP source; **loopback1** (role `vtep`) is the VTEP source.
+  the router-id / iBGP source; **loopback1** (role `vtep`) is the VTEP source. `Loopback0`/`Loopback1` are
+  **logical names carried in the data model**, not per-vendor interface names — the config transform renders
+  them in vendor syntax (Junos: `lo0` unit 0 / unit 1). Interface **role** is the reliable discriminator.
 - "Route reflector" was initially derived from tier ordering at render time — revised (ADR-0005): it is now
   **stored** as `NetworkDevice.route_reflector` plus a per-session `rr_client` flag; the tier ordering
   (super-spine → spine → leaf) is applied once by the generators when populating sessions.

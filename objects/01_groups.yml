@@ -10,6 +10,13 @@ spec:
     - name: pods
     - name: devices
     - name: tenants
+    # Target group for the ServerGenerator; NetworkServerService objects join it.
+    # (No group for NetworkServer — it must never join devices/{vendor}_devices.)
+    - name: server_services
+    # Target group for the Cilium BGP manifest artifact; NetworkKubernetesCluster objects join it.
+    # Deliberately not parented under `devices` — a cluster is not a device and must never be
+    # swept into the per-vendor startup-config artifacts.
+    - name: kubernetes_clusters
     # Per-vendor device groups (children of `devices`). Membership is stamped by the
     # generators from each device's manufacturer; the per-vendor startup-config
     # artifacts target these groups.
@@ -18,4 +25,6 @@ spec:
     - name: arista_devices
       parent: devices
     - name: dell_devices
+      parent: devices
+    - name: juniper_devices
       parent: devices

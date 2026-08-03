@@ -10,6 +10,8 @@ spec:
       generator: generate-rack
     - name: run-tenant-generator
       generator: generate-tenant
+    - name: run-server-generator
+      generator: generate-server
 
 ---
 apiVersion: infrahub.app/v1
@@ -101,6 +103,18 @@ spec:
       node_kind: NetworkTenant
       mutation_action: "updated"
       action: run-tenant-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
+
+    # ServerGenerator — re-run on server-service checksum changes (day-two placement/VRF/segment edits).
+    - name: trigger-server-generator-update-checksum
+      branch_scope: "other_branches"
+      node_kind: NetworkServerService
+      mutation_action: "updated"
+      action: run-server-generator
       matches:
         kind: CoreNodeTriggerAttributeMatch
         data:

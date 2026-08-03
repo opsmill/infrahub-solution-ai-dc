@@ -361,7 +361,7 @@ The Generators share common logic through the `infrahub_solution_ai_dc` package 
 | `sorting.py` | `create_sorted_device_interface_map`, `create_reverse_sorted_device_interface_map` — interface sorting strategies |
 | `addressing.py` | `assign_ip_addresses_to_p2p_connections`, `assign_ip_address_to_interface` — IP allocation and assignment |
 | `overlay.py` | `route_target`, `rr_client`, `upsert_evpn_session`, `resolve_segment_devices` — overlay route-target/route-reflector helpers, iBGP session upserts, and segment-to-leaf placement |
-| `vendors.py` | `vendor_group_for_manufacturer`, `vendor_group_for_template` — resolves a device's vendor group (`cisco_devices` / `arista_devices` / `dell_devices`) for per-vendor artifact targeting |
+| `vendors.py` | `vendor_group_for_manufacturer`, `vendor_group_for_template` — resolves a device's vendor group (`{manufacturer}_devices`, from the manufacturer name in lower case) for per-vendor artifact targeting |
 | `protocols.py` | Auto-generated SDK protocol classes (`infrahubctl protocols`) — typed interfaces for `NetworkDevice`, `NetworkInterface`, `LocationRack`, etc. |
 
 ## Learn more

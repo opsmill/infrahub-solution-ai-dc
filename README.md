@@ -19,7 +19,7 @@ The AI/DC Solution is a reference implementation showing how to use [Infrahub](h
 
 - **Build a complete data center fabric from minimal inputs** — define a spine count, pod count, and rack layout; Infrahub generates all devices, IP allocations, and a cabling plan
 - **Layer multi-tenant EVPN/VXLAN overlay services on top** — declare a tenant, its VRFs, and its segments; the solution allocates every overlay identifier (VNI, VLAN, ASN, route target), places segments on the right leaf switches, and renders the full iBGP-EVPN / symmetric-IRB configuration
-- **Render per-vendor configuration from one model** — the same design produces Cisco, Arista, and Dell startup configs, each device routed to its vendor's template automatically
+- **Render per-vendor configuration from one model** — the same design produces Cisco, Arista, Dell, and Juniper Junos startup configs, each device routed to its vendor's template automatically
 - **Extend infrastructure without rebuilding it** — add a rack, pod, or tenant and only the affected layer re-runs; the rest of the fabric is unchanged
 - **Run parallel builds at scale** — trigger once at the fabric level; all pods and racks generate automatically and simultaneously
 - **Track what was built and why** — design intent and implementation are stored together in Infrahub, linked explicitly, so day-two changes are surgical rather than full rebuilds
@@ -123,8 +123,8 @@ The solution is a self-contained repository with everything needed to run the de
 
 - **Schemas** — a complete data model covering logical design (Fabric, Pod), physical location (Hall, Rack), devices, IPAM, the overlay intent model (Tenant, VRF, Segment), routing (iBGP EVPN sessions), and the GeneratorTarget generic that enables trigger-based signaling
 - **Generators** — FabricGenerator, PodGenerator, RackGenerator, and OverlayGenerator (registered as `generate-tenant`), each scoped to a single layer, with `.infrahub.yml` wiring definitions, targets, queries, and trigger rules
-- **Transforms and artifacts** — per-vendor startup configuration (Cisco/Arista/Dell Jinja2 templates), cabling plan (Python), and computed interface descriptions
-- **Demo data** — three single-vendor fabrics (Fabric-A: Cisco; Fabric-B: Arista; Fabric-C: Dell), a seed overlay tenant (`Blue` on Fabric-A), plus device types, IPAM and overlay pools, interface profiles, and device templates
+- **Transforms and artifacts** — per-vendor startup configuration (Cisco/Arista/Dell/Juniper Jinja2 templates), cabling plan (Python), and computed interface descriptions
+- **Demo data** — four single-vendor fabrics (Fabric-A: Cisco; Fabric-B: Arista; Fabric-C: Dell; Fabric-D: Juniper), seed overlay tenants (`Blue` on Fabric-A, `Green` on Fabric-D), plus device types, IPAM and overlay pools, interface profiles, and device templates
 - **Trigger rules** — `CoreNodeTriggerRule` and `CoreGeneratorAction` definitions driving the modular execution
 - **Infrastructure** — Dockerfile, Docker Compose, and invoke tasks (`inv start`, `inv load`) for local setup
 

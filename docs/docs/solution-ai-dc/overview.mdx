@@ -5,7 +5,7 @@ description: Design-driven automation for large-scale AI data center fabrics usi
 
 # AI/DC solution
 
-The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Four modular Generators connect automatically via event-driven triggers: three build the physical fabric (Fabric → Pod → Rack), and a fourth layers multi-tenant EVPN/VXLAN overlay services on top. Triggering one Generator at the fabric level causes the entire data center to build itself, and the same design renders per-vendor (Cisco, Arista, Dell) device configuration. The solution is fully functional today and is positioned as a demo and reference implementation.
+The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Four modular Generators connect automatically via event-driven triggers: three build the physical fabric (Fabric → Pod → Rack), and a fourth layers multi-tenant EVPN/VXLAN overlay services on top. Triggering one Generator at the fabric level causes the entire data center to build itself, and the same design renders per-vendor (Cisco, Arista, Dell, Juniper) device configuration. The solution is fully functional today and is positioned as a demo and reference implementation.
 
 All of the content provided in this solution can be found on the [`infrahub-solution-ai-dc` GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc).
 
@@ -40,6 +40,7 @@ The demo data includes three complete, single-vendor fabrics:
 - **Fabric-A** — Cisco equipment
 - **Fabric-B** — Arista equipment
 - **Fabric-C** — Dell equipment
+- **Fabric-D** — Juniper equipment
 
 Each fabric is built entirely from one vendor's device templates, and each device's configuration is rendered from that vendor's template. See [Multivendor configuration](./multivendor-config).
 
@@ -96,13 +97,13 @@ Four Generators — three own one layer of the physical hierarchy, and one mater
 
 ### Transforms and artifacts
 
-- **Startup configuration** — three per-vendor Jinja2 templates (Cisco, Arista, Dell), each producing a text/plain artifact for the devices in its vendor group
+- **Startup configuration** — four per-vendor Jinja2 templates (Cisco, Arista, Dell, Juniper), each producing a text/plain artifact for the devices in its vendor group
 - **Cabling plan** — Python Transformation producing a CSV artifact per fabric
 - **Computed interface descriptions** — Python Transformation applied as a computed attribute on each interface
 
 ### Demo data
 
-- Three complete single-vendor fabrics (Cisco, Arista, Dell) with pods, racks, device templates, and IP pools
+- Four complete single-vendor fabrics (Cisco, Arista, Dell, Juniper) with pods, racks, device templates, and IP pools
 - A seed overlay tenant (`Blue` on Fabric-A) with VRFs and segments
 - Manufacturer and device type definitions
 - Overlay resource pools (ASN, L2VNI, L3VNI, VLAN)

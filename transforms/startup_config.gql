@@ -83,6 +83,12 @@ query StartupConfigQuery($name: String!){
               remote_as {
                 value
               }
+              local_as {
+                value
+              }
+              address_family {
+                value
+              }
               rr_client {
                 value
               }
@@ -92,11 +98,30 @@ query StartupConfigQuery($name: String!){
                   hostname {
                     value
                   }
-                  loopback_ip {
-                    node {
-                      __typename
-                      address {
-                        ip
+                  ... on NetworkDevice {
+                    loopback_ip {
+                      node {
+                        __typename
+                        address {
+                          ip
+                        }
+                      }
+                    }
+                  }
+                  ... on NetworkServer {
+                    interfaces {
+                      edges {
+                        node {
+                          __typename
+                          ip_address {
+                            node {
+                              __typename
+                              address {
+                                value
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   }

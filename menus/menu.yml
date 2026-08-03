@@ -67,6 +67,30 @@ spec:
                   kind: NetworkBGPSession
                   icon: "mdi:swap-horizontal"
 
+          - namespace: Network
+            name: Servers
+            label: Servers
+            icon: "mdi:server-network"
+            children:
+              data:
+                # Ordered by the chain the operator works down: a cluster groups Server
+                # services, and each service materializes one server.
+                - namespace: Network
+                  name: KubernetesCluster
+                  label: Kubernetes Clusters
+                  kind: NetworkKubernetesCluster
+                  icon: "mdi:kubernetes"
+                - namespace: Network
+                  name: ServerService
+                  label: Server Services
+                  kind: NetworkServerService
+                  icon: "mdi:file-cog"
+                - namespace: Network
+                  name: Server
+                  label: Servers
+                  kind: NetworkServer
+                  icon: "mdi:server"
+
     - namespace: Location
       name: Menu
       label: Location
