@@ -35,7 +35,9 @@ def _mcp_service_lines() -> list[str]:
     """Return the lines of the infrahub-mcp service block from the compose override file."""
     lines = COMPOSE_OVERRIDE_FILE.read_text(encoding="utf-8").splitlines()
     header = f"{' ' * SERVICE_INDENT}{MCP_SERVICE_NAME}:"
-    assert header in lines, f"no `{MCP_SERVICE_NAME}:` service at {SERVICE_INDENT}-space indent in {COMPOSE_OVERRIDE_FILE.name}"
+    assert header in lines, (
+        f"no `{MCP_SERVICE_NAME}:` service at {SERVICE_INDENT}-space indent in {COMPOSE_OVERRIDE_FILE.name}"
+    )
     start = lines.index(header) + 1
 
     block: list[str] = []
