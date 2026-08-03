@@ -43,7 +43,13 @@ export INFRAHUB_USERNAME="admin"
 export INFRAHUB_PASSWORD="infrahub"
 ```
 
-`INFRAHUB_USERNAME` and `INFRAHUB_PASSWORD` are used by `infrahubctl` to authenticate with the Infrahub API. `VERSION` sets the Infrahub image tag. If not using direnv, source the file manually or export these variables:
+`INFRAHUB_USERNAME` and `INFRAHUB_PASSWORD` are used by `infrahubctl` to authenticate with the Infrahub API. `VERSION` sets the Infrahub image tag. If not using direnv, source the file manually or export these variables.
+
+One optional variable belongs to the MCP server rather than to `infrahubctl`, so keep it out of the block above: `INFRAHUB_API_TOKEN` sets the token an MCP client presents to the [Infrahub MCP server](#infrahub-mcp-server). Setting it takes precedence over `INFRAHUB_USERNAME` / `INFRAHUB_PASSWORD` for `infrahubctl` too, so export it only once you have a token to use:
+
+```bash
+export INFRAHUB_API_TOKEN="<token>"
+```
 
 Alternatively, you can use [direnv](https://direnv.net) and define the environment variables in a `.envrc` file at the root of the project.
 
@@ -74,10 +80,50 @@ This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` 
 | `cache`           | Redis                                         | —              |
 | `message-queue`   | RabbitMQ                                      | —              |
 | `task-manager-db` | PostgreSQL for Prefect                        | —              |
+| `infrahub-mcp`    | Infrahub MCP server for AI agents             | `8001`         |
 
 :::success Verify the environment
 Open `http://localhost:8000` in a browser and log in with username `admin`, password `infrahub`.
 :::
+
+### Infrahub MCP server
+
+`inv start` also brings up `infrahub-mcp`, a sidecar container running the Infrahub MCP server. It exposes Infrahub as a set of MCP tools so an AI agent can read the graph and make changes to it, reaching `infrahub-server` over the internal Docker network. Once the stack is up, check it responds:
+
+```bash
+curl http://localhost:8001/health
+```
+
+**Connecting an agent.** The repository ships a `.mcp.json` at its root, so Claude Code opened in the repository detects the server with no configuration. Detection is not approval: a server that a project defines stays at *pending approval* until you accept it in an interactive session, and a fresh clone cannot approve its own servers. Approve `infrahub` at that prompt on first run and the `mcp__infrahub__*` tools become available. You do this once per clone.
+
+**Authentication.** The container is configured with no Infrahub credential. Every client authenticates for itself by sending its own token in an `Authorization: Bearer` header, and a request that carries no such header is rejected. Like Infrahub's own port `8000`, the MCP port is published on all interfaces.
+
+**Version.** The image is pinned in `docker-compose.override.yml` to `registry.opsmill.io/opsmill/infrahub-mcp:v1.1.7`. Bump it to another published version with `INFRAHUB_MCP_VERSION`:
+
+```bash
+export INFRAHUB_MCP_VERSION="v1.1.8"
+uv run inv start
+```
+
+**Other settings.** `INFRAHUB_MCP_LOG_LEVEL` (default `info`) sets how much the container logs, readable with `docker compose logs infrahub-mcp`. `INFRAHUB_MCP_READ_ONLY=true` disables the write tools, so agents can query the graph but not change it.
+
+**Other MCP clients.** Any client that speaks the `streamable-http` transport can use the same endpoint:
+
+```json
+{
+  "mcpServers": {
+    "infrahub": {
+      "type": "streamable-http",
+      "url": "http://localhost:8001/mcp",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
+**Agent changes.** Writes made through the MCP server do not land on `main`. Each session gets its own Infrahub branch named `mcp/session-<date>-<hex>`, and the changes on it reach `main` through a proposed change that you review — nothing is merged automatically. These are Infrahub branches carrying data changes only; no git branch is created.
 
 ### Load data
 
@@ -177,7 +223,8 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 | File                          | Purpose                                                                                     |
 |-------------------------------|---------------------------------------------------------------------------------------------|
 | `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed           |
-| `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes |
+| `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes; defines the `infrahub-mcp` sidecar |
+| `.mcp.json`                   | MCP client configuration pointing at the `infrahub-mcp` sidecar                              |
 | `repository.yml`              | `CoreRepository` object pointing to `/upstream` (the mounted repository)                    |
 | `tasks.py`                    | Invoke task definitions for environment management                                          |
 | `.infrahub.yml`               | Central configuration wiring Generators, Transforms, queries, and artifacts                 |
@@ -202,7 +249,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 ### Services fail to start
 
 - Check Docker is running: `docker info`
-- Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687
+- Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687, and 8001 for the MCP server
 - View logs: `docker compose logs infrahub-server` or `docker compose logs task-worker`
 - Full reset: `uv run inv destroy && uv run inv start`
 
@@ -211,3 +258,21 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 - Verify with `infrahubctl repository list`
 - The repository mounts from `/upstream` inside the container — check `docker compose logs task-worker` for import errors
 - Schema mismatches between what `.infrahub.yml` references and what is loaded can block sync
+
+### MCP tool calls fail authentication
+
+- Check what your shell is presenting: `echo $INFRAHUB_API_TOKEN`
+- A token exported for a different Infrahub instance fails closed here rather than falling back — unset it or export one for this stack
+- Confirm the server is up: `curl http://localhost:8001/health`
+
+### MCP port already in use
+
+- Move both the published port and the client address with one variable: `export INFRAHUB_MCP_PORT=8011`, then `uv run inv start`
+- Export it in the shell your agent runs in as well, and restart the agent — it reads the port when it loads `.mcp.json`
+- Confirm what the container publishes: `docker compose ps infrahub-mcp`
+
+### MCP image fails to pull
+
+- Confirm the pinned tag exists: `docker manifest inspect registry.opsmill.io/opsmill/infrahub-mcp:v1.1.7`
+- Select a different published version: `export INFRAHUB_MCP_VERSION=<version>`
+- Point at a different registry or repository: `export INFRAHUB_MCP_DOCKER_IMAGE=<image>`

@@ -1,15 +1,10 @@
 {
   "mcpServers": {
     "infrahub": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "infrahub-mcp"
-      ],
-      "env": {
-        "INFRAHUB_ADDRESS": "http://localhost:8000",
-        "INFRAHUB_USERNAME": "admin",
-        "INFRAHUB_PASSWORD": "infrahub"
+      "type": "http",
+      "url": "http://localhost:${INFRAHUB_MCP_PORT:-8001}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${INFRAHUB_API_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}"
       }
     }
   }

@@ -78,6 +78,30 @@ Then in the Infrahub UI: navigate to **Actions > Generator Definitions > generat
 
 ---
 
+## AI agent access (MCP server)
+
+The stack includes an Infrahub MCP server as a sidecar, so an AI agent opened at the repository root can query and change live Infrahub data through `mcp__infrahub__*` tools.
+
+- **It starts with everything else** — `uv run inv start` brings it up, with no extra flag or command
+- **`.mcp.json` is already wired to it** — Claude Code opened in the repository detects the server automatically
+- **Approve it once** — on first run your agent asks you to approve the `infrahub` server; accept the prompt and the tools become available
+
+To present your own Infrahub API token:
+
+```bash
+export INFRAHUB_API_TOKEN="<token>"
+```
+
+If port 8001 is already taken, `INFRAHUB_MCP_PORT` moves both the published port and the address the client uses:
+
+```bash
+export INFRAHUB_MCP_PORT=8011
+```
+
+> For the health check, other MCP clients, and version pinning, see [Installation & Setup](docs/docs/solution-ai-dc/installation-setup.mdx).
+
+---
+
 ## What you will see
 
 When you run the demo:

@@ -35,3 +35,24 @@ services:
     volumes:
       - ./:/upstream
       - ./src:/opt/local/src
+
+  infrahub-mcp:
+    image: "${INFRAHUB_MCP_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub-mcp}:${INFRAHUB_MCP_VERSION:-v1.1.7}"
+    restart: unless-stopped
+    depends_on:
+      infrahub-server:
+        condition: service_healthy
+    environment:
+      INFRAHUB_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_MCP_AUTH_MODE: token-passthrough
+      INFRAHUB_MCP_BRANCH_PATTERN: "mcp/session-{date}-{hex}"
+      INFRAHUB_MCP_LOG_LEVEL: ${INFRAHUB_MCP_LOG_LEVEL:-info}
+      INFRAHUB_MCP_READ_ONLY: ${INFRAHUB_MCP_READ_ONLY:-false}
+    ports:
+      - ${INFRAHUB_MCP_PORT:-8001}:8001
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
