@@ -105,7 +105,7 @@ export INFRAHUB_MCP_VERSION="v1.1.8"
 uv run inv start
 ```
 
-**Other settings.** `INFRAHUB_MCP_LOG_LEVEL` (default `info`) sets how much the container logs, readable with `docker compose logs infrahub-mcp`. `INFRAHUB_MCP_READ_ONLY=true` unmounts the write tools, so agents can query the graph but not change it.
+**Other settings.** `INFRAHUB_MCP_LOG_LEVEL` (default `info`) sets how much the container logs, readable with `docker compose logs infrahub-mcp`. `INFRAHUB_MCP_READ_ONLY=true` disables the write tools, so agents can query the graph but not change it.
 
 **Other MCP clients.** Any client that speaks the `streamable-http` transport can use the same endpoint:
 
