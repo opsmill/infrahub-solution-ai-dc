@@ -31,9 +31,9 @@ TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
 # 1. It cannot usefully go below 1.11 while ``.infrahub.yml`` declares ``watch:``. That key first
 #    exists in infrahub-sdk 1.23.0b0 (shipped with 1.11) and the config model forbids extra keys, so
 #    an older SDK rejects the whole file and repository sync fails with "Extra inputs are not
-#    permitted". A pre-1.11 baseline therefore also has to drop ``watch:``, giving up the dependency
-#    closures over ``src/infrahub_solution_ai_dc/`` -- which is exactly what the parent branch of
-#    this change does, so the same suite can be run on both sides of the upgrade.
+#    permitted". Comparing against a pre-1.11 release therefore also means dropping every ``watch:``
+#    entry from ``.infrahub.yml``, giving up the dependency closures over
+#    ``src/infrahub_solution_ai_dc/`` for the duration of that comparison.
 # 2. This knob swaps the Infrahub *application* image only. The surrounding infrastructure (Neo4j,
 #    RabbitMQ, Redis) is pinned by the installed ``infrahub-testcontainers`` package's bundled
 #    compose file, so a run at any version uses the infra matrix shipped with whichever
