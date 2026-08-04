@@ -1,0 +1,25 @@
+Dockerfile
+  s_29d7fee1f52159::t_fe58f49a185c98 1
+tests/integration/conftest.py
+  s_29d7fee1f52159::t_750dd6e98d3ed9 23-24,26,28
+  s_29d7fee1f52159::t_c151f8e183e592 25,31,39
+  s_29d7fee1f52159::t_ca64c3c1e2985c 27,29-30,32-38,40-43
+docker-compose.override.yml
+  s_29d7fee1f52159::t_fe58f49a185c98 3,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7d4f1aa6723e1474851caeaa1db3815ec31fcb72",
+  "prompts": {},
+  "sessions": {
+    "s_29d7fee1f52159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbc3dadb-d6ec-44d3-9ec7-aa434538cf07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
