@@ -1,0 +1,25 @@
+Dockerfile
+  s_29d7fee1f52159::t_baec475c4ac82f 1
+.infrahub.yml
+  s_29d7fee1f52159::t_baec475c4ac82f 43-46,58-60,72-74,86-88,100-102,114-116,143-149,156-158
+docker-compose.override.yml
+  s_29d7fee1f52159::t_baec475c4ac82f 3,18
+tests/integration/conftest.py
+  s_29d7fee1f52159::t_94d61b75faf9e4 29,31-36,41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "229ba7f227298c0208672c294fb988bf6ef62881",
+  "prompts": {},
+  "sessions": {
+    "s_29d7fee1f52159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbc3dadb-d6ec-44d3-9ec7-aa434538cf07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
