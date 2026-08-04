@@ -26,21 +26,20 @@ TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
 #
 #     INFRAHUB_BASE_VERSION=1.11.0b0 uv run pytest tests/integration
 #
-# The default is 1.10.6 so this branch is a usable pre-upgrade baseline: the same suite can be run
-# against 1.11.0b0 and the two results compared. Two things to know when doing that:
+# Two things to know when using it to compare releases:
 #
-# 1. ``.infrahub.yml`` on this branch deliberately carries no ``watch:`` entries. ``watch:`` first
-#    exists in infrahub-sdk 1.23.0b0 (shipped with 1.11) and the config model forbids extra keys,
-#    so SDK 1.10.6 rejects the whole file and repository sync fails with "Extra inputs are not
-#    permitted". Restoring ``watch:`` -- and with it the dependency closures over
-#    ``src/infrahub_solution_ai_dc/``, so a change under ``src/`` re-runs the generators importing
-#    it -- belongs with the move to 1.11.
+# 1. It cannot usefully go below 1.11 while ``.infrahub.yml`` declares ``watch:``. That key first
+#    exists in infrahub-sdk 1.23.0b0 (shipped with 1.11) and the config model forbids extra keys, so
+#    an older SDK rejects the whole file and repository sync fails with "Extra inputs are not
+#    permitted". A pre-1.11 baseline therefore also has to drop ``watch:``, giving up the dependency
+#    closures over ``src/infrahub_solution_ai_dc/`` -- which is exactly what the parent branch of
+#    this change does, so the same suite can be run on both sides of the upgrade.
 # 2. This knob swaps the Infrahub *application* image only. The surrounding infrastructure (Neo4j,
 #    RabbitMQ, Redis) is pinned by the installed ``infrahub-testcontainers`` package's bundled
 #    compose file, so a run at any version uses the infra matrix shipped with whichever
 #    testcontainers version is in the lockfile. That isolates the application version, which is what
-#    a release comparison wants, but it is not a faithful reproduction of a 1.10.6 deployment.
-TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.10.6")
+#    a release comparison wants, but it is not a faithful reproduction of an older deployment.
+TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.11.0b0")
 
 os.environ.setdefault("INFRAHUB_TESTING_DOCKER_IMAGE", TESTING_IMAGE)
 os.environ.setdefault("INFRAHUB_TESTING_IMAGE_VERSION", TESTING_IMAGE_VERSION)
