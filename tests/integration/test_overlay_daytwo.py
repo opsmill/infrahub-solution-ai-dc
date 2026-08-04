@@ -86,9 +86,13 @@ class TestOverlayDayTwo(TestInfrahubDockerClient):
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Requires devices built by the fabric/pod/rack generators, but repository sync loads no objects "
-        "(objects/ is not registered in .infrahub.yml) and the generator trigger rules are parked in "
-        "objects/20_triggers.yml.save. Re-enable once the trigger strategy lands."
+        reason="Requires leaf devices, which only exist once the fabric -> pod -> rack cascade has run. Both "
+        "original reasons for this skip are now stale: objects/ IS registered in .infrahub.yml, and the trigger "
+        "rules live in triggers.yml at the repo root (objects/20_triggers.yml.save is gone). What is still "
+        "missing here is the setup that makes the cascade fire at all -- loading triggers.yml (neither `inv load` "
+        "nor repository sync does it) and running on a non-default branch (every rule is "
+        "branch_scope: other_branches). tests/integration/test_generator_chain.py now performs exactly that "
+        "setup; reuse it to re-enable this test."
     )
     async def test_scoped_regeneration(self, client: InfrahubClient) -> None:
         """Core assertion (SC-003, FR-009): adding a segment changes only the carrying leafs.
