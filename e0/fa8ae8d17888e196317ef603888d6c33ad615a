@@ -1,0 +1,25 @@
+pyproject.toml
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 14-20
+tests/conftest.py
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 3-11,22-41
+tests/integration/test_generator_chain.py
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 42,85-102,104-106,109,115,117-121,139,142-151,153,158-160,163,169,191-201,206,219-230,278-279,284,376,379-387,389-396,405,409-417,419-426,443-458,495-502,518-526,528,531-532,586,601-613,617,621-630,632-642,644-666,678,777-799
+tests/integration/test_server_service.py
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 14-22,117-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e0fa8ae8d17888e196317ef603888d6c33ad615a",
+  "prompts": {},
+  "sessions": {
+    "s_29d7fee1f52159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbc3dadb-d6ec-44d3-9ec7-aa434538cf07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
