@@ -11,12 +11,15 @@ This proves the P1 MVP (SC-001, SC-004, FR-001/003/005/008/009).
 Mirrors the structure, fixtures and style of ``tests/integration/test_overlay_daytwo.py``.
 
 STACK-GATED: like ``test_overlay_daytwo.test_scoped_regeneration``, the assertion body depends on
-devices built by the fabric/pod/rack generators. Repository sync loads no objects (``objects/`` is
-not registered in ``.infrahub.yml``) and the generator trigger rules are parked in
-``objects/20_triggers.yml.save``, so the core journey cannot run headless yet. The setup phases
-(schema load, groups, repo sync) are shared with the overlay suite and left collectable; the core
-``test_l3_server_journey`` is ``@pytest.mark.skip``-marked with the same rationale so the file stays
-green-collectable in CI until the trigger strategy lands. Run against a live stack with:
+devices built by the fabric/pod/rack generators. Both original reasons for the gate are now stale:
+``objects/`` IS registered in ``.infrahub.yml``, and the trigger rules live in ``triggers.yml`` at
+the repo root (``objects/20_triggers.yml.save`` is gone). What is still missing is the setup that
+makes the cascade fire at all -- loading ``triggers.yml`` (neither ``inv load`` nor repository sync
+does it) and running on a non-default branch (every rule is ``branch_scope: other_branches``).
+``tests/integration/test_generator_chain.py`` now performs exactly that setup; reuse it to re-enable
+the core tests. The setup phases (schema load, groups, repo sync) are shared with the overlay suite
+and left collectable; the core ``test_l3_server_journey`` is ``@pytest.mark.skip``-marked so the
+file stays green-collectable in CI. Run against a live stack with:
 
     uv run pytest tests/integration/test_server_service.py
 """
@@ -111,10 +114,13 @@ class TestServerServiceL3(TestInfrahubDockerClient):
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Requires devices built by the fabric/pod/rack generators, but repository sync loads no objects "
-        "(objects/ is not registered in .infrahub.yml) and the generator trigger rules are parked in "
-        "objects/20_triggers.yml.save. Re-enable once the trigger strategy lands (same gate as "
-        "test_overlay_daytwo.test_scoped_regeneration)."
+        reason="Requires leaf devices, which only exist once the fabric -> pod -> rack cascade has run. Both "
+        "original reasons for this skip are now stale: objects/ IS registered in .infrahub.yml, and the trigger "
+        "rules live in triggers.yml at the repo root (objects/20_triggers.yml.save is gone). What is still "
+        "missing here is the setup that makes the cascade fire at all -- loading triggers.yml (neither `inv load` "
+        "nor repository sync does it) and running on a non-default branch (every rule is "
+        "branch_scope: other_branches). tests/integration/test_generator_chain.py now performs exactly that "
+        "setup; reuse it to re-enable this test (same gate as test_overlay_daytwo.test_scoped_regeneration)."
     )
     async def test_l3_server_journey(self, client: InfrahubClient) -> None:
         """Core assertion (SC-001, SC-004, FR-001/003/005/009): the full L3 attach + rendered config.
