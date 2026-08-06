@@ -1,0 +1,59 @@
+tests/integration/test_server_service.py
+  s_29d7fee1f52159::t_fa4083a91aee3f 117-123
+  s_29d7fee1f52159::t_d0ba6675458957 14-22
+pyproject.toml
+  s_29d7fee1f52159::t_c1cb832be788ab 14-20
+.infrahub.yml
+  s_29d7fee1f52159::t_df86d5c117f3b7 124-136,143-145
+tests/integration/test_generator_chain.py
+  s_29d7fee1f52159::t_b23a1881f3234e 115
+  s_29d7fee1f52159::t_1e9fc4b60b4bd0 409-412,419-422,424-426
+  s_29d7fee1f52159::t_c9e43796c19477 495-502,518-526,528,531-532
+  s_29d7fee1f52159::t_209f735e175a9e 142,146-151,153,160
+  s_29d7fee1f52159::t_9cfda8c0dbb390 392
+  s_29d7fee1f52159::t_de78994de99208 191-192,197,200,384,414
+  s_29d7fee1f52159::t_ff51de43f77a33 777-790,792-799
+  s_29d7fee1f52159::t_00aea85d810bdb 386-387
+  s_29d7fee1f52159::t_c397860f6457d1 416-417
+  s_29d7fee1f52159::t_f82ead2dd60dd4 158-159
+  s_29d7fee1f52159::t_4208de4d11f381 193-196,198-199,201,206
+  s_29d7fee1f52159::t_56506faf53e3cb 139,143-145
+  s_29d7fee1f52159::t_e0c5b00439db17 98-99
+  s_29d7fee1f52159::t_778ad266f62078 284
+  s_29d7fee1f52159::t_10aa44f1e3aac7 376,383,385,393
+  s_29d7fee1f52159::t_11c5483c96ffd9 405,413,415,423
+  s_29d7fee1f52159::t_cfd360c3de6a12 163,169
+  s_29d7fee1f52159::t_bade13f7ca37c6 219-221,226-228
+  s_29d7fee1f52159::t_df75d2c5fbe9bf 379-382,389-391,394-396
+  s_29d7fee1f52159::t_270f9de86586ef 85-97,100-102,104-106,109
+  s_29d7fee1f52159::t_0c16c3fe6da889 443-458
+  s_29d7fee1f52159::t_1a7d656226e7ea 222-225
+  s_29d7fee1f52159::t_817c9be113f07a 601-613,617,621-630,632-641
+  s_29d7fee1f52159::t_975db5985f5ccd 647-657
+  s_29d7fee1f52159::t_989d4019550ed7 658-666
+  s_29d7fee1f52159::t_7e3347199722dc 42,278-279,586,642,678,791
+  s_29d7fee1f52159::t_1c87c82271a50b 117-121
+  s_29d7fee1f52159::t_ccdb116ef4423a 229-230
+  s_29d7fee1f52159::t_ef5a17b1691d1a 644-646
+tests/conftest.py
+  s_29d7fee1f52159::t_00ab5091e5c405 6,22-24,33,35-39,41
+  s_29d7fee1f52159::t_8da0f5ab599f63 25-32
+  s_29d7fee1f52159::t_d3dc1a8a15aa7c 34,40
+  s_29d7fee1f52159::t_21730bc321663e 3-5,7-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5735e3f72802896b9e92d73a4980f392c1508c5c",
+  "prompts": {},
+  "sessions": {
+    "s_29d7fee1f52159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbc3dadb-d6ec-44d3-9ec7-aa434538cf07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
