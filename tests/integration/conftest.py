@@ -20,25 +20,6 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 #    declares ``task-manager-background-svc`` with ``replicas: 0`` and nothing depends on it, so
 #    scheduling one replica is a harmless workaround. Drop it once Compose ships the fix.
 TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
-# Mirrors the tag docker-compose.override.yml builds, and the Dockerfile's ARG default.
-#
-# This is the only knob that selects the Infrahub version under test:
-#
-#     INFRAHUB_BASE_VERSION=1.11.0b0 uv run pytest tests/integration
-#
-# Two things to know when using it to compare releases:
-#
-# 1. It cannot usefully go below 1.11 while ``.infrahub.yml`` declares ``watch:``. That key first
-#    exists in infrahub-sdk 1.23.0b0 (shipped with 1.11) and the config model forbids extra keys, so
-#    an older SDK rejects the whole file and repository sync fails with "Extra inputs are not
-#    permitted". Comparing against a pre-1.11 release therefore also means dropping every ``watch:``
-#    entry from ``.infrahub.yml``, giving up the dependency closures over
-#    ``src/infrahub_solution_ai_dc/`` for the duration of that comparison.
-# 2. This knob swaps the Infrahub *application* image only. The surrounding infrastructure (Neo4j,
-#    RabbitMQ, Redis) is pinned by the installed ``infrahub-testcontainers`` package's bundled
-#    compose file, so a run at any version uses the infra matrix shipped with whichever
-#    testcontainers version is in the lockfile. That isolates the application version, which is what
-#    a release comparison wants, but it is not a faithful reproduction of an older deployment.
 TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.11.0b0")
 
 os.environ.setdefault("INFRAHUB_TESTING_DOCKER_IMAGE", TESTING_IMAGE)
