@@ -1,10 +1,5 @@
 """Integration coverage for the fabric -> pod -> rack generator trigger chain.
 
-Reported against 1.11.0b0: "the generators between the fabric, pods, and racks don't seem to be
-triggering consistently ... only part of the chain runs, especially from fabric -> pod and
-pod -> rack". Nothing under ``tests/integration`` exercised that chain, so the failure had no
-regression net. This module builds one.
-
 The chain is not one generator. It is three, stitched together by a side-effect checksum write
 plus the ``CoreNodeTriggerRule`` objects in ``triggers.yml``::
 
