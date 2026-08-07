@@ -40,6 +40,10 @@ queries:
     file_path: "./queries/artifact_ids.gql"
 
 
+# Every generator below imports from the shared src/infrahub_solution_ai_dc/ package. The
+# dependency closure Infrahub detects for a Python definition is the directory holding its
+# file_path -- here ./generators -- so the shared package falls outside it. The watch entries
+# add it: without them a change under src/ does not re-run the generators that depend on it.
 generator_definitions:
   - name: generate-fabric
     file_path: "./generators/generate_fabric.py"
@@ -51,6 +55,9 @@ generator_definitions:
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
   - name: generate-pod
     file_path: "./generators/generate_pod.py"
@@ -62,6 +69,9 @@ generator_definitions:
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
   - name: generate-rack
     file_path: "./generators/generate_rack.py"
@@ -73,6 +83,9 @@ generator_definitions:
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
   - name: generate-tenant
     file_path: "./generators/generate_tenant.py"
@@ -84,6 +97,9 @@ generator_definitions:
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
   - name: generate-server
     file_path: "./generators/generate_server.py"
@@ -95,6 +111,9 @@ generator_definitions:
     convert_query_response: false
     execute_in_proposed_change: false
     execute_after_merge: false
+    watch:
+      files:
+        - src/infrahub_solution_ai_dc/
 
 jinja2_transforms:
   - name: cisco_device_startup_config
@@ -122,15 +141,9 @@ python_transforms:
     class_name: CablingPlan
     file_path: "./transforms/cabling_plan.py"
     # cabling_plan.py imports from the shared src package, which falls outside the closure
-    # Infrahub detects for it (the ./transforms directory holding its file_path).
-    # computed_interface_description needs no entry: it imports only its sibling query model,
-    # already inside ./transforms.
-    #
-    # Kept on the 1.10.6 baseline, unlike the generator_definitions entries: `watch:` is rejected
-    # only on a generator definition pre-SDK-1.23. It has been valid on a python_transform since
-    # 1.22 (added here by f610287 under Infrahub 1.10.0), and a 1.10.6 repository sync rejects
-    # exactly the five generator_definitions keys -- measured, not assumed. Removing it would
-    # silently revert f610287 and make the Cabling Plan artifact regenerate on every commit.
+    # Infrahub detects for it (the ./transforms directory holding its file_path). Same reason
+    # as the generator_definitions above. computed_interface_description needs no entry: it
+    # imports only its sibling query model, already inside ./transforms.
     watch:
       files:
         - src/infrahub_solution_ai_dc/
