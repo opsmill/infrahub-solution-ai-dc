@@ -11,9 +11,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    # >=1.23.0b0 is a hard floor, not a preference: `watch:` on a generator_definition does not
-    # exist on InfrahubGeneratorDefinitionConfig before it, and the model forbids extra keys, so
-    # .infrahub.yml fails to parse outright on an older SDK.
+    # >=1.23.0b0 is kept deliberately, and is a hard floor again the moment `watch:` returns to a
+    # generator_definition in .infrahub.yml: the key does not exist on
+    # InfrahubGeneratorDefinitionConfig before this version and the model forbids extra keys, so the
+    # file fails to parse outright on an older SDK. That is why the 1.10.6 test baseline drops the
+    # five generator_definitions entries -- but not the python_transforms ones, where `watch:` has
+    # been valid since 1.22 (f610287). The floor also matches infrahub-testcontainers below, which
+    # ships the 1.11 stack.
     "infrahub-sdk[all]>=1.23.0b0",
     "infrahub-testcontainers>=1.11.0b0",
     "invoke>=2.2.0",
