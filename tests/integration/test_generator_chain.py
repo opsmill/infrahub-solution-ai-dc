@@ -89,11 +89,14 @@ CHAIN_BRANCH = "generator-chain-test"
 # a rack with headroom, or the save is rejected by validation before the trigger is ever exercised.
 MAX_LEAFS_PER_RACK = 2
 
-# Ceiling for the two xfail gap tests below. Deliberately much tighter than the tier timeouts:
-# timing out IS the expected path today, so a generous ceiling buys nothing and costs that much
-# wall-clock on every run. It only needs to be long enough to build ONE extra device, so that
-# adding the missing trigger rule turns the test green (strict xfail then fails the run and forces
-# the marker off) rather than still timing out and hiding the fix.
+# Ceiling for the two single-device regeneration tests below, deliberately tighter than the tier
+# timeouts: each only has to build ONE extra device, which was measured at ~8.5s for the equivalent
+# pod-tier test. It is a ceiling, not an expected duration -- both tests return as soon as the device
+# appears.
+#
+# Until the LocationRack and NetworkFabric trigger rules existed, these two were strict xfails and
+# timing out WAS the expected path, which cost the full ceiling twice on every run. They now pass in
+# seconds, so this knob no longer dominates the suite's wall clock.
 GAP_TIMEOUT = env_seconds("AI_DC_GAP_TIMEOUT", 300)
 
 
@@ -608,29 +611,22 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
             "is now open and the operating model changed -- update this test and triggers.yml docs"
         )
 
-    # --- coverage gaps in triggers.yml -----------------------------------------------------------
+    # --- the other two tiers regenerate on a design-object edit ------------------------------------
     #
-    # triggers.yml covers NetworkPod.amount_of_spines but nothing equivalent for the other two
-    # tiers: LocationRack.amount_of_leafs has no rule, and NetworkFabric has no rule at all (the
-    # file holds 9 rules across NetworkPod, LocationRack, NetworkTenant and NetworkServerService
-    # -- there is no NetworkFabric entry). Editing a fabric's super-spine count or a rack's leaf
-    # count therefore regenerates nothing, which presents exactly as "the generators don't
-    # trigger consistently".
+    # triggers.yml long covered NetworkPod.amount_of_spines but had nothing equivalent for the other
+    # two tiers: LocationRack.amount_of_leafs had no rule, and NetworkFabric had no rule of any kind.
+    # Editing a fabric's super-spine count or a rack's leaf count therefore regenerated nothing, which
+    # presents exactly as "the generators don't trigger consistently". Both rules now exist, and these
+    # two tests -- which were strict xfails asserting the wanted behaviour -- are the proof.
     #
-    # Both tests assert the behaviour we want and are strict xfails, so adding the missing rules
-    # turns them green and forces the marker off rather than leaving dead coverage behind.
+    # Creating a fabric still dispatches nothing: the new rule is mutation_action "updated" only, and
+    # test_new_fabric_has_no_automatic_dispatch above pins that.
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason="triggers.yml has no LocationRack.amount_of_leafs rule, so a leaf-count edit "
-        "never re-runs the rack generator",
-    )
     async def test_rack_leaf_count_change_regenerates(self, client: InfrahubClient) -> None:
         """Raising amount_of_leafs on a rack should build the extra leaf.
 
-        The rack has to be chosen carefully or the xfail can never flip green when the rule lands,
-        which would defeat the whole point of asserting the wanted behaviour:
+        The rack has to be chosen carefully or this cannot pass even with the rule in place:
 
         * Scoped to Fabric-A's generated pods. An unscoped ``LocationRack`` query returns all 32
           seeded racks -- ``LocationRack`` is ``branch: agnostic``, and Fabric-B/C/D never cascade
@@ -666,11 +662,6 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason="triggers.yml has no NetworkFabric rule at all, so a super-spine-count edit "
-        "never re-runs the fabric generator",
-    )
     async def test_fabric_super_spine_count_change_regenerates(self, client: InfrahubClient) -> None:
         """Raising amount_of_super_spines on a fabric should build the extra super-spine."""
         fabric = await client.get(kind=NetworkFabric, name__value=FABRIC_NAME, branch=CHAIN_BRANCH)

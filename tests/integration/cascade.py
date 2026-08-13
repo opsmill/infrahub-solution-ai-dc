@@ -148,13 +148,17 @@ async def load_trigger_rules(client: InfrahubClient, root_directory: Path) -> No
 
     actions = await client.all(kind=CoreGeneratorAction)
     assert {action.name.value for action in actions} >= {
+        "run-fabric-generator",
         "run-pod-generator",
         "run-rack-generator",
-    }, "the pod/rack generator actions are missing; the cascade cannot dispatch"
+    }, "a generator action is missing; the cascade cannot dispatch"
 
+    # NetworkFabric is included deliberately: a rule for it exists only so that resizing a fabric
+    # regenerates. Asserting it here means a triggers.yml that loses the rule fails at load time with
+    # a clear message, rather than 300s later inside test_fabric_super_spine_count_change_regenerates.
     rules = await client.all(kind=CoreNodeTriggerRule)
-    assert {"NetworkPod", "LocationRack"} <= {rule.node_kind.value for rule in rules}, (
-        "no trigger rules for NetworkPod/LocationRack; fabric -> pod -> rack cannot fire"
+    assert {"NetworkFabric", "NetworkPod", "LocationRack"} <= {rule.node_kind.value for rule in rules}, (
+        "a tier has no trigger rule; fabric -> pod -> rack cannot fire end to end"
     )
 
 

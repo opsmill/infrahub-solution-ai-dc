@@ -12,6 +12,10 @@ spec:
       generator: generate-tenant
     - name: run-server-generator
       generator: generate-server
+    # No fabric action existed until now: NetworkFabric had no rule of any kind, so resizing a
+    # fabric regenerated nothing.
+    - name: run-fabric-generator
+      generator: generate-fabric
 
 ---
 apiVersion: infrahub.app/v1
@@ -86,6 +90,19 @@ spec:
           - attribute_name: index
             value_match: any
 
+    # Mirrors trigger-pod-generator-update-amount-of-spines one tier down: without this, raising a
+    # rack's leaf count changes the design object and regenerates nothing.
+    - name: trigger-rack-generator-update-amount-of-leafs
+      branch_scope: "other_branches"
+      node_kind: LocationRack
+      mutation_action: "updated"
+      action: run-rack-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: amount_of_leafs
+            value_match: any
+
     - name: trigger-rack-generator-update-rack-type
       branch_scope: "other_branches"
       node_kind: LocationRack
@@ -95,6 +112,23 @@ spec:
         kind: CoreNodeTriggerAttributeMatch
         data:
           - attribute_name: rack_type
+            value_match: any
+
+    # FabricGenerator -- re-run when a fabric is resized.
+    #
+    # mutation_action is "updated", not "created", and that distinction is load-bearing: creating a
+    # fabric must still dispatch nothing (test_new_fabric_has_no_automatic_dispatch pins that the
+    # chain has no automatic entry point). This rule only makes *edits* to an existing fabric
+    # regenerate.
+    - name: trigger-fabric-generator-update-amount-of-super-spines
+      branch_scope: "other_branches"
+      node_kind: NetworkFabric
+      mutation_action: "updated"
+      action: run-fabric-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: amount_of_super_spines
             value_match: any
 
     # Overlay (OverlayGenerator) — re-run on tenant checksum changes and on tenant VRF/segment day-two edits.
