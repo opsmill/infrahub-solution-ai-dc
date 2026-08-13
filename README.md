@@ -57,6 +57,9 @@ cd infrahub-solution-ai-dc
 uv sync --all-packages
 uv run inv start
 
+# set the INFRAHUB_API_TOKEN environment variable for authentication
+export INFRAHUB_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
+
 # Load demo data
 uv run inv load
 
