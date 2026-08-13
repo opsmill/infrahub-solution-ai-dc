@@ -233,3 +233,7 @@ Temporary Items
 
 docs/node_modules/
 .specify/feature.json
+
+# Local version-comparison results (tests/perf.py, AI_DC_PERF_OUT)
+perf-results/
+.venv-tc-*/

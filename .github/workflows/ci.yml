@@ -99,7 +99,11 @@ jobs:
     needs: ["python-lint", "yaml-lint", "markdown-lint"]
     runs-on:
       group: "huge-runners"
-    timeout-minutes: 60
+    # Raised from 60: three of the four integration classes now drive the full fabric -> pod -> rack
+    # cascade, because the overlay and server-service assertions need real leaf devices (they were
+    # skipped outright before). A measured 1.11.0b1 run of the previous, narrower suite already took
+    # 31 minutes on an 8-core host, and the reactivated tests add two more cascades on top.
+    timeout-minutes: 120
     env:
       INFRAHUB_DB_TYPE: neo4j
       INFRAHUB_TIMEOUT: 600

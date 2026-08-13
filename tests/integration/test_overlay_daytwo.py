@@ -1,14 +1,28 @@
 """Integration test for US2: scoped day-two regeneration of the EVPN/VXLAN overlay.
 
-Encodes quickstart.md §5: after the overlay is generated, adding a third segment to a tenant
-must reconfigure *only* the carrying leafs. Unrelated devices (spines / super-spines) must keep
-byte-identical ``startup_configuration`` artifacts, while a carrying leaf's artifact changes.
+Encodes quickstart.md §5: after the overlay is generated, adding a segment to a tenant must
+reconfigure *only* the carrying leafs. Spines and super-spines carry no tenant state at all, so a new
+segment cannot reach their configuration (SC-003, SC-006, FR-007, FR-009).
 
-This proves scoped regeneration (SC-003, FR-009): the OverlayGenerator materializes
-``NetworkDevice.segments`` onto carrying leafs only, so spine/super-spine renders carry no tenant
-state and never change when a tenant gains a segment.
+This test was skipped from the day it was written, because its assertions need leaf devices and the
+suite had no way to build them. It now drives the real cascade via ``tests/integration/cascade.py``
+(see ``test_provision_cascade``), which is why the two things that kept the cascade from firing are
+handled explicitly:
 
-Mirrors the structure, fixtures and style of ``tests/integration/test_infrahub.py``.
+* ``triggers.yml`` is loaded by neither ``inv load`` nor repository sync, so it is loaded directly.
+* Every rule is ``branch_scope: other_branches``, so nothing can cascade on ``main``. Every assertion
+  below runs on ``OVERLAY_BRANCH``.
+
+Scoping is asserted on ``NetworkDevice.segments`` rather than by byte-comparing rendered
+``startup_configuration`` artifacts, which is what the original draft attempted. Measured against a
+live 1.11.0b1 stack: no ``Startup configuration`` artifact exists for *any* device. The four
+per-vendor artifact_definitions are imported and the devices do join their ``{vendor}_devices`` group,
+but nothing in the platform generates those artifacts on group membership, and ``artifact_generate``
+only regenerates an artifact that already exists -- both it and ``artifact_fetch`` raise
+``NodeNotFoundError``. The only artifacts present on either branch are ``Cabling Plan`` and ``Cilium
+BGP Manifest``. An artifact assertion here would therefore be testing artifact scheduling, not
+scoping; ``segments`` is the state the render reads, so asserting it tests the property directly and
+cannot pass vacuously.
 """
 
 from __future__ import annotations
@@ -20,18 +34,25 @@ from infrahub_sdk.protocols import CoreGenericRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
+from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkSegment, NetworkTenant, NetworkVrf
+from tests.integration.cascade import (
+    GENERATOR_TIMEOUT,
+    load_trigger_rules,
+    provision_fabric_cascade,
+    run_generator,
+    wait_until,
+)
+
 if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.node import InfrahubNode
 
-# Standard groups required by the generator definitions in ``.infrahub.yml``.
-# "tenants" is the new group that drives the OverlayGenerator (targets: tenants).
+# Standard groups the generator definitions target; "tenants" drives the OverlayGenerator.
 REQUIRED_GROUPS = ["halls", "racks", "fabrics", "pods", "devices", "tenants"]
 
-# The artifact under test (see ``.infrahub.yml`` artifact_definitions / contracts/config-artifact.md).
-STARTUP_ARTIFACT = "Startup configuration"
+# Every rule in triggers.yml is branch_scope: other_branches, so the cascade cannot run on main.
+OVERLAY_BRANCH = "overlay-daytwo-test"
 
 # Seed tenant topology (objects/12_overlay.yml). The seed already carries advertise-all routed
 # segments; this test adds one more and asserts scoped regeneration.
@@ -39,13 +60,47 @@ TENANT_NAME = "Blue"
 VRF_NAME = "blue-prod"
 NEW_SEGMENT_NAME = "blue-extra"
 
+# Roles that must never carry tenant state, whatever happens to a tenant.
+TENANT_FREE_ROLES = ("spine", "super_spine")
+
+
+async def generate_tenant(client: InfrahubClient) -> None:
+    """Run ``generate-tenant`` for the seed tenant.
+
+    Only ``Blue`` is generated: ``objects/12_overlay.yml`` also seeds ``Green`` on Fabric-D, and this
+    suite cascades Fabric-A only, so generating Green would fail for want of leaves.
+
+    The generator is invoked explicitly rather than by touching the tenant and waiting for a trigger:
+    a ``save()`` that changes no field writes nothing and emits no NodeUpdatedEvent, so it dispatches
+    nothing at all.
+    """
+    tenant = await client.get(kind=NetworkTenant, branch=OVERLAY_BRANCH, name__value=TENANT_NAME)
+    await run_generator(
+        client, definition_name="generate-tenant", branch=OVERLAY_BRANCH, node_ids=[tenant.id]
+    )
+
+
+async def leaves_with_segments(client: InfrahubClient) -> list[NetworkDevice]:
+    """Return the leaf devices that carry at least one segment."""
+    leaves = await client.filters(
+        kind=NetworkDevice, branch=OVERLAY_BRANCH, role__value="leaf", include=["segments"]
+    )
+    return [leaf for leaf in leaves if leaf.segments.peers]
+
+
+def segment_names(device: NetworkDevice) -> set[str]:
+    """The set of segment display labels materialized onto a device."""
+    return {peer.display_label for peer in device.segments.peers if peer.display_label}
+
 
 class TestOverlayDayTwo(TestInfrahubDockerClient):
-    """US2 — adding a segment reconfigures only the affected leaf artifacts."""
+    """US2 — adding a segment reconfigures only the carrying leafs."""
+
+    # --- setup -----------------------------------------------------------------------------------
 
     @pytest.mark.asyncio
     async def test_load_schema(self, default_branch: str, client: InfrahubClient, schemas: list[dict]) -> None:
-        """Load the overlay-extended schemas and wait for convergence (mirrors test_infrahub.py)."""
+        """Load the overlay-extended schemas and wait for convergence."""
         await client.schema.wait_until_converged(branch=default_branch)
 
         resp = await client.schema.load(schemas=schemas, branch=default_branch, wait_until_converged=True)
@@ -53,7 +108,7 @@ class TestOverlayDayTwo(TestInfrahubDockerClient):
 
     @pytest.mark.asyncio
     async def test_create_groups(self, client: InfrahubClient) -> None:
-        """Create CoreStandardGroup objects required by generator definitions, incl. "tenants"."""
+        """Create the CoreStandardGroup objects the generator definitions target, incl. "tenants"."""
         for group_name in REQUIRED_GROUPS:
             group = await client.create(kind="CoreStandardGroup", name=group_name)
             await group.save()
@@ -63,18 +118,12 @@ class TestOverlayDayTwo(TestInfrahubDockerClient):
         self,
         client: InfrahubClient,
         remote_repos_dir: Path,
-        root_directory: Path,
+        repo_source_directory: Path,
     ) -> None:
-        """Register this repo and load it.
-
-        This seeds the overlay objects (objects/12_overlay.yml: tenant "Blue" -> VRF "blue-prod"
-        with its routed segments) and runs the OverlayGenerator + startup_configuration artifact via
-        triggers, the same way ``inv load`` does. We rely on the repo/object load rather than
-        hand-creating tenancy, to stay consistent with test_infrahub.py.
-        """
+        """Register and sync this repo, seeding the overlay objects the same way ``inv load`` does."""
         repo = GitRepo(
             name="local-repository",
-            src_directory=root_directory,
+            src_directory=repo_source_directory,
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
@@ -85,102 +134,123 @@ class TestOverlayDayTwo(TestInfrahubDockerClient):
         assert repos
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="Requires leaf devices, which only exist once the fabric -> pod -> rack cascade has run. Both "
-        "original reasons for this skip are now stale: objects/ IS registered in .infrahub.yml, and the trigger "
-        "rules live in triggers.yml at the repo root (objects/20_triggers.yml.save is gone). What is still "
-        "missing here is the setup that makes the cascade fire at all -- loading triggers.yml (neither `inv load` "
-        "nor repository sync does it) and running on a non-default branch (every rule is "
-        "branch_scope: other_branches). tests/integration/test_generator_chain.py now performs exactly that "
-        "setup; reuse it to re-enable this test."
-    )
+    async def test_load_trigger_rules(self, client: InfrahubClient, root_directory: Path) -> None:
+        """Load triggers.yml -- the step neither ``inv load`` nor repository sync performs."""
+        await load_trigger_rules(client, root_directory)
+
+    @pytest.mark.asyncio
+    async def test_provision_cascade(self, client: InfrahubClient) -> None:
+        """Build the fabric the overlay is placed on: fabric -> pod -> rack, on a non-default branch.
+
+        Asserted as its own phase so a cascade failure is reported as such, rather than surfacing
+        later as a puzzling "expected at least one leaf device".
+        """
+        await client.branch.create(branch_name=OVERLAY_BRANCH, sync_with_git=False)
+        await provision_fabric_cascade(client, branch=OVERLAY_BRANCH)
+
+        leaves = await client.count(kind=NetworkDevice, branch=OVERLAY_BRANCH, role__value="leaf")
+        assert leaves, "the cascade produced no leaf devices; the overlay has nowhere to land"
+
+    @pytest.mark.asyncio
+    async def test_overlay_materializes_on_leaves(self, client: InfrahubClient) -> None:
+        """The OverlayGenerator must place the seed tenant's segments onto leaves.
+
+        The precondition for the scoping test below, asserted separately: "no segment moved" and "the
+        generator never ran" are different failures with the same symptom.
+        """
+        await generate_tenant(client)
+
+        carrying: list[NetworkDevice] = []
+
+        async def segments_materialized() -> bool:
+            carrying.clear()
+            carrying.extend(await leaves_with_segments(client))
+            return bool(carrying)
+
+        await wait_until(
+            segments_materialized,
+            what=f"tenant {TENANT_NAME} segments materialized onto at least one leaf",
+            timeout_seconds=GENERATOR_TIMEOUT,
+        )
+
+    # --- the scoping property --------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_spines_carry_no_tenant_state(self, client: InfrahubClient) -> None:
+        """SC-006 / FR-007: spines and super-spines hold no segments at all.
+
+        This is the structural reason scoped regeneration holds: a tenant change cannot reach a device
+        that carries no tenant state in the first place. Asserted before the day-two change so the
+        test below can prove the property *survives* one.
+        """
+        for role in TENANT_FREE_ROLES:
+            devices = await client.filters(
+                kind=NetworkDevice, branch=OVERLAY_BRANCH, role__value=role, include=["segments"]
+            )
+            assert devices, f"no {role} devices were built; this assertion would pass vacuously"
+            for device in devices:
+                assert not device.segments.peers, (
+                    f"{role} {device.hostname.value} carries segments "
+                    f"({sorted(segment_names(device))}); tenant state must never reach a {role}"
+                )
+
+    @pytest.mark.asyncio
     async def test_scoped_regeneration(self, client: InfrahubClient) -> None:
-        """Core assertion (SC-003, FR-009): adding a segment changes only the carrying leafs.
+        """SC-003 / FR-009: adding a segment changes the carrying leafs and nothing else.
 
         Flow:
-          1. Capture the baseline ``startup_configuration`` for an unaffected device (super-spine,
-             else spine) and for a carrying leaf.
-          2. Add a third routed segment to the seed tenant's VRF (advertise-all placement) and let
-             the OverlayGenerator + artifact regeneration run.
-          3. Assert the unaffected device's artifact is BYTE-IDENTICAL before vs after, while the
-             carrying leaf's artifact CHANGED (it gained the new segment).
+          1. Snapshot every leaf's segment set, and confirm the spines are tenant-free.
+          2. Add a routed segment with no rack placement (advertise-all).
+          3. Re-run the OverlayGenerator and wait for the new segment to land on a carrying leaf.
+          4. Assert the carrying leaves gained exactly that segment and lost nothing, and that the
+             spines and super-spines are *still* tenant-free.
         """
-        # --- pick devices ------------------------------------------------------------------------
-        unaffected = await self._first_device_with_role(client, ("super_spine", "spine"))
-        leaf = await self._first_device_with_role(client, ("leaf",))
-        assert unaffected is not None, "expected at least one spine/super-spine device after load"
-        assert leaf is not None, "expected at least one leaf device after load"
+        before = {leaf.id: segment_names(leaf) for leaf in await leaves_with_segments(client)}
+        assert before, "no leaf carries segments; test_overlay_materializes_on_leaves should have failed first"
 
-        # --- baseline artifacts ------------------------------------------------------------------
-        unaffected_before = await unaffected.artifact_fetch(name=STARTUP_ARTIFACT)
-        leaf_before = await leaf.artifact_fetch(name=STARTUP_ARTIFACT)
-        assert isinstance(unaffected_before, str)
-        assert isinstance(leaf_before, str)
-
-        # --- day-two change: add a third routed segment to the tenant's VRF ----------------------
-        vrf = await client.get(kind="NetworkVrf", name__value=VRF_NAME)
+        # --- day-two change: a third routed segment, advertise-all (no racks) --------------------
+        vrf = await client.get(kind=NetworkVrf, branch=OVERLAY_BRANCH, name__value=VRF_NAME)
         new_segment = await client.create(
-            kind="NetworkSegment",
+            kind=NetworkSegment,
+            branch=OVERLAY_BRANCH,
             name=NEW_SEGMENT_NAME,
             vrf=vrf.id,
             routed=True,
-            # No racks => advertise-all: materialized onto every leaf in the tenant's fabric (D11).
         )
         await new_segment.save()
 
-        # --- regenerate -------------------------------------------------------------------------
-        # The OverlayGenerator is trigger-driven off the tenant's GeneratorTarget checksum; re-run it
-        # explicitly so the test does not race the trigger, then regenerate the device artifacts.
-        # TODO(validate against running stack): confirm whether trigger-driven regeneration settles  # noqa: TD003, FIX002
-        # on its own (await convergence) or whether explicit generate()/artifact_generate() calls are
-        # required here. Intended post-condition: NetworkDevice.segments now includes "blue-extra" on
-        # every leaf, and unchanged on spines/super-spines.
-        await self._regenerate_tenant_overlay(client)
-        await unaffected.artifact_generate(name=STARTUP_ARTIFACT)
-        await leaf.artifact_generate(name=STARTUP_ARTIFACT)
+        await generate_tenant(client)
 
-        # --- re-fetch artifacts ------------------------------------------------------------------
-        unaffected_after = await unaffected.artifact_fetch(name=STARTUP_ARTIFACT)
-        leaf_after = await leaf.artifact_fetch(name=STARTUP_ARTIFACT)
-        assert isinstance(unaffected_after, str)
-        assert isinstance(leaf_after, str)
+        # --- wait for the new segment to be materialized -----------------------------------------
+        async def new_segment_landed() -> bool:
+            carrying = await leaves_with_segments(client)
+            return any(NEW_SEGMENT_NAME in segment_names(leaf) for leaf in carrying)
 
-        # --- assertions (the proof of scoped regeneration) ---------------------------------------
-        # Unaffected device: byte-identical (no tenant state on spines/super-spines -> FR-007/SC-006
-        # means the new segment cannot reach its render -> SC-003 scoping holds).
-        assert unaffected_after == unaffected_before, (
-            f"unaffected device {unaffected.id} artifact changed after adding a segment; "
-            "scoped regeneration violated (SC-003/FR-009)"
+        await wait_until(
+            new_segment_landed,
+            what=f"segment {NEW_SEGMENT_NAME!r} materialized onto a carrying leaf",
+            timeout_seconds=GENERATOR_TIMEOUT,
         )
 
-        # Carrying leaf: changed, and the change is the newly materialized segment.
-        assert leaf_after != leaf_before, (
-            f"leaf {leaf.id} artifact did not change after adding a segment; "
-            "the new segment was not materialized onto the leaf"
-        )
+        # --- the carrying leaves gained the segment and lost nothing -----------------------------
+        after = {leaf.id: segment_names(leaf) for leaf in await leaves_with_segments(client)}
+        gained = [leaf_id for leaf_id, names in after.items() if NEW_SEGMENT_NAME in names]
+        assert gained, f"no leaf gained {NEW_SEGMENT_NAME!r}"
 
-    # --- helpers ---------------------------------------------------------------------------------
+        for leaf_id, names_before in before.items():
+            names_after = after.get(leaf_id, set())
+            assert names_before <= names_after, (
+                f"leaf {leaf_id} lost segments {sorted(names_before - names_after)} when a segment was added; "
+                "regeneration is destructive, not additive"
+            )
 
-    @staticmethod
-    async def _first_device_with_role(client: InfrahubClient, roles: tuple[str, ...]) -> InfrahubNode | None:
-        """Return the first NetworkDevice matching any of the given roles, in role priority order."""
-        for role in roles:
-            devices = await client.filters(kind="NetworkDevice", role__value=role)
-            if devices:
-                return devices[0]
-        return None
-
-    @staticmethod
-    async def _regenerate_tenant_overlay(client: InfrahubClient) -> None:
-        """Re-run the OverlayGenerator for the seed tenant so Device.segments is re-materialized.
-
-        TODO(validate against running stack): the exact SDK call to invoke a generator_definition by
-        name is platform-version specific. Intended behaviour: trigger the "generate-tenant"
-        generator_definition for tenant "Blue" (targets group "tenants") and wait for it to settle,
-        so the new "blue-extra" segment is materialized onto every carrying leaf before artifacts are
-        regenerated.
-        """
-        tenant = await client.get(kind="NetworkTenant", name__value=TENANT_NAME)
-        # Touch the tenant so its GeneratorTarget checksum changes and the trigger re-fires; the
-        # precise generate() invocation is validated against a running stack (see docstring).
-        await tenant.save()
+        # --- and the scoping property still holds ------------------------------------------------
+        for role in TENANT_FREE_ROLES:
+            devices = await client.filters(
+                kind=NetworkDevice, branch=OVERLAY_BRANCH, role__value=role, include=["segments"]
+            )
+            for device in devices:
+                assert not device.segments.peers, (
+                    f"{role} {device.hostname.value} gained segments {sorted(segment_names(device))} after a "
+                    "tenant change; scoped regeneration is violated (SC-003/FR-009)"
+                )
