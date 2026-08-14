@@ -57,6 +57,10 @@ cd infrahub-solution-ai-dc
 uv sync --all-packages
 uv run inv start
 
+# infrahubctl needs credentials to authenticate against the Infrahub API
+export INFRAHUB_USERNAME="admin"
+export INFRAHUB_PASSWORD="infrahub"
+
 # Load demo data
 uv run inv load
 

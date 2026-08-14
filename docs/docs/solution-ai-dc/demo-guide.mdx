@@ -59,15 +59,20 @@ The contrast between what you define and what Generators produce illustrates the
 
 ```bash
 uv sync --all-packages
-inv start
+uv run inv start
 ```
 
 This installs Python dependencies and launches the Infrahub stack via Docker Compose — including the server, task workers, Neo4j, Redis, RabbitMQ, and PostgreSQL.
 
 ### Load the design data
 
+`infrahubctl` needs credentials to authenticate against the Infrahub API — export the default admin credentials before loading:
+
 ```bash
-inv load
+export INFRAHUB_USERNAME="admin"
+export INFRAHUB_PASSWORD="infrahub"
+
+uv run inv load
 ```
 
 This runs four steps in sequence: loads schema definitions (`infrahubctl schema load`), loads UI menus (`infrahubctl menu load`), loads all design objects from `objects/`, and registers the Git repository from `repository.yml`. After this command completes, Infrahub contains the full design — fabrics, pods, racks, device templates, and IP pools — but no actual devices.
@@ -79,7 +84,7 @@ No devices exist yet. The fabrics, pods, and racks define design intent — they
 ### Wait for repository sync
 
 ```bash
-infrahubctl repository list
+uv run infrahubctl repository list
 ```
 
 Verify the repository status shows as synced. When Infrahub imports the repository, it reads `.infrahub.yml` to register Generator definitions, Transforms, queries, and artifact definitions. Generators cannot run until this import completes.
@@ -87,7 +92,7 @@ Verify the repository status shows as synced. When Infrahub imports the reposito
 ### Load trigger rules
 
 ```bash
-infrahubctl object load triggers.yml
+uv run infrahubctl object load triggers.yml
 ```
 
 This creates `CoreGeneratorAction` and `CoreNodeTriggerRule` objects that enable automatic execution of the modular Generators — including the tenant/overlay trigger (`run-tenant-generator`). `triggers.yml` is a committed top-level file that is not part of `inv load`; it must be loaded after the repository has synced, because the rules reference Generator definitions that need to exist first.
@@ -209,7 +214,7 @@ To see a scoped day-two multi-tenant change, load the second tenant and run its 
 
 ```bash
 # data/ is not part of `inv load` — load the Red tenant manually
-infrahubctl object load data/tenant-red.yml
+uv run infrahubctl object load data/tenant-red.yml
 ```
 
 Then run `generate-tenant` for **Red**: only the leaves carrying Red's segments change; Blue's configuration and every unrelated device are untouched.
