@@ -57,7 +57,10 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/protocols.py
+        - src/infrahub_solution_ai_dc/vendors.py
+        - src/infrahub_solution_ai_dc/fabric_generator_query.py
 
   - name: generate-pod
     file_path: "./generators/generate_pod.py"
@@ -71,7 +74,14 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - src/infrahub_solution_ai_dc/sorting.py
+        - src/infrahub_solution_ai_dc/addressing.py
+        - src/infrahub_solution_ai_dc/cabling.py
+        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/overlay.py
+        - src/infrahub_solution_ai_dc/protocols.py
+        - src/infrahub_solution_ai_dc/vendors.py
+        - src/infrahub_solution_ai_dc/pod_generator_query.py
 
   - name: generate-rack
     file_path: "./generators/generate_rack.py"
@@ -85,7 +95,13 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - src/infrahub_solution_ai_dc/sorting.py
+        - src/infrahub_solution_ai_dc/addressing.py
+        - src/infrahub_solution_ai_dc/cabling.py
+        - src/infrahub_solution_ai_dc/overlay.py
+        - src/infrahub_solution_ai_dc/protocols.py
+        - src/infrahub_solution_ai_dc/vendors.py
+        - src/infrahub_solution_ai_dc/rack_generator_query.py
 
   - name: generate-tenant
     file_path: "./generators/generate_tenant.py"
@@ -99,7 +115,10 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/overlay.py
+        - src/infrahub_solution_ai_dc/protocols.py
+        - src/infrahub_solution_ai_dc/generate_tenant_query.py
 
   - name: generate-server
     file_path: "./generators/generate_server.py"
@@ -113,7 +132,12 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - src/infrahub_solution_ai_dc/addressing.py
+        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/protocols.py
+        - src/infrahub_solution_ai_dc/server.py
+        - src/infrahub_solution_ai_dc/generate_server_query.py
+
 
 jinja2_transforms:
   - name: cisco_device_startup_config
@@ -136,7 +160,11 @@ jinja2_transforms:
 python_transforms:
   - name: computed_interface_description
     class_name: ComputedInterfaceDescription
-    file_path: "./transforms/computed_interface_description.py"
+    file_path: ./transforms/computed_interface_description.py
+    watch:
+      files:
+        - ./transforms/computed_interface_description_query.py
+
   - name: cabling_plan
     class_name: CablingPlan
     file_path: "./transforms/cabling_plan.py"
@@ -146,7 +174,9 @@ python_transforms:
     # imports only its sibling query model, already inside ./transforms.
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - ./transforms/fabric_cabling_plan_query.py
+        - src/infrahub_solution_ai_dc/protocols.py
+
   - name: cilium_manifest
     class_name: CiliumManifest
     file_path: "./transforms/cilium_manifest.py"
@@ -155,7 +185,8 @@ python_transforms:
     # src/. Without this entry a change to that module would not re-render the manifest.
     watch:
       files:
-        - src/infrahub_solution_ai_dc/
+        - ./transforms/cilium_manifest_query.py
+        - src/infrahub_solution_ai_dc/clusters.py
 
 artifact_definitions:
   - name: "cisco_startup_configuration"
