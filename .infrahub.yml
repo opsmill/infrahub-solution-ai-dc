@@ -163,7 +163,7 @@ python_transforms:
     file_path: ./transforms/computed_interface_description.py
     watch:
       files:
-          - ./transforms/computed_interface_description_query.py
+        - ./transforms/computed_interface_description_query.py
 
   - name: cabling_plan
     class_name: CablingPlan
