@@ -148,6 +148,10 @@ jobs:
     needs: ["files-changed", "python-lint", "yaml-lint", "markdown-lint", "unit-test"]
     runs-on:
       group: "huge-runners"
+    # Three of the four integration classes drive the full fabric -> pod -> rack cascade, because the
+    # overlay and server-service assertions need real leaf devices (they were skipped outright before).
+    # Measured on an idle 8-core host the full suite takes ~35 min (1.10.6 34:47, 1.11.0b2 36:36); a
+    # shared runner has less headroom than that, hence the margin.
     timeout-minutes: ${{ needs.files-changed.outputs.run_full == 'true' && 240 || 120 }}
     env:
       INFRAHUB_DB_TYPE: neo4j
