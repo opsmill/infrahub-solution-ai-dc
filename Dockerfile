@@ -1,5 +1,6 @@
 ARG INFRAHUB_BASE_IMAGE=registry.opsmill.io/opsmill/infrahub
-ARG INFRAHUB_BASE_VERSION=1.11.0b2
+# No default on purpose: `inv build` passes the version derived from the installed infrahub-testcontainers.
+ARG INFRAHUB_BASE_VERSION
 FROM ${INFRAHUB_BASE_IMAGE}:${INFRAHUB_BASE_VERSION}
 
 # The Enterprise image runs as the unprivileged `infrahub` user over a root-owned /.venv, so the sync

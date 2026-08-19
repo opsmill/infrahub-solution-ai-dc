@@ -143,6 +143,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Secret files — defense-in-depth against accidentally committing credentials
+*.pem
+*.key
+credentials.json
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -232,4 +237,7 @@ Temporary Items
 .envrc
 
 docs/node_modules/
+# spec-kit scaffolding: per-feature state and its caches are local, not repository state
 .specify/feature.json
+.specify/**/.cache/
+

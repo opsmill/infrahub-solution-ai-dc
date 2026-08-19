@@ -5,12 +5,18 @@ from time import sleep
 import httpx
 from invoke import Context, Exit, task
 
+try:
+    from infrahub_testcontainers import __version__ as _testcontainers_version
+except ImportError:  # pragma: no cover
+    _testcontainers_version = ""
+
 # If no version is indicated, we will take the latest
 VERSION = os.getenv("VERSION", None)
 CURRENT_DIRECTORY = Path(__file__).resolve()
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
 COMPOSE_FILE = MAIN_DIRECTORY_PATH / "docker-compose.yml"
+DOCUMENTATION_DIRECTORY = MAIN_DIRECTORY_PATH / "docs"
 
 COMMUNITY = "community"
 ENTERPRISE = "enterprise"
@@ -34,6 +40,14 @@ EDITIONS = {
 }
 
 
+def _derived_base_version() -> str:
+    """Return the Infrahub version to build and run against, from the installed testcontainers."""
+    if not _testcontainers_version:
+        msg = "infrahub-testcontainers is not installed; run `uv sync` before using the docker tasks"
+        raise RuntimeError(msg)
+    return _testcontainers_version
+
+
 def resolve_edition(edition: str = "") -> str:
     """Return the Infrahub edition to operate on, from an explicit value or INFRAHUB_EDITION."""
     resolved = edition or os.getenv("INFRAHUB_EDITION") or COMMUNITY
@@ -45,11 +59,18 @@ def resolve_edition(edition: str = "") -> str:
 
 
 def compose_env(edition: str) -> dict[str, str]:
-    """Return the image variables docker-compose.override.yml and the Dockerfile read for an edition."""
+    """Return the image variables docker-compose.override.yml and the Dockerfile read for an edition.
+
+    The version is one of them, and is passed explicitly rather than left in the ambient environment:
+    both the compose override and the Dockerfile fail hard without it, so it belongs with the other
+    image variables where it can be seen. An explicit ``INFRAHUB_BASE_VERSION`` still wins, which is
+    how CI pins a build to a version other than the installed one.
+    """
     return {
         "INFRAHUB_BASE_IMAGE": EDITIONS[edition]["base_image"],
         "INFRAHUB_SOLUTION_IMAGE": EDITIONS[edition]["solution_image"],
         "INFRAHUB_IMAGE_USER": EDITIONS[edition]["image_user"],
+        "INFRAHUB_BASE_VERSION": os.environ.get("INFRAHUB_BASE_VERSION") or _derived_base_version(),
     }
 
 
@@ -163,12 +184,39 @@ def load_schema(ctx: Context) -> None:
     ctx.run("infrahubctl schema load schemas", pty=True)
 
 
+@task(name="test-unit")
+def test_unit(ctx: Context) -> None:
+    """Run every test that needs no Infrahub deployment."""
+    for cmd in ("pytest tests/unit", "pytest tests/integration -m offline"):
+        ctx.run(cmd, pty=True)
+
+
+@task(
+    name="test-integration",
+    help={"tier": "core (default) runs everything but the extended tier; full runs all of it."},
+)
+def test_integration(ctx: Context, tier: str = "core") -> None:
+    """Run the integration suite against a throwaway Infrahub deployment."""
+    if tier not in {"core", "full"}:
+        message = f"tier must be 'core' or 'full', got {tier!r}"
+        raise Exit(message)
+    marker = "" if tier == "full" else ' -m "not extended"'
+    ctx.run(f"pytest tests/integration{marker}", pty=True)
+
+
 @task
 def test(ctx: Context) -> None:
     """
     Run tests using pytest.
     """
     ctx.run("pytest tests", pty=True)
+
+
+@task(name="docs")
+def docs_build(ctx: Context) -> None:
+    """Build the documentation website."""
+    with ctx.cd(DOCUMENTATION_DIRECTORY):
+        ctx.run("pnpm run build", pty=True)
 
 
 @task(
@@ -230,11 +278,12 @@ def lint_mypy(ctx: Context) -> None:
 
 @task
 def lint_ruff(ctx: Context) -> None:
-    """Run Linter to check all Python files."""
+    """Run Linter to check all Python files; both invocations, since ``ruff check`` skips formatting."""
     print(" - Check code with ruff")
-    exec_cmd = "ruff check ."
+    exec_cmds = ["ruff format --check --diff .", "ruff check ."]
     with ctx.cd(MAIN_DIRECTORY_PATH):
-        ctx.run(exec_cmd, pty=True)
+        for exec_cmd in exec_cmds:
+            ctx.run(exec_cmd, pty=True)
 
 
 @task

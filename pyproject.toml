@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Infrahub Solution AI DC"
 readme = "README.md"
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.11, <3.15"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "httpx>=0.28.1",
 ]
@@ -12,19 +12,27 @@ dependencies = [
 [dependency-groups]
 dev = [
     "infrahub-sdk[all]>=1.23.0",
+    # Also selects the base image `inv build` builds FROM, via tasks.py.
     "infrahub-testcontainers>=1.11.0",
     "invoke>=2.2.0",
-    "mypy>=1.17.1",
+    "mypy>=2.3.1",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
-    "ruff>=0.12.0",
-    "rumdl>=0.1.20",
+    # Capped by ariadne-codegen (via infrahub-sdk[all]), which requires ruff>=0.15.0,<0.16.0.
+    "ruff>=0.15.0,<0.16.0",
+    "rumdl>=0.2.55",
     "yamllint>=1.37.1",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "core: workflows every pull request must keep working. Run with `-m 'not extended'`.",
+    "extended: asserts behaviour that does not work yet, so it cannot tell a pull request anything. Adds ~10 minutes.",
+    "offline: an integration-suite test that reads only repository files and needs no deployment.",
+]
 
 [tool.mypy]
 pretty = true
@@ -63,6 +71,8 @@ exclude = [
     "build",
     "dist",
     "examples",
+    "specs",
+    "scratchpad",
 ]
 
 
@@ -109,7 +119,7 @@ max-line-length = 150
 max-complexity = 17
 
 
-[tool.rumdl]
+[tool.rumdl.global]
 disable = ["MD013", "MD025", "MD029", "MD033", "MD036", "MD041"]
 exclude = [
     ".agents/",  # installed skills are vendored from upstream skill repos; lint upstream
@@ -125,8 +135,9 @@ exclude = [
     "docs/node_modules/",
     "docs/README.md",
     "node_modules/",
+    "scratchpad/",
 ]
-respect_gitignore = true
+respect-gitignore = true
 
 [build-system]
 requires = ["hatchling"]

@@ -23,9 +23,14 @@ inv load                        # Full load: schema → menu → objects → rep
 inv load-schema                 # Load schemas only
 inv load-menu                   # Load menus only
 
-inv lint                        # Run all linters (yamllint, ruff, mypy)
+inv lint                        # Run all linters (rumdl, yamllint, ruff, mypy) — mirrors CI
+inv lint-ruff / lint-mypy       # The two python-lint gate steps, separately
+inv lint-yaml / lint-markdown   # The yaml-lint and markdown-lint gates
 inv format                      # Format with ruff
-inv test                        # Run pytest
+
+inv test-unit                   # Everything that needs no deployment — the fast gate
+inv test-integration            # --tier=core (default) or --tier=full
+inv test                        # Run pytest over everything
 ```
 
 Run a single test: `pytest tests/unit/test_computed_attribute.py`
@@ -63,6 +68,12 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 - `cilium_manifest.py` — `CiliumManifest` (`InfrahubTransform`): renders a Kubernetes cluster's Cilium BGP manifest as multi-document YAML — one `CiliumBGPClusterConfig` per eligible L3 member plus one shared `CiliumBGPPeerConfig` and `CiliumBGPAdvertisement`. Selection and ordering live in `clusters.py`; this only maps to Cilium field names. `.infrahub.yml` wires it to an `application/yaml` artifact (`Cilium BGP Manifest`) targeting the `kubernetes_clusters` group.
 - `templates/startup_config_{cisco,arista,dell,juniper}.j2` — Per-vendor Jinja2 templates for device startup configs. `.infrahub.yml` wires one Jinja2 transform and one artifact definition per vendor, each targeting the matching `{vendor}_devices` group.
 
+### Tests (`tests/`)
+
+- `unit/` — pure-Python tests, no containers; the fast gate.
+- `integration/` — four classes, each spinning its own Infrahub stack via `infrahub-testcontainers`; expect ~35 min for the full suite.
+- `integration/stack_config.py` — resolves the stack image and tag from the environment and the installed `infrahub-testcontainers`.
+
 ### Data Files
 
 - `schemas/` — Infrahub schema definitions (YAML), including `overlay.yml` (Tenant/VRF/Segment), `routing.yml` (BGP sessions) and `kubernetes.yml` (Kubernetes cluster)
@@ -89,7 +100,7 @@ run a mixed stack when it does not match.
 - `.claude/skills` — committed symlink view of `.agents/skills` for Claude Code discovery
 - `.mcp.json` — committed MCP client config for the `infrahub-mcp` sidecar in `docker-compose.override.yml`: how agents reach live Infrahub data (`mcp__infrahub__*` tools; token from `INFRAHUB_API_TOKEN`)
 - `.specify/` — spec-kit workflow engine (constitution, templates, scripts)
-- `dev/` — human-facing reference: `adr/` (MADR decision records), `guides/`, `guidelines/`, `knowledge/`
+- `dev/` — human-facing reference: `adr/` (MADR decision records), `guides/`, `guidelines/`, `knowledge/`.
 
 ## Code Style
 

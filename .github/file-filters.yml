@@ -14,6 +14,10 @@ doc_files: &doc_files
 python_all: &python_all
   - "**/*.py"
 
+dependencies: &dependencies
+  - "pyproject.toml"
+  - "uv.lock"
+
 yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
 
@@ -23,3 +27,6 @@ markdown_all: &markdown_all
 documentation_all:
   - *doc_files
   - *markdown_all
+
+dependencies_all:
+  - *dependencies
