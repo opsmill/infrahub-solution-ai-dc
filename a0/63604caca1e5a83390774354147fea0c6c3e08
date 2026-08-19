@@ -1,0 +1,169 @@
+.github/CODEOWNERS
+  s_76eb8ceb8ce283::t_a896eb149ef92f 1-3
+tests/unit/test_perf_recorder.py
+  s_76eb8ceb8ce283::t_b30545b0582adf 1-152
+tests/integration/test_infrahub.py
+  s_76eb8ceb8ce283::t_69753c5fc7582a 32,38
+tests/integration/conftest.py
+  s_76eb8ceb8ce283::t_bf6e98de4ec279 8-10,46,48,67,70-76,99-107,109-113
+  s_29d7fee1f52159::t_750dd6e98d3ed9 43,45
+  s_76eb8ceb8ce283::t_1ceebb7463bcb6 11-12,16-19,21-38,41-42,44,49-53,55-56,58,77-87,98,108
+  s_76eb8ceb8ce283::t_2158154cdfa881 88
+  s_76eb8ceb8ce283::t_d75625dc427117 68-69
+  s_29d7fee1f52159::t_c151f8e183e592 47
+.github/workflows/ci.yml
+  s_c61e7f2a6f8b30::t_00efd698d9322c 4-8,14-26,48,60-67,69-73,75-79,89-90,97,100-102,118,130-137,139,151,160-161,164,170-175,179-180,182-185,193,196-198,202-239,241-252,255,258,284,293
+  s_9f13e63abe5a47::t_6edb2f0f23dd87 140
+  s_76eb8ceb8ce283::t_1d0aba000270ae 46-47,51,58-59,68,74,82,93,104,106,114,121,129,141-149,152-156,159,167,187,192,266,270,273,287,302
+tests/integration/stack_config.py
+  s_76eb8ceb8ce283::t_cee16fa2b51d48 1-170
+Dockerfile
+  s_76eb8ceb8ce283::t_c2129461eb3308 1-6
+.github/workflows/update-infrahub.yml
+  s_c61e7f2a6f8b30::t_773eb397acbb5f 3,6-8,15-18,24,27-28,30-32,44-48,53-56,58-67,69-110,112,115-133,144,146-147,155,159-161,165-166,173-180,182-190,192-197,199-206,208-213,216,218,221-224,226,228-246,248,251,261,263,265,267-272,274-278,280
+  s_76eb8ceb8ce283::t_ff231a3c1d7383 1-2,4-5,9-14,19-23,25-26,29,33-43,49-52,57,68,111,113-114,134-143,145,148-154,156-158,162-164,167-172,181,191,198,207,214-215,217,219-220,225,227,247,249-250,252-260,262,264,266,273,279,281-283
+.github/file-filters.yml
+  s_76eb8ceb8ce283::t_a896eb149ef92f 17-22,32-34
+tests/integration/repo_source.py
+  s_76eb8ceb8ce283::t_4ec21af9c9a54e 1-116
+LICENSE
+  s_76eb8ceb8ce283::t_10e9bcfd03de0f 1-201
+dev/compare_versions.sh
+  s_76eb8ceb8ce283::t_66e21d96b38067 1-66
+.gitignore
+  s_c61e7f2a6f8b30::t_a14d78af7cd50e 240,242
+  s_c61e7f2a6f8b30::t_a879953b639e23 243-246
+  s_76eb8ceb8ce283::t_8a7cb308a82398 146-150
+AGENTS.md
+  s_c61e7f2a6f8b30::t_d31f4f3dbed02b 27-28,30-36,41-54
+  s_c61e7f2a6f8b30::t_605ba1466e2ae0 26,88-104,121-124
+.github/dependabot.yml
+  s_76eb8ceb8ce283::t_a896eb149ef92f 1-52
+dev/guides/compare-infrahub-versions.md
+  s_76eb8ceb8ce283::t_8bf1bd975c1352 1-198
+.infrahub.yml
+  s_76eb8ceb8ce283::t_efce6cc74c0af8 60-63,77-84,98-104,118-121,135-140,163-167,177-179,188-189
+uv.lock
+  s_76eb8ceb8ce283::t_acd7292659c72b 573
+  s_76eb8ceb8ce283::t_bd11817b1ea866 574
+tasks.py
+  s_76eb8ceb8ce283::t_dcff9353461f1e 121-125
+  s_76eb8ceb8ce283::t_f3997c79096a66 6-11,18-38,118-120,126-134,139-142,151-153,158-210,264-274,276
+  s_76eb8ceb8ce283::t_c718c3377f7ef2 278-279
+  s_76eb8ceb8ce283::t_dd8cc30dff8a58 135-138
+  s_76eb8ceb8ce283::t_a896eb149ef92f 154-157
+tests/perf.py
+  s_76eb8ceb8ce283::t_e3356012c9d294 1-140
+tests/integration/test_server_service.py
+  s_76eb8ceb8ce283::t_7a3c771ab30a54 1-26,31,35,50-58,65-66,69-73,76-77,82,87-175,178-180,184,192,202,204,207,211,222-247,249-262,264-266,270,276,278,283,286,294,301-321,324-330,334,336-338,340-364,366,370,372-373,375-377,382,389-391,395,398-408,412,414-415,417-418,422,425-429,432-433,436-439,442-443,446-454,457,459-461,463-464,468,471-473,477-491,496-540
+tests/integration/test_stack_config.py
+  s_76eb8ceb8ce283::t_dcff9353461f1e 1-121,123-136
+docker-compose.yml
+  s_76eb8ceb8ce283::t_616fb1c489cf88 270,303,349
+.github/workflows/sync-docs.yml
+  s_76eb8ceb8ce283::t_d4bf23b5c9f056 16-18
+dev/knowledge/generator-cascade-troubleshooting.md
+  s_76eb8ceb8ce283::t_df59583b85efcc 1-122
+tests/unit/test_repo_source.py
+  s_76eb8ceb8ce283::t_786d2f0d1601c2 1-152
+docker-compose.override.yml
+  s_76eb8ceb8ce283::t_d7653b832947f0 3,18
+pyproject.toml
+  s_c61e7f2a6f8b30::t_b7df7e55e59569 7,21-22,24-28,158,174,176
+  s_76eb8ceb8ce283::t_1e76b76c4f81f7 98-105
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 14-20
+  s_76eb8ceb8ce283::t_6584c0b6106cb6 33-38
+  s_c61e7f2a6f8b30::t_1778d6d331e03c 30,39,141-146
+  s_76eb8ceb8ce283::t_64c8fa35a3c429 46-59
+docs/docs/solution-ai-dc/demo-guide.mdx
+  s_76eb8ceb8ce283::t_a2491e6e5c049f 62,69-70,72-75,87,95,217
+tests/conftest.py
+  s_76eb8ceb8ce283::t_8067a565127c23 31-36,58-60,62-72,80-86
+  s_29d7fee1f52159::t_aa8fb0472bec4c 1-2,12-30,73-79
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 3-11,37-57,61
+triggers.yml
+  s_76eb8ceb8ce283::t_6caa9eaba22d7c 15-18,93-105,117-133
+tests/integration/test_overlay_daytwo.py
+  s_76eb8ceb8ce283::t_3c4d01c0d05350 3-25,37-45,51,54-55,63-90,93-95,99,107,117,119,122,133-193,195,198-202,204-208,210-211,218,220-228,231-252
+README.md
+  s_76eb8ceb8ce283::t_4cd1247d83cb48 60-63,154
+dev/compare_runs.py
+  s_76eb8ceb8ce283::t_da712ec0ec5835 1-185
+tests/integration/cascade.py
+  s_76eb8ceb8ce283::t_64d44afe48e965 1-257
+tests/integration/test_generator_chain.py
+  s_29d7fee1f52159::t_0d8e4de373fcce 625-626
+  s_29d7fee1f52159::t_560387c23ba90c 664,701
+  s_76eb8ceb8ce283::t_9dc367f1cd1282 54-67,680
+  s_29d7fee1f52159::t_36559408e5f6db 366,524-534,536-551
+  s_29d7fee1f52159::t_42eb84f4774b1e 615
+  s_29d7fee1f52159::t_4d041b0e5da1d2 1-33,35-41,73-86,104-147,149-150,153-154,158-184,186-187,189-190,192-193,195-199,201-209,212,215-216,218-222,224-232,245,254-261,264-265,275,284-299,316,318-319,321-323,325-326,328-330,332-345,351,394,397-402,627-629,652-657,659-663,665-667,669-676,686,688-694,696-700,702
+  s_29d7fee1f52159::t_5ee94851916e84 72
+  s_29d7fee1f52159::t_e28c7a6f785a28 51-53,68-70
+  s_29d7fee1f52159::t_e1e5f3d21c3fb6 34,87-103,151-152,157,233,236-244,246-253,262,266-274,276-283,300-315,352-359,375-383,385,388-389,443,458-470,474,478-487,489-523,535,630-651,684
+  s_76eb8ceb8ce283::t_94c77d6270fcd6 668
+  s_29d7fee1f52159::t_d90d6ae50e0cbb 677-679,681-683
+  s_29d7fee1f52159::t_8d8564dde72578 331
+  s_29d7fee1f52159::t_42b7571b46d470 347-348,350,362-365,367-374,384,386-387,390-393
+  s_29d7fee1f52159::t_e06f128fedeb6e 425-441,444-457,471-473,475-477,488
+  s_29d7fee1f52159::t_ec933a00eacb08 403-424,442,552-579,582-614
+  s_29d7fee1f52159::t_4927a820ce5cea 580-581
+  s_29d7fee1f52159::t_407215176b6f7e 42-49,71
+  s_29d7fee1f52159::t_ef40f5e6bc6d46 50,148,155-156,185,188,191,194,200,210-211,213-214,217,223,234-235,263,317,320,324,327,346,349,360-361,395-396,616-624,658,685,687,695
+scratchpad/1.11-regression-report.md
+  s_4ca0ac8c7d6269::t_0c76e8fc1483e5 1-188
+scratchpad/1.11-upstream-fixes.md
+  s_4ca0ac8c7d6269::t_136ac41624ec35 1-157
+scratchpad/brief-1-crash-zombie-flows.md
+  s_4ca0ac8c7d6269::t_688ca0e1923d37 1-146
+scratchpad/brief-2-generator-reaper-delete.md
+  s_4ca0ac8c7d6269::t_a7afaa311854df 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a063604caca1e5a83390774354147fea0c6c3e08",
+  "prompts": {},
+  "sessions": {
+    "s_29d7fee1f52159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbc3dadb-d6ec-44d3-9ec7-aa434538cf07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_4ca0ac8c7d6269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5765a44b-75d3-4510-86dc-8cafc763a8c6",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_76eb8ceb8ce283": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e1fa29a-3280-4afc-9931-a006e92d87c7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_9f13e63abe5a47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-arefresh-ai-dc-6f9b94aad6f3433f",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
