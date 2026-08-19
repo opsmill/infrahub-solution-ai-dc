@@ -502,7 +502,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.28.1" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.23.0b0" },
-    { name = "infrahub-testcontainers", specifier = ">=1.11.0b0" },
+    { name = "infrahub-testcontainers", specifier = "==1.10.9" },
     { name = "invoke", specifier = ">=2.2.0" },
     { name = "mypy", specifier = ">=1.17.1" },
     { name = "pytest", specifier = ">=8.4.1" },
@@ -514,7 +514,7 @@ dev = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.11.0b0"
+version = "1.10.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -524,9 +524,9 @@ dependencies = [
     { name = "pytest" },
     { name = "testcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/14/c3213a631b87239358d31bf4356ddb5ef26054a343529ce950977c5bd56b/infrahub_testcontainers-1.11.0b0.tar.gz", hash = "sha256:f02d66b3150e485d86ebc353795399546785f994465dfe754f6fd2ab9ca9ba33", size = 19045, upload-time = "2026-07-29T08:32:08.192Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/76/3a3acce34e0f21b3b74fa581a6daace03f596a50adea7df6d02934ab5366/infrahub_testcontainers-1.10.9.tar.gz", hash = "sha256:fd4eeaa1ebd9bed6dcb2803e9e4122c7f3d2c05399eea9f92ab9d1f56c9ca53b", size = 18988, upload-time = "2026-08-19T14:17:34.052Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/5e/f707fd5752e8a14cdee2454b2815c35365c36e125a64f6d6d3b98c83e156/infrahub_testcontainers-1.11.0b0-py3-none-any.whl", hash = "sha256:eecb2bc182cdb349df15ba20e3116bdc7a48759e2b211cb3886a20b9033daac4", size = 25047, upload-time = "2026-07-29T08:32:07.166Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/47/7a584d1dbd60877d4265c6d966ac25ed5e1f490fe12c8962c802a798bafa/infrahub_testcontainers-1.10.9-py3-none-any.whl", hash = "sha256:09472b951aabd720d19bb6e1b9b0518d5768deecce54de42c136d1d4e1c683c7", size = 25417, upload-time = "2026-08-19T14:17:35.175Z" },
 ]
 
 [[package]]

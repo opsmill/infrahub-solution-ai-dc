@@ -19,7 +19,7 @@ dev = [
     # been valid since 1.22 (f610287). The floor also matches infrahub-testcontainers below, which
     # ships the 1.11 stack.
     "infrahub-sdk[all]>=1.23.0b0",
-    "infrahub-testcontainers>=1.11.0b0",
+    "infrahub-testcontainers==1.10.9",
     "invoke>=2.2.0",
     "mypy>=1.17.1",
     "pytest>=8.4.1",
