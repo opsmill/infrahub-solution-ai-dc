@@ -1,0 +1,25 @@
+scratchpad/1.11-regression-report.md
+  s_c61e7f2a6f8b30::t_5cafcc6c23650c 1-188
+scratchpad/1.11-upstream-fixes.md
+  s_c61e7f2a6f8b30::t_23035cab014237 1-157
+scratchpad/brief-1-crash-zombie-flows.md
+  s_c61e7f2a6f8b30::t_6b766c5586cd98 1-146
+scratchpad/brief-2-generator-reaper-delete.md
+  s_c61e7f2a6f8b30::t_c81bebb5e18fcf 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ed6b6660f3c202b0689b4c674939474290e54aed",
+  "prompts": {},
+  "sessions": {
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
