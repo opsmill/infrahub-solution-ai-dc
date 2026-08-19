@@ -1,0 +1,45 @@
+dev/guides/compare-infrahub-versions.md
+  s_c61e7f2a6f8b30::t_5205e1443fc43c 1-198
+tests/integration/repo_source.py
+  s_c61e7f2a6f8b30::t_6978b6c5bc6707 1-116
+scratchpad/brief-1-crash-zombie-flows.md
+  s_c61e7f2a6f8b30::t_4c37b7fd413c02 1-146
+tests/unit/test_repo_source.py
+  s_c61e7f2a6f8b30::t_9ed6ace629fccc 1-152
+scratchpad/1.11-regression-report.md
+  s_c61e7f2a6f8b30::t_2c53abdab3d1c1 1-188
+scratchpad/1.11-upstream-fixes.md
+  s_c61e7f2a6f8b30::t_1658c8255d8891 1-157
+tests/perf.py
+  s_c61e7f2a6f8b30::t_050453cc0a9872 1-140
+scratchpad/brief-2-generator-reaper-delete.md
+  s_c61e7f2a6f8b30::t_b6ff030d7e81ed 1-136
+dev/compare_runs.py
+  s_c61e7f2a6f8b30::t_3ba967d91b3dd8 1-185
+tests/unit/test_perf_recorder.py
+  s_c61e7f2a6f8b30::t_ae904ac4fb0609 1-152
+tests/integration/cascade.py
+  s_c61e7f2a6f8b30::t_c717202a4922cd 1-257
+dev/knowledge/generator-cascade-troubleshooting.md
+  s_c61e7f2a6f8b30::t_0e16f3c7d91488 1-122
+dev/compare_versions.sh
+  s_c61e7f2a6f8b30::t_fb23bf7b3cf7db 1-66
+triggers.yml
+  s_c61e7f2a6f8b30::t_d58a39eb63daff 15-18,93-105,117-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "45144b59a970cff78cb8f19fc1f68cdedc519373",
+  "prompts": {},
+  "sessions": {
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
