@@ -146,6 +146,7 @@ nodes:
     human_friendly_id:
       - device__hostname__value
       - name__value
+    display_label: "{{ device__hostname__value }} - {{ name__value }}"
     order_by: ["index__value"]
     include_in_menu: false
     attributes:
