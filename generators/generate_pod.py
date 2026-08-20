@@ -11,10 +11,13 @@ from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_inte
 from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.query import only_node, value_of
 from infrahub_solution_ai_dc.sorting import interface_ordering
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
-from .pod_generator_query import PodGeneratorQuery
+from .pod_generator_query import (
+    PodGeneratorQuery,
+)
 
 if TYPE_CHECKING:
     from infrahub_solution_ai_dc.sorting import InterfaceOrdering
@@ -49,22 +52,37 @@ class PodGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         parsed = PodGeneratorQuery(**data)
-        pod = parsed.network_pod.edges[0].node
-        assert pod is not None
+        pod = only_node(parsed.network_pod.edges, of="the pod this generator was dispatched for")
 
-        self.pod_id: str = pod.id
-        self.pod_index: int = pod.index.value  # type: ignore[union-attr, assignment]
-        self.pod_name: str = pod.name.value.lower()  # type: ignore[union-attr, assignment]
-        self.pod_role: str = pod.role.value  # type: ignore[union-attr, assignment]
-        self.pod_spine_switch_template: str | None = (
-            pod.spine_switch_template.node.id  # type: ignore[union-attr]
-            if pod.spine_switch_template.node  # type: ignore[union-attr]
-            else None
+        self.pod_id = pod.id
+        label = f"pod {pod.id}"
+        self.pod_index = value_of(pod.index, field="index", of=label)
+        self.pod_name = value_of(pod.name, field="name", of=label).lower()
+        self.pod_role = value_of(pod.role, field="role", of=label)
+        # Optional on purpose: a pod with no spine template is reported below, after the role filter,
+        # so an unmanaged pod is skipped rather than rejected.
+        template = pod.spine_switch_template.node if pod.spine_switch_template else None
+        self.pod_spine_switch_template = template.id if template else None
+        self.amount_of_spines = value_of(pod.amount_of_spines, field="amount_of_spines", of=label)
+
+        # ``parent`` is a discriminated union (a building block or a fabric); only a fabric carries the
+        # attributes below, and the previous `type: ignore[union-attr]` asserted that silently.
+        # Read without the helpers: ``parent`` is a discriminated union (a building block or a
+        # fabric) and only the fabric arm carries the attributes below. The previous
+        # `type: ignore[union-attr]` asserted that silently; narrowing on the discriminator says it.
+        fabric_node = pod.parent.node
+        if fabric_node is None:
+            msg = f"Cannot read the parent of {label}: the query returned no related node for it"
+            raise ValueError(msg)
+        if fabric_node.typename__ != "NetworkFabric":
+            msg = f"Cannot read the fabric of {label}: its parent is a {fabric_node.typename__}, not a NetworkFabric"
+            raise ValueError(msg)
+        self.fabric_id = fabric_node.id
+        fabric_label = f"fabric of {label}"
+        self.fabric_name = value_of(fabric_node.name, field="name", of=fabric_label).lower()
+        self.fabric_amount_of_super_spines = value_of(
+            fabric_node.amount_of_super_spines, field="amount_of_super_spines", of=fabric_label
         )
-        self.fabric_id: str = pod.parent.node.id  # type: ignore[union-attr, assignment]
-        self.fabric_name: str = pod.parent.node.name.value.lower()  # type: ignore[union-attr, assignment]
-        self.amount_of_spines: int = pod.amount_of_spines.value  # type: ignore[union-attr, assignment]
-        self.fabric_amount_of_super_spines: int = pod.parent.node.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
 
         self.spine_switches = []
 
@@ -87,11 +105,11 @@ class PodGenerator(InfrahubGenerator):
 
         fabric = f"fabric {self.fabric_name}-{self.fabric_id}"
         self.fabric_interface_sorting_function = interface_ordering(
-            pod.parent.node.fabric_interface_sorting_method.value,  # type: ignore[union-attr]
+            fabric_node.fabric_interface_sorting_method.value if fabric_node.fabric_interface_sorting_method else None,
             design_object=fabric,
         )
         self.spine_interface_sorting_function = interface_ordering(
-            pod.parent.node.spine_interface_sorting_method.value,  # type: ignore[union-attr]
+            fabric_node.spine_interface_sorting_method.value if fabric_node.spine_interface_sorting_method else None,
             design_object=fabric,
         )
 

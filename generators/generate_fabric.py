@@ -7,6 +7,7 @@ from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumb
 
 from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.query import only_node, related_id, value_of
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .fabric_generator_query import FabricGeneratorQuery
@@ -29,13 +30,15 @@ class FabricGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         parsed = FabricGeneratorQuery(**data)
-        fabric = parsed.network_fabric.edges[0].node
-        assert fabric is not None
+        fabric = only_node(parsed.network_fabric.edges, of="the fabric this generator was dispatched for")
 
-        self.fabric_name = fabric.name.value.lower()  # type: ignore[union-attr]
         self.fabric_id = fabric.id
-        self.fabric_super_spine_switch_template = fabric.super_spine_switch_template.node.id  # type: ignore[union-attr, assignment]
-        self.amount_of_super_spines = fabric.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
+        label = f"fabric {fabric.id}"
+        self.fabric_name = value_of(fabric.name, field="name", of=label).lower()
+        self.fabric_super_spine_switch_template = related_id(
+            fabric.super_spine_switch_template, field="super_spine_switch_template", of=label
+        )
+        self.amount_of_super_spines = value_of(fabric.amount_of_super_spines, field="amount_of_super_spines", of=label)
         self.super_spine_switches = []
 
         self.vendor_group = await vendor_group_for_template(self.client, self.fabric_super_spine_switch_template)
