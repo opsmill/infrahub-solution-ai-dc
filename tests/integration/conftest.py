@@ -20,7 +20,7 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 #    declares ``task-manager-background-svc`` with ``replicas: 0`` and nothing depends on it, so
 #    scheduling one replica is a harmless workaround. Drop it once Compose ships the fix.
 TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
-TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.11.0b0")
+TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.11.0")
 
 os.environ.setdefault("INFRAHUB_TESTING_DOCKER_IMAGE", TESTING_IMAGE)
 os.environ.setdefault("INFRAHUB_TESTING_IMAGE_VERSION", TESTING_IMAGE_VERSION)
