@@ -80,7 +80,7 @@ Infrahub edition the stack runs. `tasks.py` derives the compose file URL, the ba
 `Dockerfile` extends, the runtime user that image expects, and the name of the image this project
 builds (`opsmill/infrahub-solution-ai-dc` vs `opsmill/infrahub-enterprise-solution-ai-dc`) — the
 compose file and `Dockerfile` only read the variables it exports. Every Compose-driving task also
-accepts `--edition`. `docker-compose.yml` is vendored per edition; the tasks fail loud rather than
+accepts `--edition`. `docker-compose.yml` is committed per edition; the tasks fail loud rather than
 run a mixed stack when it does not match.
 
 ### Agentic Layout

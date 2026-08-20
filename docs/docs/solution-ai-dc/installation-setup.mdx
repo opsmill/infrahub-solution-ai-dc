@@ -293,7 +293,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 
 ### Compose file does not match the edition
 
-- The tasks stop with `docker-compose.yml is the <edition> compose file but the edition is <other>` — the vendored compose file belongs to the other edition
+- The tasks stop with `docker-compose.yml is the <edition> compose file but the edition is <other>` — the committed compose file belongs to the other edition
 - Fetch the matching one: `uv run inv download-compose-file --override`
 - Check which one is on disk: `grep -c infrahub-enterprise docker-compose.yml` returns `0` for Community
 
