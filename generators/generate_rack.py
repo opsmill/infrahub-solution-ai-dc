@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Protocol
 from infrahub_sdk.generator import InfrahubGenerator  # type: ignore[import-not-found]
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: ignore[import-not-found]
 
-from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import (
     assign_ip_addresses_to_p2p_connections,
     assign_vtep_loopback_to_device,
@@ -14,12 +13,13 @@ from infrahub_solution_ai_dc.addressing import (
 from infrahub_solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.sorting import interface_ordering
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .rack_generator_query import RackGeneratorQuery
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from infrahub_solution_ai_dc.sorting import InterfaceOrdering
 
 EXCLUDED_RACK_TYPES: list[str] = []
 
@@ -81,8 +81,8 @@ class RackGenerator(InfrahubGenerator):
     rack_amount_of_leafs: int
     vendor_group: str
 
-    spine_interface_sorting_function: Callable
-    leaf_interface_sorting_function: Callable
+    spine_interface_sorting_function: InterfaceOrdering
+    leaf_interface_sorting_function: InterfaceOrdering
 
     pod_id: str
     pod_index: int
@@ -146,11 +146,15 @@ class RackGenerator(InfrahubGenerator):
             msg = f"Cannot start rack generator on {self.rack_name}-{self.rack_id}: the pod doesn't seem to be fully generated"
             raise RuntimeError(msg)
 
-        leaf_interface_sorting_method: str = rack.pod.node.leaf_interface_sorting_method.value  # type: ignore[union-attr, assignment]
-        spine_interface_sorting_method: str = rack.pod.node.spine_interface_sorting_method.value  # type: ignore[union-attr, assignment]
-
-        self.leaf_interface_sorting_function = getattr(sorting, leaf_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
+        pod = f"pod {self.pod_name}-{self.pod_id}"
+        self.leaf_interface_sorting_function = interface_ordering(
+            rack.pod.node.leaf_interface_sorting_method.value,  # type: ignore[union-attr]
+            design_object=pod,
+        )
+        self.spine_interface_sorting_function = interface_ordering(
+            rack.pod.node.spine_interface_sorting_method.value,  # type: ignore[union-attr]
+            design_object=pod,
+        )
 
         await self.create_leaf_switches()
 

@@ -6,18 +6,18 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.generator import InfrahubGenerator  # type: ignore[import-not-found]
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: ignore[import-not-found]
 
-from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.sorting import interface_ordering
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .pod_generator_query import PodGeneratorQuery
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from infrahub_solution_ai_dc.sorting import InterfaceOrdering
 
 EXCLUDED_POD_ROLES = ["fabric"]
 
@@ -30,8 +30,8 @@ class PodGenerator(InfrahubGenerator):
     pod_role: str
     vendor_group: str
 
-    fabric_interface_sorting_function: Callable
-    spine_interface_sorting_function: Callable
+    fabric_interface_sorting_function: InterfaceOrdering
+    spine_interface_sorting_function: InterfaceOrdering
 
     fabric_id: str
     fabric_name: str
@@ -85,11 +85,15 @@ class PodGenerator(InfrahubGenerator):
             msg = f"Cannot start pod generator on {self.pod_name}-{self.pod_id}: no spine switch template defined!"
             raise RuntimeError(msg)
 
-        fabric_interface_sorting_method: str = pod.parent.node.fabric_interface_sorting_method.value  # type: ignore[union-attr, assignment]
-        spine_interface_sorting_method: str = pod.parent.node.spine_interface_sorting_method.value  # type: ignore[union-attr, assignment]
-
-        self.fabric_interface_sorting_function = getattr(sorting, fabric_interface_sorting_method)
-        self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
+        fabric = f"fabric {self.fabric_name}-{self.fabric_id}"
+        self.fabric_interface_sorting_function = interface_ordering(
+            pod.parent.node.fabric_interface_sorting_method.value,  # type: ignore[union-attr]
+            design_object=fabric,
+        )
+        self.spine_interface_sorting_function = interface_ordering(
+            pod.parent.node.spine_interface_sorting_method.value,  # type: ignore[union-attr]
+            design_object=fabric,
+        )
 
         self.vendor_group = await vendor_group_for_template(self.client, self.pod_spine_switch_template)
 
