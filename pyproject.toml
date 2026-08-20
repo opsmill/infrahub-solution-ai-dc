@@ -91,6 +91,13 @@ ignore = [
 ]
 
 
+[tool.ruff.lint.per-file-ignores]
+# The reclaim rule decides whether tearing a port down is safe, so it carries its own test matrix.
+# Reaching it through `ServerPlacement.resolve` would mean building six full fabric graphs to assert
+# one predicate, so the tests call it directly rather than the rule going public to suit them.
+"tests/unit/test_placement.py" = ["SLF001"]
+
+
 #https://docs.astral.sh/ruff/formatter/black/
 [tool.ruff.format]
 quote-style = "double"
