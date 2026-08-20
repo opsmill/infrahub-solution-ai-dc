@@ -34,7 +34,7 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 
 ### Core Library (`src/infrahub_solution_ai_dc/`)
 
-- `generator.py` — `GeneratorMixin` providing checksum calculation for change detection
+- `checksum.py` — `Checksum`: the digest a generator stamps on a `GeneratorTarget` to drive the next tier. Two id sources (`over_session` / `over_contents`), one stamping rule (write only on change; the caller decides group tracking)
 - `protocols.py` — Auto-generated typed node definitions from Infrahub schemas
 - `cabling.py` — Cabling plan algorithms
 - `addressing.py` — IP addressing utilities
@@ -46,7 +46,7 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 
 ### Generators (`generators/`)
 
-Five generators that create infrastructure objects via `InfrahubGenerator` + `GeneratorMixin`:
+Five generators that create infrastructure objects via `InfrahubGenerator`:
 
 - `generate_fabric.py` — Creates super-spine devices for a fabric; allocates the overlay ASN
 - `generate_pod.py` — Creates spine devices for a pod; materializes iBGP EVPN sessions
@@ -93,8 +93,8 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 
 ## Key Patterns
 
-- Generators inherit `InfrahubGenerator` + `GeneratorMixin`, implement `async def generate(self, data: dict)`
+- Generators inherit `InfrahubGenerator` and implement `async def generate(self, data: dict)`
 - Transforms inherit `InfrahubTransform`, implement `transform()` returning artifact content
-- Checksum calculation uses sorted related object IDs for idempotent change detection
+- Change detection goes through `checksum.Checksum`, never a hand-rolled hash: the digest is order-independent over an id set, and a stamp is written only when it changes (re-stamping an identical value re-fires the generator's own trigger). `RackGenerator` stamps nothing — the rack is the last tier of the cascade
 - GraphQL queries live alongside their Python files as `.gql` files
 - Query response models (`*_query.py`) are generated — do not edit manually

@@ -9,7 +9,7 @@ from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool  # type: 
 from infrahub_solution_ai_dc import sorting
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
 from infrahub_solution_ai_dc.cabling import build_pod_cabling_plan, connect_interface_maps
-from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 EXCLUDED_POD_ROLES = ["fabric"]
 
 
-class PodGenerator(InfrahubGenerator, GeneratorMixin):
+class PodGenerator(InfrahubGenerator):
     pod_id: str
     pod_index: int
     pod_name: str
@@ -312,11 +312,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         )
 
     async def update_checksum(self) -> None:
+        """Drive the rack tier: stamp this run's session checksum on every rack of the pod."""
         racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
-
-        checksum = self.calculate_checksum()
-        for rack in racks:
-            if rack.checksum.value != checksum:
-                rack.checksum.value = checksum
-                await rack.save(allow_upsert=True)
-                self.logger.info(f"Rack {rack.name.value} has been updated to checksum {checksum}")
+        await Checksum.over_session(self.client).stamp_on(racks, logger=self.logger, track=None)

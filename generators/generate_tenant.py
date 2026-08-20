@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPPrefixPool, CoreNumberPool
 
-from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.overlay import resolve_segment_devices, route_target
 from infrahub_solution_ai_dc.protocols import (
     NetworkDevice,
@@ -31,7 +30,7 @@ TENANT_SUBNET_POOL = "TenantSubnetPool"
 GATEWAY_HOST_INDEX = 1  # anycast gateway = .1 of the segment subnet
 
 
-class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
+class OverlayGenerator(InfrahubGenerator):
     """Materialize a tenant's EVPN overlay: allocate VNIs/VLANs/RTs/subnets and place segments on leafs.
 
     Allocates overlay identifiers from Resource Manager pools (guarded "only if unset"), sets generator-owned
@@ -218,14 +217,9 @@ class OverlayGenerator(InfrahubGenerator, GeneratorMixin):
                     self.logger.info(f"Updated segments on {device.hostname.value}: +{len(to_add)} -{len(to_remove)}")
 
     async def update_checksum(self, tenant_segment_ids: set[str]) -> None:
-        """Stamp a content checksum (over the tenant's segment set) on the tenant for change visibility.
+        """Stamp a content checksum over the tenant's segment set, for change visibility.
 
-        Stamped with ``update_group_context=False`` so the tenant is not tracked, and only when it changes so an
-        unchanged re-run is a no-op (no self-retrigger loop).
+        Untracked: the tenant is the operator's design object, not this generator's output.
         """
-        payload = ",".join(sorted(tenant_segment_ids))
-        checksum = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         tenant = await self.client.get(kind=NetworkTenant, id=self.tenant_id)
-        if tenant.checksum.value != checksum:
-            tenant.checksum.value = checksum
-            await tenant.save(allow_upsert=True, update_group_context=False)
+        await Checksum.over_contents(tenant_segment_ids).stamp_on([tenant], logger=self.logger, track=False)
