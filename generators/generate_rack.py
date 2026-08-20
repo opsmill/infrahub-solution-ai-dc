@@ -13,6 +13,7 @@ from infrahub_solution_ai_dc.addressing import (
 from infrahub_solution_ai_dc.cabling import build_rack_cabling_plan, connect_interface_maps
 from infrahub_solution_ai_dc.overlay import rr_client, upsert_evpn_session
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
+from infrahub_solution_ai_dc.query import only_node, related, related_id, value_of
 from infrahub_solution_ai_dc.sorting import interface_ordering
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
@@ -100,34 +101,36 @@ class RackGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         parsed = RackGeneratorQuery(**data)
-        rack = parsed.location_rack.edges[0].node
-        assert rack is not None
+        rack = only_node(parsed.location_rack.edges, of="the rack this generator was dispatched for")
 
-        self.rack_id: str = rack.id
-        self.rack_index: int = rack.index.value  # type: ignore[union-attr, assignment]
-        self.rack_name: str = rack.name.value  # type: ignore[union-attr, assignment]
-        self.rack_type: str = rack.rack_type.value  # type: ignore[union-attr, assignment]
-        self.rack_leaf_switch_template: str = rack.leaf_switch_template.node.id  # type: ignore[union-attr, assignment]
-        self.rack_amount_of_leafs: int = rack.amount_of_leafs.value  # type: ignore[union-attr, assignment]
+        self.rack_id = rack.id
+        label = f"rack {rack.id}"
+        self.rack_index = value_of(rack.index, field="index", of=label)
+        self.rack_name = value_of(rack.name, field="name", of=label)
+        self.rack_type = value_of(rack.rack_type, field="rack_type", of=label)
+        self.rack_leaf_switch_template = related_id(rack.leaf_switch_template, field="leaf_switch_template", of=label)
+        self.rack_amount_of_leafs = value_of(rack.amount_of_leafs, field="amount_of_leafs", of=label)
         self.leaf_switches = []
 
         self.vendor_group = await vendor_group_for_template(self.client, self.rack_leaf_switch_template)
 
-        self.pod_id: str = rack.pod.node.id  # type: ignore[union-attr]
-        self.pod_index: int = rack.pod.node.index.value  # type: ignore[union-attr, assignment]
-        self.pod_name: str = rack.pod.node.name.value.lower()  # type: ignore[union-attr]
-        self.pod_amount_of_spines: int = rack.pod.node.amount_of_spines.value  # type: ignore[union-attr, assignment]
+        pod_node = related(rack.pod, field="pod", of=label)
+        pod_label = f"pod of {label}"
+        self.pod_id = related_id(rack.pod, field="pod", of=label)
+        self.pod_index = value_of(pod_node.index, field="index", of=pod_label)
+        self.pod_name = value_of(pod_node.name, field="name", of=pod_label).lower()
+        self.pod_amount_of_spines = value_of(pod_node.amount_of_spines, field="amount_of_spines", of=pod_label)
 
         # Guarded rather than dereferenced straight through: both pools are allocated by the
         # PodGenerator, so a rack whose pod is still mid-cascade arrives here with them unset.
         self.loopback_pool_id: str = require_pod_pool(
-            rack.pod.node.loopback_pool,  # type: ignore[union-attr]
+            pod_node.loopback_pool,
             pool_name="loopback_pool",
             rack=f"{self.rack_name}-{self.rack_id}",
             pod=self.pod_name,
         )
         self.prefix_pool_id: str = require_pod_pool(
-            rack.pod.node.prefix_pool,  # type: ignore[union-attr]
+            pod_node.prefix_pool,
             pool_name="prefix_pool",
             rack=f"{self.rack_name}-{self.rack_id}",
             pod=self.pod_name,
@@ -148,11 +151,11 @@ class RackGenerator(InfrahubGenerator):
 
         pod = f"pod {self.pod_name}-{self.pod_id}"
         self.leaf_interface_sorting_function = interface_ordering(
-            rack.pod.node.leaf_interface_sorting_method.value,  # type: ignore[union-attr]
+            pod_node.leaf_interface_sorting_method.value if pod_node.leaf_interface_sorting_method else None,
             design_object=pod,
         )
         self.spine_interface_sorting_function = interface_ordering(
-            rack.pod.node.spine_interface_sorting_method.value,  # type: ignore[union-attr]
+            pod_node.spine_interface_sorting_method.value if pod_node.spine_interface_sorting_method else None,
             design_object=pod,
         )
 

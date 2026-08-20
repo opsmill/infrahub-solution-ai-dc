@@ -42,6 +42,8 @@ Run a single test: `pytest tests/unit/test_computed_attribute.py`
 - `overlay.py` — Overlay helpers: route-target/route-reflector logic, iBGP EVPN session upserts, segment-to-leaf placement
 - `servers.py` — Server helpers: least-utilized rack + free-port selection, fail-loud service/placement validation, eBGP (`ipv4_unicast`) session upserts
 - `vendors.py` — Vendor resolution: maps a device's manufacturer to its `{vendor}_devices` group (fail-loud)
+- `placement.py` — `ServerPlacement`: where a server attaches, behind `resolve()` / `release()`. Takes a `PlacementRequest` of plain ids; owns reuse, re-placement, explicit honouring, reclaim and teardown
+- `query.py` — `value_of` / `related` / `related_id` / `only_node`: read a required value out of a parsed query result, failing loud with the design object and field named. Never `assert`
 - `clusters.py` — Cluster peering: turns a cluster's members into ordered Cilium peering records; eligibility and deterministic ordering; pure, no client
 
 ### Generators (`generators/`)
@@ -95,6 +97,7 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 
 - Generators inherit `InfrahubGenerator` and implement `async def generate(self, data: dict)`
 - Transforms inherit `InfrahubTransform`, implement `transform()` returning artifact content
+- Reading a generator's query result goes through `query.py`, never `assert` or `type: ignore[union-attr]`: the generated `*_query.py` models are optional everywhere because Infrahub's GraphQL schema is nullable, so a missing value is a data gap to report, not a type to silence. A `type: ignore` on a *write* (a pool assigned to `.value`, a node to a relationship) is a real SDK idiom and stays
 - Change detection goes through `checksum.Checksum`, never a hand-rolled hash: the digest is order-independent over an id set, and a stamp is written only when it changes (re-stamping an identical value re-fires the generator's own trigger). `RackGenerator` stamps nothing — the rack is the last tier of the cascade
 - GraphQL queries live alongside their Python files as `.gql` files
 - Query response models (`*_query.py`) are generated — do not edit manually

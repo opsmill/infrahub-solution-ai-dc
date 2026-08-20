@@ -24,6 +24,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkServerService,
     ServerInterface,
 )
+from infrahub_solution_ai_dc.query import only_node, related, related_id, value_of
 from infrahub_solution_ai_dc.servers import require_allocated, upsert_ebgp_session, validate_service
 
 from .generate_server_query import ServerGeneratorQuery, ServerGeneratorQueryServiceNode
@@ -97,22 +98,20 @@ class ServerGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         parsed = ServerGeneratorQuery(**data)
-        assert parsed.network_server_service.edges
-        service = parsed.network_server_service.edges[0].node
-        assert service is not None
-        assert service.name is not None
-        assert service.name.value is not None
-        assert service.vrf is not None
-        assert service.vrf.node is not None
-        assert service.vrf.node.tenant is not None
-        assert service.vrf.node.tenant.node is not None
-        assert service.vrf.node.tenant.node.fabric is not None
-        assert service.vrf.node.tenant.node.fabric.node is not None
+        service = only_node(
+            parsed.network_server_service.edges, of="the server service this generator was dispatched for"
+        )
 
-        service_name = service.name.value
+        label = f"server service {service.id}"
+        service_name = value_of(service.name, field="name", of=label)
+        # Defaulted rather than required: an unset layer means the common case, an L3 attachment.
         layer = service.layer.value if service.layer and service.layer.value else "l3"
-        fabric_id = service.vrf.node.tenant.node.fabric.node.id
-        service_vrf_id = service.vrf.node.id
+
+        # A hop at a time, so a half-built overlay says which link was missing.
+        vrf = related(service.vrf, field="vrf", of=label)
+        service_vrf_id = related_id(service.vrf, field="vrf", of=label)
+        tenant = related(vrf.tenant, field="tenant", of=f"VRF of {label}")
+        fabric_id = related_id(tenant.fabric, field="fabric", of=f"tenant of {label}")
 
         segment = service.segment.node if service.segment else None
         segment_id = segment.id if segment else None
@@ -138,7 +137,9 @@ class ServerGenerator(InfrahubGenerator):
         else:
             # L2: attach the chosen leaf's rack to the segment's placement. No ASN, no /31, no session —
             # overlay materialization onto the leaf remains the OverlayGenerator's separate step (SD8).
-            assert segment_id is not None  # guaranteed by validate_service for the L2 layer
+            if segment_id is None:  # validate_service rejects an L2 service with no segment
+                msg = f"{label} is L2 but names no segment; validate_service should have rejected it"
+                raise ValueError(msg)
             await self.attach_segment_rack(segment_id, placement.rack)
 
         await self.record_placement(service.id, server.id, placement.rack.id, placement.leaf_port.id)

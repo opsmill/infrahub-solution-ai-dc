@@ -15,6 +15,7 @@ from infrahub_solution_ai_dc.protocols import (
     NetworkTenant,
     NetworkVrf,
 )
+from infrahub_solution_ai_dc.query import only_node, related, related_id
 
 from .generate_tenant_query import (
     TenantGeneratorQuery,
@@ -53,16 +54,16 @@ class OverlayGenerator(InfrahubGenerator):
 
     async def generate(self, data: dict) -> None:
         parsed = TenantGeneratorQuery(**data)
-        tenant = parsed.network_tenant.edges[0].node
-        assert tenant is not None
-        assert tenant.fabric is not None
-        assert tenant.fabric.node is not None
+        tenant = only_node(parsed.network_tenant.edges, of="the tenant this generator was dispatched for")
 
         self.tenant_id = tenant.id
+        label = f"tenant {tenant.id}"
+        # Falls back to the id rather than failing: the name is only ever used to label log lines.
         self.tenant_name = tenant.name.value if tenant.name and tenant.name.value is not None else tenant.id
-        self.fabric_id = tenant.fabric.node.id
+        fabric = related(tenant.fabric, field="fabric", of=label)
+        self.fabric_id = related_id(tenant.fabric, field="fabric", of=label)
 
-        overlay_asn = await self.resolve_overlay_asn(tenant.fabric.node.overlay_asn)
+        overlay_asn = await self.resolve_overlay_asn(fabric.overlay_asn)
         if overlay_asn is None:
             self.logger.warning(
                 f"Tenant {self.tenant_name}: fabric overlay_asn is not allocated yet; deferring overlay generation"
