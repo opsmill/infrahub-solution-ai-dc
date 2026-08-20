@@ -6,6 +6,7 @@ pyproject.toml
   s_76eb8ceb8ce283::t_6584c0b6106cb6 21-22
   s_76eb8ceb8ce283::t_1e76b76c4f81f7 74-75
   s_76eb8ceb8ce283::t_64c8fa35a3c429 30-35
+  s_fe0f5d3d01ec8e::t_4d7069c038cacf 15
 .github/workflows/sync-docs.yml
   s_76eb8ceb8ce283::t_d4bf23b5c9f056 16-18
 docker-compose.override.yml
@@ -40,6 +41,8 @@ uv.lock
   s_c61e7f2a6f8b30::t_f805fe69f95f25 80-142,571,674-758,830,833-834,839-872,1118,1120,1122,1887,1889,1891-1897
 tests/integration/test_stack_config.py
   s_76eb8ceb8ce283::t_dcff9353461f1e 1-13,15-51,53-57,59-106,108-121
+  s_fe0f5d3d01ec8e::t_4e6e3278581dd9 107
+  s_fe0f5d3d01ec8e::t_fc7ec05d4125b6 14,52,58
 .gitignore
   s_c61e7f2a6f8b30::t_a879953b639e23 243
   s_76eb8ceb8ce283::t_8a7cb308a82398 146-150
@@ -85,6 +88,14 @@ tests/integration/test_stack_config.py
         "tool": "claude",
         "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
         "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_fe0f5d3d01ec8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb98ca86-cb79-4902-b38a-2e94eef2ebbc",
+        "model": "claude-opus-5"
       },
       "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
     }
