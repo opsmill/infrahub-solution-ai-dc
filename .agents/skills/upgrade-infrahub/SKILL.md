@@ -23,10 +23,15 @@ The version should be a semver string like `1.8.2` — no `v` prefix.
 ## Step 2: Download the new compose file
 
 ```bash
-uv run invoke download-compose-file --override --infrahub-version <VERSION>
+uv run invoke download-compose-file --override --version <VERSION>
 ```
 
 This fetches the `docker-compose.yml` for the target Infrahub version from the Infrahub registry.
+
+Community and Enterprise ship separate compose files. The task picks the one matching
+`INFRAHUB_EDITION` (default `community`); add `--edition=enterprise` to fetch the Enterprise file
+without exporting the variable. Verify the target version is published for the edition in use —
+Enterprise releases do not always match the Community release list.
 
 ## Step 3: Upgrade the SDK
 
@@ -49,11 +54,14 @@ Three files contain the Infrahub version and need to be updated:
 
 ### Dockerfile
 
-In the root `Dockerfile`, update the `INFRAHUB_BASE_VERSION` build arg on the first line:
+In the root `Dockerfile`, update the `INFRAHUB_BASE_VERSION` build arg:
 
 ```dockerfile
 ARG INFRAHUB_BASE_VERSION=<VERSION>
 ```
+
+Leave `INFRAHUB_BASE_IMAGE` and `INFRAHUB_IMAGE_USER` alone — they carry the edition, not the
+version, and `tasks.py` supplies both.
 
 ### docker-compose.override.yml
 
@@ -89,3 +97,7 @@ uv run inv build
 
 This rebuilds the Docker image with the new Infrahub base version. This step can take a while —
 let the user know it's running.
+
+The image name follows the edition: `opsmill/infrahub-solution-ai-dc` on Community,
+`opsmill/infrahub-enterprise-solution-ai-dc` on Enterprise. Rebuild once per edition the user keeps
+in play, since the old image stays behind at the previous version otherwise.

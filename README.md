@@ -57,6 +57,11 @@ cd infrahub-solution-ai-dc
 uv sync --all-packages
 uv run inv start
 
+# Runs on Infrahub Community by default. For Infrahub Enterprise
+# select the edition and fetch its compose file:
+#   export INFRAHUB_EDITION="enterprise"
+#   uv run inv download-compose-file --override && uv run inv start
+
 # infrahubctl needs credentials to authenticate against the Infrahub API
 export INFRAHUB_USERNAME="admin"
 export INFRAHUB_PASSWORD="infrahub"
