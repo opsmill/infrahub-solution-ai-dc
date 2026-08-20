@@ -1,0 +1,29 @@
+src/infrahub_solution_ai_dc/sorting.py
+  s_fe0f5d3d01ec8e::t_3e274a7f5d3437 1-14,23-24,27-29,36
+  s_fe0f5d3d01ec8e::t_2f7dc2160f2606 64-95
+tests/unit/test_sorting.py
+  s_fe0f5d3d01ec8e::t_f9312f315d12d3 106,121
+  s_fe0f5d3d01ec8e::t_05e82b86a83897 1,3,6-8,10,13,71-105,107-120,122-132
+generators/generate_rack.py
+  s_fe0f5d3d01ec8e::t_1c6c2b90d3d875 16,22
+  s_fe0f5d3d01ec8e::t_5a2d68dff3444f 84-85,149-157
+generators/generate_pod.py
+  s_fe0f5d3d01ec8e::t_1c6c2b90d3d875 20
+  s_fe0f5d3d01ec8e::t_5a2d68dff3444f 14,33-34,88-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "293e4d2a1720bb724351cec08ed4d43977b59481",
+  "prompts": {},
+  "sessions": {
+    "s_fe0f5d3d01ec8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb98ca86-cb79-4902-b38a-2e94eef2ebbc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
