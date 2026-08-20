@@ -1,0 +1,38 @@
+generators/generate_fabric.py
+  s_fe0f5d3d01ec8e::t_a67ba63b006643 33,36-37,39,41
+  s_fe0f5d3d01ec8e::t_454770feb439f3 10,38,40
+src/infrahub_solution_ai_dc/query.py
+  s_fe0f5d3d01ec8e::t_920500d08802e0 1-75,96-106
+  s_fe0f5d3d01ec8e::t_1cb4b6c6906c60 76-95
+generators/generate_server.py
+  s_fe0f5d3d01ec8e::t_e68200341b4e93 27,101-107,109-114
+  s_fe0f5d3d01ec8e::t_597d771cd38a18 140-142
+generators/generate_tenant.py
+  s_fe0f5d3d01ec8e::t_e68200341b4e93 18,57,60-61,63-64,66
+tests/unit/test_query.py
+  s_fe0f5d3d01ec8e::t_597d771cd38a18 1-102
+generators/generate_rack.py
+  s_fe0f5d3d01ec8e::t_4ff7a58e2f1642 16,104-112,117-122,127,133,154,158
+generators/generate_pod.py
+  s_fe0f5d3d01ec8e::t_359e941b600ea7 55-67,81-84,108,112
+  s_fe0f5d3d01ec8e::t_064c767dc85b21 14,70-75,77-80
+  s_fe0f5d3d01ec8e::t_28cce02290800f 18-20,68-69,76
+AGENTS.md
+  s_fe0f5d3d01ec8e::t_6349f3926758eb 45-46,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "22122d2707b63f9a0c9ad42d053f7b22699a1402",
+  "prompts": {},
+  "sessions": {
+    "s_fe0f5d3d01ec8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb98ca86-cb79-4902-b38a-2e94eef2ebbc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
