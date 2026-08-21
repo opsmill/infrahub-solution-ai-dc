@@ -3,43 +3,111 @@ from pathlib import Path
 from time import sleep
 
 import httpx
-from invoke import Context, task
+from invoke import Context, Exit, task
 
 # If no version is indicated, we will take the latest
 VERSION = os.getenv("VERSION", None)
 CURRENT_DIRECTORY = Path(__file__).resolve()
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 BASE_COMPOSE_FILE_URL = "https://infrahub.opsmill.io"
+COMPOSE_FILE = MAIN_DIRECTORY_PATH / "docker-compose.yml"
+
+COMMUNITY = "community"
+ENTERPRISE = "enterprise"
+
+# Community and Enterprise ship separate compose stacks built on separate images. INFRAHUB_EDITION is
+# the only knob a user sets; the compose URL, the base image the Dockerfile extends, and the image
+# this project builds are all derived from it here so they cannot drift apart.
+EDITIONS = {
+    COMMUNITY: {
+        "compose_path": "",
+        "base_image": "registry.opsmill.io/opsmill/infrahub",
+        "solution_image": "opsmill/infrahub-solution-ai-dc",
+        "image_user": "root",
+    },
+    ENTERPRISE: {
+        "compose_path": "/enterprise",
+        "base_image": "registry.opsmill.io/opsmill/infrahub-enterprise",
+        "solution_image": "opsmill/infrahub-enterprise-solution-ai-dc",
+        "image_user": "infrahub",
+    },
+}
 
 
-@task
-def build(ctx: Context, cache: bool = True) -> None:
+def resolve_edition(edition: str = "") -> str:
+    """Return the Infrahub edition to operate on, from an explicit value or INFRAHUB_EDITION."""
+    resolved = edition or os.getenv("INFRAHUB_EDITION") or COMMUNITY
+    if resolved not in EDITIONS:
+        expected = ", ".join(EDITIONS)
+        message = f"Unknown Infrahub edition {resolved!r}, expected one of: {expected}"
+        raise Exit(message, code=1)
+    return resolved
+
+
+def compose_env(edition: str) -> dict[str, str]:
+    """Return the image variables docker-compose.override.yml and the Dockerfile read for an edition."""
+    return {
+        "INFRAHUB_BASE_IMAGE": EDITIONS[edition]["base_image"],
+        "INFRAHUB_SOLUTION_IMAGE": EDITIONS[edition]["solution_image"],
+        "INFRAHUB_IMAGE_USER": EDITIONS[edition]["image_user"],
+    }
+
+
+def compose_file_edition(compose_file: Path) -> str:
+    """Return the edition a downloaded compose file belongs to, identified by the image it references."""
+    content = compose_file.read_text(encoding="utf-8")
+    return ENTERPRISE if EDITIONS[ENTERPRISE]["base_image"] in content else COMMUNITY
+
+
+def require_matching_compose_file(compose_file: Path, edition: str) -> None:
+    """Refuse to drive the stack with a compose file from the other edition."""
+    found = compose_file_edition(compose_file)
+    if found == edition:
+        return
+
+    message = (
+        f"{compose_file.name} is the {found} compose file but the edition is {edition}. "
+        f"Run `inv download-compose-file --override --edition={edition}` to fetch the {edition} one."
+    )
+    raise Exit(message, code=1)
+
+
+def prepare_compose(ctx: Context, edition: str) -> dict[str, str]:
+    """Make sure the compose file on disk matches the edition, and return that edition's image variables."""
+    compose_file = download_compose_file(ctx, edition=edition, override=False)
+    require_matching_compose_file(compose_file, edition)
+    return compose_env(edition)
+
+
+@task(help={"edition": "Infrahub edition to build, community or enterprise. Defaults to INFRAHUB_EDITION."})
+def build(ctx: Context, cache: bool = True, edition: str = "") -> None:
     """
     Build the docker image.
     """
+    resolved = resolve_edition(edition)
     compose_cmd = "docker compose build"
     if not cache:
         compose_cmd += " --no-cache"
     with ctx.cd(MAIN_DIRECTORY_PATH):
-        ctx.run(compose_cmd, pty=True)
+        ctx.run(compose_cmd, pty=True, env=prepare_compose(ctx, resolved))
 
 
-@task
-def start(ctx: Context) -> None:
+@task(help={"edition": "Infrahub edition to start, community or enterprise. Defaults to INFRAHUB_EDITION."})
+def start(ctx: Context, edition: str = "") -> None:
     """
     Start the services using docker-compose in detached mode.
     """
-    download_compose_file(ctx, override=False)
-    ctx.run("docker compose up -d", pty=True)
+    resolved = resolve_edition(edition)
+    ctx.run("docker compose up -d", pty=True, env=prepare_compose(ctx, resolved))
 
 
-@task
-def destroy(ctx: Context) -> None:
+@task(help={"edition": "Infrahub edition to destroy, community or enterprise. Defaults to INFRAHUB_EDITION."})
+def destroy(ctx: Context, edition: str = "") -> None:
     """
     Stop and remove containers, networks, and volumes.
     """
-    download_compose_file(ctx, override=False)
-    ctx.run("docker compose down -v", pty=True)
+    resolved = resolve_edition(edition)
+    ctx.run("docker compose down -v", pty=True, env=prepare_compose(ctx, resolved))
 
 
 @task
@@ -51,26 +119,32 @@ def load(ctx: Context) -> None:
     ctx.run("infrahubctl object load repository.yml")
 
 
-@task
-def stop(ctx: Context) -> None:
+@task(help={"edition": "Infrahub edition to stop, community or enterprise. Defaults to INFRAHUB_EDITION."})
+def stop(ctx: Context, edition: str = "") -> None:
     """
     Stop containers and remove networks.
     """
-    download_compose_file(ctx, override=False)
-    ctx.run("docker compose down", pty=True)
+    resolved = resolve_edition(edition)
+    ctx.run("docker compose down", pty=True, env=prepare_compose(ctx, resolved))
 
 
-@task(help={"component": "Optional name of a specific service to restart."})
-def restart(ctx: Context, component: str = "") -> None:
+@task(
+    help={
+        "component": "Optional name of a specific service to restart.",
+        "edition": "Infrahub edition to restart, community or enterprise. Defaults to INFRAHUB_EDITION.",
+    }
+)
+def restart(ctx: Context, component: str = "", edition: str = "") -> None:
     """
     Restart all services or a specific one using docker-compose.
     """
-    download_compose_file(ctx, override=False)
+    resolved = resolve_edition(edition)
+    env = prepare_compose(ctx, resolved)
     if component:
-        ctx.run(f"docker compose restart {component}", pty=True)
+        ctx.run(f"docker compose restart {component}", pty=True, env=env)
         return
 
-    ctx.run("docker compose restart", pty=True)
+    ctx.run("docker compose restart", pty=True, env=env)
 
 
 @task
@@ -97,27 +171,33 @@ def test(ctx: Context) -> None:
     ctx.run("pytest tests", pty=True)
 
 
-@task(help={"override": "Redownload the compose file even if it already exists."})
-def download_compose_file(ctx: Context, version: str = "", override: bool = False) -> Path:  # noqa: ARG001
+@task(
+    help={
+        "override": "Redownload the compose file even if it already exists.",
+        "edition": "Infrahub edition to download, community or enterprise. Defaults to INFRAHUB_EDITION.",
+    }
+)
+def download_compose_file(ctx: Context, version: str = "", override: bool = False, edition: str = "") -> Path:  # noqa: ARG001
     """
     Download docker-compose.yml from InfraHub if missing or override is True.
     """
-    compose_file = Path("./docker-compose.yml")
+    resolved = resolve_edition(edition)
 
-    compose_file_url = BASE_COMPOSE_FILE_URL
+    if COMPOSE_FILE.exists() and not override:
+        return COMPOSE_FILE
+
+    compose_file_url = f"{BASE_COMPOSE_FILE_URL}{EDITIONS[resolved]['compose_path']}"
 
     if infrahub_version := version or VERSION:
         compose_file_url = f"{compose_file_url}/{infrahub_version}"
 
-    if compose_file.exists() and not override:
-        return compose_file
-
+    print(f" - Downloading the {resolved} compose file from {compose_file_url}")
     response = httpx.get(compose_file_url)
     response.raise_for_status()
 
-    compose_file.write_text(response.content.decode(), encoding="utf-8")
+    COMPOSE_FILE.write_text(response.content.decode(), encoding="utf-8")
 
-    return compose_file
+    return COMPOSE_FILE
 
 
 @task(name="format")

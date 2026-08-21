@@ -53,6 +53,42 @@ export INFRAHUB_API_TOKEN="<token>"
 
 Alternatively, you can use [direnv](https://direnv.net) and define the environment variables in a `.envrc` file at the root of the project.
 
+### Choose an Infrahub edition
+
+The solution runs on either Infrahub Community or Infrahub Enterprise. `INFRAHUB_EDITION` picks between them and defaults to `community`, so no configuration is needed to stay on Community.
+
+```bash
+export INFRAHUB_EDITION="enterprise"
+```
+
+It is the only variable to set. From it, `tasks.py` derives everything that differs between the editions:
+
+| | `community` | `enterprise` |
+|---|---|---|
+| Compose file | `https://infrahub.opsmill.io` | `https://infrahub.opsmill.io/enterprise` |
+| Base image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
+| Image built here | `opsmill/infrahub-solution-ai-dc` | `opsmill/infrahub-enterprise-solution-ai-dc` |
+
+The two editions build to different image names, so switching back and forth never runs one edition's stack on the other's image. Enterprise adds one service, `task-manager-background-svc`, which runs the stock Enterprise image rather than the custom build.
+
+Enterprise images live in a private registry. Authenticate before building:
+
+```bash
+docker login registry.opsmill.io
+```
+
+Every task that drives Compose also takes `--edition` to override the variable for a single command, for example `inv build --edition=enterprise`.
+
+:::note
+`docker-compose.yml` is the compose file for one edition, and it is committed to the repository. After changing `INFRAHUB_EDITION`, fetch the matching one:
+
+```bash
+uv run inv download-compose-file --override
+```
+
+The tasks refuse to run against a compose file from the other edition rather than starting a mixed stack, and the error names this command.
+:::
+
 ### Build container image
 
 ```bash
@@ -67,7 +103,7 @@ This will build a custom Infrahub container image, this is needed because this s
 uv run inv start
 ```
 
-This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
+This downloads the base `docker-compose.yml` for the selected [edition](#choose-an-infrahub-edition) (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
 
 **Services started:**
 
@@ -81,6 +117,7 @@ This downloads the base `docker-compose.yml` from `https://infrahub.opsmill.io` 
 | `message-queue`   | RabbitMQ                                      | —              |
 | `task-manager-db` | PostgreSQL for Prefect                        | —              |
 | `infrahub-mcp`    | Infrahub MCP server for AI agents             | `8001`         |
+| `task-manager-background-svc` | Prefect background services (Enterprise only)     | —              |
 
 :::success Verify the environment
 Open `http://localhost:8000` in a browser and log in with username `admin`, password `infrahub`.
@@ -222,7 +259,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 
 | File                          | Purpose                                                                                     |
 |-------------------------------|---------------------------------------------------------------------------------------------|
-| `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed           |
+| `Dockerfile`                  | Builds a custom Infrahub image with the `infrahub-solution-ai-dc` Python package installed; the base image and runtime user come from the selected edition |
 | `docker-compose.override.yml` | Replaces standard Infrahub image with the custom build; mounts `src/` for live code changes; defines the `infrahub-mcp` sidecar |
 | `.mcp.json`                   | MCP client configuration pointing at the `infrahub-mcp` sidecar                              |
 | `repository.yml`              | `CoreRepository` object pointing to `/upstream` (the mounted repository)                    |
@@ -241,6 +278,7 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 | Load schema | `inv load-schema` | Load schema files only                                             |
 | Load menu   | `inv load-menu`   | Load menu definitions only                                         |
 | Build       | `inv build`       | Build the custom Docker image locally                              |
+| Download compose | `inv download-compose-file --override` | Fetch the compose file for the selected edition |
 | Test        | `inv test`        | Run pytest test suite                                              |
 | Format      | `inv format`      | Run Ruff formatter and auto-fix linting issues                     |
 
@@ -252,6 +290,18 @@ Trigger rules live in the top-level `triggers.yml` (not under `objects/`) and ar
 - Check port conflicts: Infrahub uses ports 8000, 4200, 7474, 7687, and 8001 for the MCP server
 - View logs: `docker compose logs infrahub-server` or `docker compose logs task-worker`
 - Full reset: `uv run inv destroy && uv run inv start`
+
+### Compose file does not match the edition
+
+- The tasks stop with `docker-compose.yml is the <edition> compose file but the edition is <other>` — the committed compose file belongs to the other edition
+- Fetch the matching one: `uv run inv download-compose-file --override`
+- Check which one is on disk: `grep -c infrahub-enterprise docker-compose.yml` returns `0` for Community
+
+### Enterprise image fails to pull
+
+- Authenticate against the private registry: `docker login registry.opsmill.io`
+- Confirm the tag exists for the pinned version: `docker manifest inspect registry.opsmill.io/opsmill/infrahub-enterprise:$VERSION`
+- `VERSION` and `INFRAHUB_BASE_VERSION` have to name a version published for Enterprise, which does not always match the Community release list
 
 ### Repository not syncing
 
