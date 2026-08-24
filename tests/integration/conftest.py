@@ -5,33 +5,32 @@ from typing import Any
 
 import pytest
 from infrahub_sdk.yaml import SchemaFile
+from infrahub_testcontainers import __version__ as testcontainers_version
+
+from tests.integration.stack_config import resolve_stack_image
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
-# The testcontainers stack needs two project-specific settings. They are applied at import time so
-# they land before ``infrahub_testcontainers`` snapshots the environment, and via ``setdefault`` so
-# an explicit env var still wins:
-#
-# 1. The default stack runs the vanilla ``opsmill/infrahub`` image, which has no
-#    ``infrahub_solution_ai_dc`` module — every transform/generator import fails during repository
-#    sync. Point it at the image ``inv build`` produces (and skip the registry pull, it is local).
-# 2. ``docker compose up --wait`` fails on a project containing a zero-replica service, reporting it
-#    as a missing dependency — a Compose bug (docker/compose#13899), not a stack problem. The stack
-#    declares ``task-manager-background-svc`` with ``replicas: 0`` and nothing depends on it, so
-#    scheduling one replica is a harmless workaround. Drop it once Compose ships the fix.
-TESTING_IMAGE = "opsmill/infrahub-solution-ai-dc"
-TESTING_IMAGE_VERSION = os.environ.get("INFRAHUB_BASE_VERSION", "1.11.0")
+# ``custom_build=True`` is what points the stack at the locally built image rather than vanilla Infrahub.
+STACK_IMAGE = resolve_stack_image(
+    os.environ,
+    testcontainers_version,
+    repository="opsmill/infrahub-solution-ai-dc",
+    custom_build=True,
+)
 
-os.environ.setdefault("INFRAHUB_TESTING_DOCKER_IMAGE", TESTING_IMAGE)
-os.environ.setdefault("INFRAHUB_TESTING_IMAGE_VERSION", TESTING_IMAGE_VERSION)
-os.environ.setdefault("INFRAHUB_TESTING_DOCKER_PULL", "false")
+# Set at import time, before ``infrahub_testcontainers`` snapshots the environment. The replica count
+# works around docker/compose#13899: ``up --wait`` fails on a project holding a zero-replica service.
+os.environ.update(STACK_IMAGE.as_env())
 os.environ.setdefault("INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS", "1")
 
+TESTING_IMAGE_VERSION = STACK_IMAGE.tag
 
-@pytest.fixture(scope="session", autouse=True)
-def require_testing_image() -> None:
+
+@pytest.fixture(scope="session")
+def _testing_image_present() -> None:
     """Fail loud (naming the fix) when the local image the stack needs has not been built yet."""
-    image = f"{os.environ['INFRAHUB_TESTING_DOCKER_IMAGE']}:{os.environ['INFRAHUB_TESTING_IMAGE_VERSION']}"
+    image = STACK_IMAGE.reference
     inspect = subprocess.run(  # noqa: S603
         ["docker", "image", "inspect", image],  # noqa: S607
         capture_output=True,
@@ -39,6 +38,14 @@ def require_testing_image() -> None:
     )
     if inspect.returncode != 0:
         pytest.fail(f"Docker image {image!r} is missing; run `inv build` before the integration tests")
+
+
+@pytest.fixture(autouse=True)
+def require_testing_image(request: pytest.FixtureRequest) -> None:
+    """Require the built image for anything that will start a deployment, skipping ``offline`` tests."""
+    if request.node.get_closest_marker("offline"):
+        return
+    request.getfixturevalue("_testing_image_present")
 
 
 @pytest.fixture

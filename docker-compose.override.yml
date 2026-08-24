@@ -1,6 +1,6 @@
 ---
 x-infrahub-custom-build: &infrahub_custom_build
-  image: ${INFRAHUB_SOLUTION_IMAGE:-opsmill/infrahub-solution-ai-dc}:${INFRAHUB_BASE_VERSION:-1.11.0}
+  image: ${INFRAHUB_SOLUTION_IMAGE:-opsmill/infrahub-solution-ai-dc}:${INFRAHUB_BASE_VERSION:?set by tasks.py from the installed infrahub-testcontainers; run via inv}
   environment:
     INFRAHUB_GIT_USER_NAME: "infrahub"
     INFRAHUB_GIT_EMAIL: "no-reply@opsmill.com"
@@ -17,7 +17,7 @@ x-infrahub-custom-build: &infrahub_custom_build
     args:
       INFRAHUB_BASE_IMAGE: "${INFRAHUB_BASE_IMAGE:-registry.opsmill.io/opsmill/infrahub}"
       INFRAHUB_IMAGE_USER: "${INFRAHUB_IMAGE_USER:-root}"
-      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:-1.11.0}"
+      INFRAHUB_BASE_VERSION: "${INFRAHUB_BASE_VERSION:?set by tasks.py from the installed infrahub-testcontainers; run via inv}"
 
 services:
   infrahub-server:
