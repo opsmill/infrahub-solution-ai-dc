@@ -19,7 +19,7 @@ dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     # Capped by ariadne-codegen (via infrahub-sdk[all]), which requires ruff>=0.15.0,<0.16.0.
-    "ruff>=0.15.0,<0.16.0",
+    "ruff>=0.15.0,<0.17.0",
     "rumdl>=0.2.55",
     "yamllint>=1.37.1",
 ]
