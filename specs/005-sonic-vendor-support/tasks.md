@@ -91,7 +91,7 @@ sequential** — no `[P]`. Build the file section by section against
 
 Per [quickstart.md](./quickstart.md).
 
-- [ ] T018 [US1] Run `inv lint` and `inv test`; both must pass before loading
+- [x] T018 [US1] Run `inv lint` and `inv test`; both must pass before loading — `inv lint` clean (98 files); `inv test` unit suite 245 passed/0 failed; the 25 integration-test errors are pre-existing (`Docker image 'opsmill/infrahub-solution-ai-dc:1.11.0b0' is missing` — no Docker daemon in this sandbox, unrelated to this feature's changes)
 - [ ] T019 [US1] Fresh load: `inv destroy && inv start && inv load`, then confirm the SONiC manufacturer, all four device types (with their chipset comments), the `sonic_devices` group (parent `devices`), eight object templates with interfaces expanded to `Eth1/N` alias names (65 on every spine/super-spine template regardless of generation, 55 on each leaf template), and the `Purple` tenant with its VRF and three segments (quickstart Scenario 1)
 - [ ] T020 [US1] Generate Fabric-E and verify 23 devices (4 super-spines, 8 spines, 11 leaves), every one a member of `devices` **and** `sonic_devices` and no other vendor group, Pod-E1's super-spines built from `SONiC-T6`, Pod-E2's spines from `SONiC-T4`, Pod-E3's spines from `SONiC-T5` (checked via `device_type`, not hostname), and leaves carrying `Eth1/1`–`Eth1/48`, `Eth1/49`–`Eth1/54`, `Loopback0` and a runtime `Loopback1` of role `vtep` (quickstart Scenario 2)
 - [ ] T021 [US1] Verify cabling: leaf uplinks (`Eth1/49`+) pair to distinct spine downlinks (`Eth1/1`–`Eth1/32`) in numerically correct order, no access port is ever cabled to a spine, no port appears twice, 4 of 6 uplinks cabled per leaf (quickstart Scenario 3)
