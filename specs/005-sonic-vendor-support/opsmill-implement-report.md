@@ -1,12 +1,14 @@
 # Implementation Report: SONiC Vendor Support
 
-**Status: INCOMPLETE** — all executable work is done and verified; 9 of 36 tasks are recorded as blocked
-(not attempted-and-failed) because they require infrastructure this sandbox does not have. See §3.
+**Status: INCOMPLETE** — 35 of 36 tasks done and verified, including full live-stack validation (T019-T025,
+T034-T035) once Docker became available mid-run. Only **T036** remains, and it always will be
+agent-unexecutable: it names a human reviewer with production SONiC/FRR experience. See §2.
 
 **Spec dir**: `specs/005-sonic-vendor-support/`
 **Base commit**: `e39e5d9` (main, pre-feature)
-**Head commit**: `c57bc64`
-**Wall-clock**: not precisely instrumented; commits span 2026-08-27T11:48 → 14:43 (Europe/Paris)
+**Head commit**: `fe54a92`
+**Wall-clock**: not precisely instrumented; commits span 2026-08-27T11:48 (Europe/Paris) → same-day live-stack
+validation session (Docker became available partway through this run — see §1a)
 
 ---
 
@@ -42,32 +44,63 @@
 
 ---
 
+## 1a. Live-stack validation session (T019-T025, T034-T035)
+
+This run originally stopped at §2's blocked list because Docker's daemon was unreachable in the sandbox.
+Docker was confirmed running partway through the session; before touching anything, the orchestrator checked
+what was actually running (`docker ps`) and found an **8-day-old stack that predated this session** — not
+something it had started. Rather than assume it was safe to discard, the orchestrator asked the user how to
+proceed; the user chose a fresh `inv destroy && inv start && inv load` for unambiguous validation.
+
+Every remaining live-stack task was then closed out against real generator output (not synthetic mock data):
+
+- **T019**: manufacturer, all 4 device types (with chipset comments), `sonic_devices` group, all 8 templates
+  with `Eth1/N` interfaces expanding to the correct counts (65/65/65/55/55) confirmed via live GraphQL — the
+  real object loader, not just the unit test's independent `range_expansion()` call.
+- **T020**: triggered `generate-fabric`/`generate-pod`/`generate-rack` via the `CoreGeneratorDefinitionRun`
+  GraphQL mutation (the API-level equivalent of the UI's Generate action). Fabric-E produced exactly 23
+  devices (4 super-spines on `SONiC-T6`, 8 spines split 4×`SONiC-T4`/4×`SONiC-T5`, 11 leaves on `SONiC-TD4`),
+  every one in `devices`+`sonic_devices` and no other vendor group.
+- **T021**: `NetworkLink` inspection confirmed leaf uplinks `Eth1/49`-`52` each paired to a distinct spine's
+  `Eth1/1`, with `Eth1/53`/`54` correctly left uncabled.
+- **T022**: generated devices for **all five fabrics** (117 total — Fabric-A's generators hadn't run in this
+  fresh stack either, so this required triggering them too, not just SONiC's) and artifacts for all five
+  vendor definitions via the `/api/artifact/generate/{id}` REST endpoint (no GraphQL mutation exists for
+  this). Confirmed distribution `{1: 117}` — every device exactly one `Startup configuration` artifact.
+- **T023/T024**: used `infrahubctl render` (not `infrahubctl.toml`-free ad-hoc scripting — the tool's built-in
+  debug-render command) to render real leaf, spine, and super-spine artifacts against live generated data.
+  Every contract acceptance rule (A1-A8) held, including the L2-only segment case rendering
+  `config vlan add`/`config vxlan map add` with no IP/VRF-bind lines, and `route-reflector-client` appearing
+  only where a device genuinely reflects for its downstream peers.
+- **T025**: rendered one existing-vendor super-spine per Cisco/Arista/Dell/Juniper — all four still produce
+  correct, vendor-native output with SONiC registered as a fifth vendor.
+- **T034**: created a fourth segment on the `Purple` tenant's VRF via a direct `NetworkSegmentCreate`
+  mutation, re-ran `generate-tenant`, and diffed a spine's and the super-spine's rendered config
+  before/after — both byte-identical, while the leaf picked up `config vlan add 103` / `config vxlan map add
+  vtep1 103 10003`. The test segment was deleted afterward to leave the stack matching plain `inv load`'s
+  output.
+- **T035**: the above **is** the SC-004 walkthrough — design object → generated devices/cabling → rendered
+  config, zero code edits, nothing beyond `inv load` plus the generator pipeline.
+
+One incident along the way: the Neo4j database container restarted mid-session (`Up 4 seconds`, unclear
+cause — plausibly memory pressure from the generation load). Data survived intact (device/artifact counts
+matched before and after once the container came back healthy), so no re-load was needed, but this is worth
+knowing about if repeating this validation.
+
+All results are recorded per-task in `tasks.md` (T019-T025, T034-T035, now `[x]`) and in §3 below.
+
+---
+
 ## 2. Tasks not completed
 
-All 9 remaining unchecked tasks are recorded as **blocked on missing infrastructure**, not attempted-and-
-failed. Confirmed directly (not assumed): `docker info` fails in this sandbox (`dial unix
-.../docker.sock: connect: no such file or directory`), and the `inv test` integration suite independently
-confirms the same (`Docker image 'opsmill/infrahub-solution-ai-dc:1.11.0b0' is missing`).
+Exactly one task remains, and it always will for any agent in any environment:
 
 | Task | Reason blocked |
 |---|---|
-| T019 | Requires `inv destroy && inv start && inv load` — needs a running Docker/Infrahub stack |
-| T020 | Requires generating Fabric-E against a live Infrahub instance |
-| T021 | Requires inspecting generated `NetworkLink` objects — needs the live stack |
-| T022 | Requires inspecting rendered artifacts across all five fabrics — needs the live stack |
-| T023 | Requires fetching a rendered SONiC leaf artifact — needs the live stack |
-| T024 | Requires fetching rendered SONiC spine/super-spine artifacts — needs the live stack |
-| T025 | Requires re-rendering Cisco/Arista/Dell/Juniper artifacts for a diff — needs the live stack |
-| T034 | Requires re-running the overlay generator against a live instance |
-| T035 | Requires the full `inv load` + generator-pipeline walkthrough — needs the live stack |
 | T036 | Requires a human reviewer with production SONiC/FRR experience — not executable by any agent regardless of environment |
 
-The template content these scenarios would exercise **has** been verified by other means: a synthetic Jinja2
-render against hand-built mock data covering a leaf with a mixed EVPN+server session, a plain spine, and an
-edge case (no `overlay_asn`, no `vtep` interface, segments present) — see §5. This substitutes for T023/T024's
-structural checks but not for a real rendered artifact against real generator output, and does not touch
-T019-T022/T025/T034/T035's live-stack-specific assertions (group membership, cabling correctness, artifact
-counts, byte-identical re-render) at all.
+Every scenario T036 doesn't cover has now been verified against real generator/artifact output (§1a), not
+just the synthetic render this report originally relied on for T023/T024's structural checks.
 
 ---
 
@@ -129,16 +162,21 @@ risk of a further edit this late in the run without a live stack to re-verify ag
    the whole chunk from scratch would have discarded correct work and cost more than finishing the
    verification pass directly. This is the highest-impact judgment call in this run — flagging it explicitly
    so it can be second-guessed if the two bugs found (§4) warrant a closer look at the rest of that chunk too.
-2. **Did not dispatch subagents for the clearly Docker-blocked chunk (T019-T025, T034-T035)**. `docker info`
+2. **Did not dispatch subagents for the initially Docker-blocked chunk (T019-T025, T034-T035)**. `docker info`
    was checked directly by the orchestrator before deciding this, not assumed — dispatching a subagent to
-   independently rediscover an already-confirmed infrastructure limitation would have cost real
-   time/tokens for no new information.
-3. **T036 (human SC-001 review) was never going to be executable by any agent** — recorded as blocked from
-   the start, not attempted.
-4. **Scoped the Phase 6 review to code/data files, not the ~20 markdown spec/planning docs** in the diff.
+   independently rediscover an already-confirmed infrastructure limitation would have cost real time/tokens
+   for no new information. Once Docker became available, the orchestrator ran these directly (§1a) rather
+   than dispatching, since the work was now a sequence of GraphQL/REST calls against a live stack the
+   orchestrator already had context on, not something needing a fresh clean-context pass.
+3. **Asked before destroying the pre-existing 8-day-old stack** rather than assuming it was disposable, since
+   `inv destroy` removes volumes and the stack predated this session — a hard-to-reverse action on state the
+   orchestrator didn't create. The user confirmed a fresh reload was fine.
+4. **T036 (human SC-001 review) was never going to be executable by any agent** — recorded as blocked from
+   the start, not attempted, and still the only open item after live-stack validation closed everything else.
+5. **Scoped the Phase 6 review to code/data files, not the ~20 markdown spec/planning docs** in the diff.
    Those were extensively hand-reviewed during the planning phase (including a dedicated critique pass before
    `/speckit-tasks`); re-reviewing them at code-review depth would have been low-value relative to cost.
-5. **Fixed two pre-existing, feature-unrelated doc inconsistencies** encountered while editing shared prose
+6. **Fixed two pre-existing, feature-unrelated doc inconsistencies** encountered while editing shared prose
    (§1, chunk 3) rather than leaving them stale next to fresh SONiC content, since they were directly in the
    sections already being touched.
 
@@ -146,16 +184,16 @@ risk of a further edit this late in the run without a live stack to re-verify ag
 
 ## 6. Suggested next steps
 
-1. **In an environment with a working Docker daemon**: run `inv destroy && inv start && inv load`, then work
-   through T019-T025 and T034-T035 per `quickstart.md`. These are the only remaining checks that exercise the
-   *real* generator → artifact pipeline rather than a synthetic render.
-2. **Get T036 done**: have someone with production SONiC/FRR experience review one rendered leaf config and
-   one spine/super-spine config (ideally including the `SONiC-T6` super-spine, the newest/least-proven
-   generation) against the scoped mandate in `quickstart.md`'s Review gate section.
-3. Once T019-T025/T034-T036 are clear, re-run `/speckit-opsmill-implement` (or just update `tasks.md`'s
-   remaining checkboxes) to close out the feature.
-4. The two "Low" review findings (§4) are optional polish — pick them up only if touching that file again for
+1. **Get T036 done** — the only remaining task. Have someone with production SONiC/FRR experience review one
+   rendered leaf config and one spine/super-spine config (ideally including the `SONiC-T6` super-spine, the
+   newest/least-proven generation) against the scoped mandate in `quickstart.md`'s Review gate section. Real
+   rendered artifacts from this session are available in the live stack (or re-render on demand via
+   `infrahubctl render sonic_device_startup_config name=<hostname>`).
+2. Once T036 is clear, tick it in `tasks.md` — every other task is done and verified.
+3. The two "Low" review findings (§4) are optional polish — pick them up only if touching that file again for
    another reason.
+4. Consider whether the mid-session Neo4j restart (§1a) warrants investigation if it recurs — it didn't lose
+   data this time, but the cause wasn't identified.
 
 ---
 
