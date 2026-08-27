@@ -28,3 +28,5 @@ spec:
       parent: devices
     - name: juniper_devices
       parent: devices
+    - name: sonic_devices
+      parent: devices
