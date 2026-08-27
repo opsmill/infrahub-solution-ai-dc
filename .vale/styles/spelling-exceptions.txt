@@ -11,6 +11,9 @@ autoescape
 automations
 backend
 BGP
+Broadcom
+chipset
+chipsets
 colo
 colocation
 composable
@@ -33,6 +36,7 @@ envrc
 evolvability
 Fortinet
 FQDNs
+FRR
 hardcoded
 hostname
 Hostname
@@ -63,6 +67,7 @@ NICs
 Nornir
 npm
 NSGs
+NVO
 OSPF
 Palo
 parallelization
@@ -79,6 +84,8 @@ Rumdl
 rumdl
 schema's
 SDN
+SONiC
+SONiC's
 ssl
 Streamlit
 subnet
@@ -86,7 +93,9 @@ subnets
 sudo
 supernet
 testcontainer
+Tomahawk
 tomek
+Trident
 untrust
 upsert
 upserted
@@ -104,5 +113,6 @@ VRF
 VRFs
 VTEP
 VTEPs
+vtysh
 VXLAN
 walkthrough

@@ -109,13 +109,13 @@ Per [quickstart.md](./quickstart.md).
 **Purpose**: Keep the agent-facing and human-facing documentation truthful, and close the success criteria.
 
 - [x] T026 `CONTEXT.md` — extend the Vendor group definition and add a Flagged-ambiguities entry recording that Manufacturer/Device Type name whatever is config-relevant (OS, chipset generation), not necessarily a legal hardware maker or specific ODM box (**already applied**; verify both edits are present)
-- [ ] T027 [P] Update the vendor list in the templates bullet at `AGENTS.md` (`startup_config_{cisco,arista,dell,juniper}.j2` → include `sonic`)
-- [ ] T028 [P] Add this feature to the active-features list in `CLAUDE.md`
-- [ ] T029 [P] Update vendor mentions in `README.md`
-- [ ] T030 [P] Update vendor lists in `docs/docs/solution-ai-dc/` — `multivendor-config.mdx` is the dedicated page (group table, transform/artifact table, demo-data table, and the `SUPPORTED_VENDORS` prose), plus `overview.mdx`, `installation-setup.mdx`, `demo-guide.mdx`, `evpn-vxlan-overlay.mdx`
-- [ ] T031 [P] Add `SONiC`, `Tomahawk`, `Trident`, `Broadcom`, `FRR`, `vtysh`, `NVO` to `.vale/styles/spelling-exceptions.txt` (`Juniper`/`Junos` already present)
-- [ ] T032 Run the documentation linter over the edited `docs/` pages and confirm it passes. `inv lint` is yamllint + ruff + mypy only and does **not** cover Vale, so nothing else verifies T031 — run Vale directly or via the CI docs job
-- [ ] T033 Verify SC-002: `git diff --stat main -- schemas/ generators/` must be **empty**. A non-empty diff means the multivendor abstraction leaked and should be recorded as a finding (quickstart Scenario 9)
+- [x] T027 [P] Update the vendor list in the templates bullet at `AGENTS.md` (`startup_config_{cisco,arista,dell,juniper}.j2` → include `sonic`)
+- [x] T028 [P] Add this feature to the active-features list in `CLAUDE.md`
+- [x] T029 [P] Update vendor mentions in `README.md`
+- [x] T030 [P] Update vendor lists in `docs/docs/solution-ai-dc/` — `multivendor-config.mdx` is the dedicated page (group table, transform/artifact table, demo-data table, and the `SUPPORTED_VENDORS` prose), plus `overview.mdx`, `installation-setup.mdx`, `demo-guide.mdx`, `evpn-vxlan-overlay.mdx`
+- [x] T031 [P] Add `SONiC`, `Tomahawk`, `Trident`, `Broadcom`, `FRR`, `vtysh`, `NVO` to `.vale/styles/spelling-exceptions.txt` (`Juniper`/`Junos` already present)
+- [x] T032 Run the documentation linter over the edited `docs/` pages and confirm it passes. `inv lint` is yamllint + ruff + mypy only and does **not** cover Vale, so nothing else verifies T031 — run Vale directly or via the CI docs job
+- [x] T033 Verify SC-002: `git diff --stat main -- schemas/ generators/` must be **empty**. A non-empty diff means the multivendor abstraction leaked and should be recorded as a finding (quickstart Scenario 9)
 - [ ] T034 Verify the day-two overlay path reaches SONiC leaves: add a fourth segment to the `Purple` tenant's `purple-prod` VRF, re-run the overlay generator, and confirm carrying leaves pick it up while SONiC spine/super-spine configs stay byte-identical across all three chipset generations (quickstart Scenario 8, contract A8)
 - [ ] T035 Verify SC-004: walk Fabric-E design object → generated switches and cabling → rendered SONiC configuration, without editing code and running nothing beyond `inv load` plus the generator pipeline (quickstart Scenario 10)
 - [ ] T036 **SC-001 review gate**: have a reviewer with production SONiC/FRR experience review one leaf config and one spine/super-spine config (ideally one from `SONiC-T4` and the `SONiC-T6` super-spine, to sanity-check the newest, least-proven generation too). Brief them with the scoped mandate — the `config`-CLI/FRR split, correct verb usage in each section, EVPN/VXLAN structure only; management addressing, MTU and AAA/NTP/syslog are repo-wide simplifications and out of scope. Target: zero blocking structural findings
