@@ -294,6 +294,50 @@ here. No `NEEDS CLARIFICATION` markers remain.
   object-data shape, a surface D6 never covered — the same distinction Scenario 1 in `quickstart.md` already
   draws when checking interface counts, just made automatic instead of manual.
 
+## D13 — Two implementation-time defects, caught by synthetic render before commit
+
+The chunk that implemented T009-T017 produced a first draft of `startup_config_sonic.j2` that parsed cleanly
+but had two defects only a rendered (not just parsed) output against representative data would surface.
+Neither was caught by `inv lint` (syntax/style only) or the template's own author, and no template test exists
+to catch them automatically (D6) — both were found by a synthetic Jinja2 render against hand-built mock
+GraphQL data (two devices: a leaf with a mixed EVPN + attached-server session, and a spine) before commit.
+
+- **Defect 1 — the interface loop leaked `Loopback1` as a literal interface.** The `config` CLI per-interface
+  loop was unfiltered by role for the description/admin-state lines (only the `ip add` line was role-gated),
+  so it rendered `config interface description Loopback1 ...` / `config interface shutdown Loopback1` for the
+  `vtep`-role interface — directly violating the contract's own "never name the VTEP loopback as a literal
+  interface" rule (§ Structural rule). Fixed by excluding `loopback`/`vtep` roles from the whole per-interface
+  block, not just its `ip add` line.
+- **Defect 2 — no `ipv4_unicast` vs. EVPN session split.** The FRR neighbor loop treated every
+  `device.bgp_sessions.edges` entry as an EVPN peer to another device's loopback. A leaf with an attached L3
+  server (`ServerGenerator`, eBGP to the server's `/31`) has an `ipv4_unicast` session whose peer is a
+  `NetworkServer`, which does not expose `loopback_ip` — every other vendor's template (Arista, Juniper,
+  Cisco, Dell) already splits sessions by `address_family` for exactly this reason; the SONiC contract's
+  Data surface table omitted `address_family` entirely, and the template followed the contract's omission.
+  Fixed in both the template (`evpn_sessions`/`ipv4_sessions` split, mirroring Arista/Juniper's pattern, plus
+  a new `address-family ipv4 unicast` block) and the contract (`contracts/sonic-config-contract.md`, Data
+  surface table and the FRR EVPN control-plane section).
+- **Two smaller additions made at the same time**: `neighbor ... send-community extended` on EVPN sessions
+  (FRR-standard for route-target propagation, already present in the Arista template; the first draft omitted
+  it) and an explicit `exit-address-family` before the tenant-overlay FRR block's final `exit` (consistency
+  with the main EVPN block's own pattern; FRR's exact context-exit semantics here were not independently
+  verified against a live `vtysh` session, so this is a defensible improvement, not a fully verified fix —
+  flag for the SC-001 reviewer alongside the pre-existing verb-precision caveats every other decision in this
+  file already carries).
+- **One deliberate non-fix**: the first draft's anycast-gateway-MAC normalisation (copied from the preamble
+  convention the other four templates use) was never actually consumed anywhere in the required output — a
+  gap in the contract, not the template. Rather than invent unverified SONiC Static Anycast Gateway (SAG)
+  syntax under uncertainty, the dead computation was removed and the gap recorded explicitly in the contract's
+  Out of Scope list, flagged as a genuine fidelity gap relative to Arista/Juniper (not a neutral simplification
+  shared by all five vendors) for the SC-001 reviewer to weigh in on.
+- **Verification method**: a synthetic render (not `inv lint`, not a live Infrahub stack — Docker is
+  unavailable in the implementation sandbox) using hand-built mock data matching the shared query's exact
+  field shape, covering the specific case (mixed session types on one leaf) most likely to expose Defect 2.
+  Both the leaf and a spine device rendered without error after the fixes; output was inspected against every
+  acceptance rule (A1-A8) in the contract. This is not a substitute for D6's declined automated template test
+  — it is a one-time manual check performed during implementation, the same kind of check D6 explicitly
+  chose not to make repeatable.
+
 ## Cross-cutting: what does not change
 
 Confirmed by inspection, and asserted as spec SC-002:

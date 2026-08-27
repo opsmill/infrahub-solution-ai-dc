@@ -271,3 +271,70 @@ spec:
       amount_of_leafs: 1
       leaf_switch_template: juniper-qfx5120-48y-8c-leaf-switch-storage
       member_of_groups: ["racks"]
+    # Fabric-E (SONiC) racks — mirror Fabric-D's layout with the SONiC leaf templates. Leaves are not
+    # part of the three-generation split (data-model.md §6): every rack uses the same SONiC-TD4 leaf
+    # templates regardless of which pod (and therefore which spine chipset generation) it attaches to.
+    - name: "Rack-E2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-E2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-E2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-E2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-E2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E3-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-E3
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E3-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-E3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: sonic-td4-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-E3-3"
+      index: 3
+      rack_type: storage
+      pod: Pod-E3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: sonic-td4-leaf-switch-storage
+      member_of_groups: ["racks"]
+    - name: "Rack-E3-4"
+      index: 4
+      rack_type: compute
+      pod: Pod-E3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: sonic-td4-leaf-switch-storage
+      member_of_groups: ["racks"]

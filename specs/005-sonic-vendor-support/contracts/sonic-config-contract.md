@@ -17,7 +17,7 @@ section — the shared query is not vendor-specific. Restated here for completen
 | `device.loopback_ip.node.address.ip` | **bare IP, no mask** — router-id, iBGP source, RD prefix |
 | `device.pod.node.parent.node` | the Fabric → `.overlay_asn.value`, `.anycast_gateway_mac.value` |
 | `device.interfaces.edges[].node` | `.name.value`, `.description.value`, `.role.value`, `.status.value`, `.ip_address.node.address.value` (**CIDR**) |
-| `device.bgp_sessions.edges[].node` | `.remote_as.value`, `.rr_client.value`, `.peer_device.node.hostname.value`, `.peer_device.node.loopback_ip.node.address.ip` |
+| `device.bgp_sessions.edges[].node` | `.remote_as.value`, `.rr_client.value`, `.address_family.value`, `.peer_device.node.hostname.value`, `.peer_device.node.loopback_ip.node.address.ip` (`NetworkDevice` peers only), `.peer_device.node.interfaces.edges[].node.ip_address.node.address.value` (`NetworkServer` peers only) |
 | `device.segments.edges[].node` | `.name.value`, `.vlan_id.value`, `.l2vni.value`, `.route_target.value`, `.gateway.node.address.value` |
 | `segment.vrf.node` | `.name.value`, `.l3vni.value`, `.route_target.value`, `.l3_vlan_id.value` (**not used** — see below) |
 
@@ -38,11 +38,14 @@ Copy the `device`/`fabric`/`overlay_asn` fallback and the `vns` namespace loop (
 with both a gateway *and* a VRF) from `startup_config_arista.j2`, unchanged. That loop is the leaf-only gate:
 spines and super-spines have `device.segments.edges == []`, so every overlay section disappears for them.
 
-Two additions, both already present verbatim in the other templates and reused as-is:
+One addition, already present verbatim in the other templates and reused as-is:
 
 - `is_rr` — `device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0`.
-- **Anycast MAC normalisation** — the colon-delimited conversion FRR/Linux expects, same as Arista and Dell
-  use. Default `"0000.5e00.0001"` when the fabric value is unset.
+
+**Not reused**: the anycast-MAC normalisation three-liner Arista/Dell/Juniper carry. Those three vendors
+render an explicit anycast-gateway MAC on the leaf SVI (`ip virtual-router mac-address` / `virtual-gateway-v4-mac`).
+SONiC's equivalent is its Static Anycast Gateway (SAG) feature, whose exact `config`/FRR syntax was not
+confirmed with enough certainty to render here without guessing — see Out of scope.
 
 ## Structural rule: two dialects, one artifact, no nesting
 
@@ -69,7 +72,14 @@ loopback interface in SONiC's own model.
 Gating: `{% if overlay_asn is not none %}` guards the BGP/EVPN sections; `{% if device.segments.edges %}`
 guards every tenant-overlay section. Both gates already exist in the other four templates.
 
-### Always — SONiC `config` CLI, per interface (unfiltered loop)
+### Always — SONiC `config` CLI, per interface (unfiltered loop, excluding `loopback`/`vtep` roles)
+
+The interface loop itself is unfiltered — every physical/access interface (`super_spine`, `spine`, `leaf`,
+`server`, `storage`) gets description/admin-state — but the `loopback`- and `vtep`-role interfaces are
+explicitly **excluded** from this loop's body. Neither is a real configured SONiC interface object: the
+routing loopback is addressed via the dedicated `Loopback0` line below, and the VTEP source is a bare IP
+argument to `config vxlan add`, not an interface. Rendering `config interface description Loopback1 ...`
+would violate the "never name the VTEP loopback as a literal interface" rule above.
 
 ```text
 config interface description <name> "<description>"          # if set, e.g. Eth1/1
@@ -90,26 +100,45 @@ config interface ip add Loopback0 <loopback_ip>/32
 
 ### When `overlay_asn` is set — FRR EVPN control plane, all tiers
 
+**Sessions split by `address_family`, load-bearing not cosmetic** — the same split every other vendor's
+template makes: an EVPN session is iBGP to the peer's *loopback*; an attached server's `ipv4_unicast` session
+is eBGP to the `/31` on the peer's own interface. Only a `NetworkDevice` peer exposes `loopback_ip`; letting a
+server session through the EVPN loop dereferences a field its peer (`NetworkServer`) does not have and fails
+the whole artifact. `evpn_sessions` = everything except `address_family.value == "ipv4_unicast"`;
+`ipv4_sessions` = only those. A spine/super-spine never has `ipv4_sessions` (servers attach to leaves only),
+so this only actually matters on leaves — but the template cannot assume that and must filter unconditionally.
+
 ```text
 router bgp <overlay_asn>
  bgp router-id <loopback_ip>
  no bgp default ipv4-unicast
- neighbor <peer loopback ip> remote-as <remote_as or overlay_asn>
- neighbor <peer loopback ip> update-source Loopback0
+ neighbor <evpn peer loopback ip> remote-as <remote_as or overlay_asn>          # evpn_sessions
+ neighbor <evpn peer loopback ip> update-source Loopback0
+ neighbor <evpn peer loopback ip> send-community extended
+ ...
+ neighbor <ipv4 peer's own /31 address> remote-as <remote_as>                  # ipv4_sessions
  ...
  address-family l2vpn evpn
-  neighbor <peer loopback ip> activate
-  neighbor <peer loopback ip> route-reflector-client        # only when is_rr, per session with rr_client
+  neighbor <evpn peer loopback ip> activate                                    # evpn_sessions only
+  neighbor <evpn peer loopback ip> route-reflector-client        # only when is_rr, per session with rr_client
   advertise-all-vni
+ exit-address-family
+ address-family ipv4 unicast                                                   # only if ipv4_sessions non-empty
+  neighbor <ipv4 peer's own /31 address> activate
  exit-address-family
 exit
 ```
 
+The `ipv4_sessions` peer address is not on the session itself — derive it the same way Arista/Juniper do: scan
+`session.peer_device.node.interfaces.edges` for the first interface carrying an `ip_address`, take the address
+minus its mask (`.split("/")[0]`).
+
 Iterate sessions with `| sort(attribute="node.peer_device.node.hostname.value")` — the determinism guard all
 four existing templates use, required so unrelated re-renders produce byte-identical output.
 
-Per-session AS fallback, identical to the other four:
-`session.remote_as.value if session.remote_as.value is not none else overlay_asn`.
+Per-session AS fallback for EVPN sessions only, identical to the other four:
+`session.remote_as.value if session.remote_as.value is not none else overlay_asn`. `ipv4_sessions` always
+carry an explicit `remote_as` (the server's own ASN) — no fallback needed there.
 
 ### Leaves only — tenant overlay
 
@@ -138,6 +167,7 @@ router bgp <overlay_asn>
    route-target both <segment route_target>
   exit-vni
   ...
+ exit-address-family
 exit
 
 vrf <vrf name>
@@ -170,4 +200,9 @@ These map directly to spec FR-006/FR-007/FR-008 and are what the SC-001 reviewer
 Interface MTU; realistic management (`eth0`) addressing; AAA/NTP/syslog; per-server access-port VLAN
 membership (`config vlan member add`) — the template renders VLANs and their VNI maps, not the individual
 tagging commands for every server-facing port, which is not information the shared query provides per
-segment; any change to the shared query.
+segment; any change to the shared query. **A rendered anycast-gateway MAC on the leaf SVI** — Arista and
+Juniper both render one (`ip virtual-router mac-address` / `virtual-gateway-v4-mac`); SONiC's Static Anycast
+Gateway (SAG) feature is the real equivalent, but its exact `config`/FRR command syntax was not confirmed
+with enough certainty to render here without guessing, so it is deliberately omitted rather than guessed.
+Flag explicitly for the SC-001 reviewer — this is a genuine fidelity gap relative to two of the four existing
+vendors, not a neutral simplification shared by all five.
