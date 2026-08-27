@@ -109,13 +109,18 @@ config interface vrf bind Vlan{{ segment.vlan_id.value }} {{ segment.vrf.node.na
     {% set vtep.addr = interface.ip_address.node.address.value.split("/")[0] %}
   {% endif %}
 {% endfor %}
+{% if vtep.addr %}
 config vxlan add vtep1 {{ vtep.addr }}
 config vxlan evpn_nvo add nvo1 vtep1
+{% else %}
+! ERROR: no addressed vtep-role interface found on {{ device.hostname.value }} -- VXLAN tunnel cannot be configured
+{% endif %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
 config vxlan map add vtep1 {{ segment.vlan_id.value }} {{ segment.l2vni.value }}
 {% endfor %}
 !
+{% if overlay_asn is not none %}
 ! --- FRR routing config: tenant overlay (L2VNI/L3VNI) -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/sonic/frr/frr.conf) ---
 router bgp {{ overlay_asn }}
  address-family l2vpn evpn
@@ -133,4 +138,5 @@ vrf {{ vrf.name.value }}
  vni {{ vrf.l3vni.value }}
 exit-vrf
 {% endfor %}
+{% endif %}
 {% endif %}

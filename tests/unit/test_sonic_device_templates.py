@@ -20,69 +20,83 @@ from infrahub_sdk.spec.range_expansion import range_expansion  # type: ignore[im
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEVICE_TEMPLATE_FILE = REPO_ROOT / "objects" / "06_device_template.yml"
 
-# template_name -> (device_type, [(interface name pattern, expected count, first name, last name), ...])
-EXPECTED_TEMPLATES: dict[str, tuple[list[str], list[tuple[str, int, str, str]]]] = {
+# template_name -> (device_type, [(interface name pattern, expected count, first name, last name,
+# expected profiles or None for the loopback), ...])
+EXPECTED_TEMPLATES: dict[str, tuple[list[str], list[tuple[str, int, str, str, list[str] | None]]]] = {
     "sonic-t4-spine-switch": (
         ["SONiC", "SONiC-T4"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32"),
-            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32", ["profile-interface-leaf"]),
+            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64", ["profile-interface-super-spine"]),
         ],
     ),
     "sonic-t4-super-spine-switch": (
         ["SONiC", "SONiC-T4"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64", ["profile-interface-spine"]),
         ],
     ),
     "sonic-t5-spine-switch": (
         ["SONiC", "SONiC-T5"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32"),
-            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32", ["profile-interface-leaf"]),
+            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64", ["profile-interface-super-spine"]),
         ],
     ),
     "sonic-t5-super-spine-switch": (
         ["SONiC", "SONiC-T5"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64", ["profile-interface-spine"]),
         ],
     ),
     "sonic-t6-spine-switch": (
         ["SONiC", "SONiC-T6"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32"),
-            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-32]", 32, "Eth1/1", "Eth1/32", ["profile-interface-leaf"]),
+            ("Eth1/[33-64]", 32, "Eth1/33", "Eth1/64", ["profile-interface-super-spine"]),
         ],
     ),
     "sonic-t6-super-spine-switch": (
         ["SONiC", "SONiC-T6"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-64]", 64, "Eth1/1", "Eth1/64", ["profile-interface-spine"]),
         ],
     ),
     "sonic-td4-leaf-switch-compute": (
         ["SONiC", "SONiC-TD4"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-48]", 48, "Eth1/1", "Eth1/48"),
-            ("Eth1/[49-54]", 6, "Eth1/49", "Eth1/54"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-48]", 48, "Eth1/1", "Eth1/48", ["profile-interface-server"]),
+            ("Eth1/[49-54]", 6, "Eth1/49", "Eth1/54", ["profile-interface-spine"]),
         ],
     ),
     "sonic-td4-leaf-switch-storage": (
         ["SONiC", "SONiC-TD4"],
         [
-            ("Loopback0", 1, "Loopback0", "Loopback0"),
-            ("Eth1/[1-48]", 48, "Eth1/1", "Eth1/48"),
-            ("Eth1/[49-54]", 6, "Eth1/49", "Eth1/54"),
+            ("Loopback0", 1, "Loopback0", "Loopback0", None),
+            ("Eth1/[1-48]", 48, "Eth1/1", "Eth1/48", ["profile-interface-compute"]),
+            ("Eth1/[49-54]", 6, "Eth1/49", "Eth1/54", ["profile-interface-spine"]),
         ],
     ),
+}
+
+# template_name -> expected top-level device-role. A copy-paste bug swapping spine/super_spine
+# between sibling templates would leave every other assertion in this file green.
+EXPECTED_ROLES: dict[str, str] = {
+    "sonic-t4-spine-switch": "spine",
+    "sonic-t4-super-spine-switch": "super_spine",
+    "sonic-t5-spine-switch": "spine",
+    "sonic-t5-super-spine-switch": "super_spine",
+    "sonic-t6-spine-switch": "spine",
+    "sonic-t6-super-spine-switch": "super_spine",
+    "sonic-td4-leaf-switch-compute": "leaf",
+    "sonic-td4-leaf-switch-storage": "leaf",
 }
 
 SPINE_AND_SUPER_SPINE_INTERFACE_COUNT = 65
@@ -121,14 +135,31 @@ class TestSonicDeviceTemplateWiring:
 
         declared = templates[template_name]["interfaces"]["data"]
         declared_names = [interface["name"] for interface in declared]
-        expected_names = [pattern for pattern, _count, _first, _last in expected_interfaces]
+        expected_names = [pattern for pattern, _count, _first, _last, _profiles in expected_interfaces]
         assert declared_names == expected_names
 
-        for pattern, expected_count, expected_first, expected_last in expected_interfaces:
+        declared_profiles = [interface.get("profiles") for interface in declared]
+        expected_profiles = [profiles for _pattern, _count, _first, _last, profiles in expected_interfaces]
+        assert declared_profiles == expected_profiles, f"{template_name}: profiles mismatch"
+
+        for pattern, expected_count, expected_first, expected_last, _profiles in expected_interfaces:
             expanded = range_expansion(pattern)
             assert len(expanded) == expected_count, f"{template_name}: {pattern} expanded to {len(expanded)}"
             assert expanded[0] == expected_first, f"{template_name}: {pattern} first name {expanded[0]}"
             assert expanded[-1] == expected_last, f"{template_name}: {pattern} last name {expanded[-1]}"
+
+    @pytest.mark.parametrize("template_name", sorted(EXPECTED_TEMPLATES))
+    def test_device_role_matches_intended_tier(self, template_name: str) -> None:
+        templates = _load_device_templates()
+        assert templates[template_name]["role"] == EXPECTED_ROLES[template_name]
+
+    @pytest.mark.parametrize("template_name", sorted(EXPECTED_TEMPLATES))
+    def test_expand_range_is_enabled_on_the_interfaces_block(self, template_name: str) -> None:
+        """A dropped `expand_range` flag would leave bracket patterns un-expanded at load time --
+        this test's own use of `range_expansion()` above is independent of that flag, so it must be
+        asserted directly rather than assumed."""
+        templates = _load_device_templates()
+        assert templates[template_name]["interfaces"]["parameters"]["expand_range"] is True
 
     @pytest.mark.parametrize(
         "template_name",

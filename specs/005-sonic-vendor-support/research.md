@@ -337,6 +337,24 @@ GraphQL data (two devices: a leaf with a mixed EVPN + attached-server session, a
   acceptance rule (A1-A8) in the contract. This is not a substitute for D6's declined automated template test
   — it is a one-time manual check performed during implementation, the same kind of check D6 explicitly
   chose not to make repeatable.
+- **Two further defects, caught by an independent multi-agent review pass after commit** (three review
+  agents — code quality, test-coverage, silent-failure analysis — run against the full diff): (3) the
+  tenant-overlay FRR block reopened `router bgp {{ overlay_asn }}` with no `overlay_asn is not none` guard
+  of its own, unlike the underlay/EVPN block — currently unreachable in practice (`generate_tenant.py` only
+  materialises segments once the overlay ASN is resolved), but the template had no defence of its own against
+  stale/partial data; fixed by nesting the whole FRR tenant-overlay block inside that guard. (4) the VXLAN
+  tunnel-source line (`config vxlan add vtep1 {{ vtep.addr }}`) would silently render with a missing address
+  argument if a leaf had segments but no addressed `vtep`-role interface — `generate_rack.py` treats VTEP
+  assignment as best-effort and can skip it when a pod's `vtep_pool` is unset, so this is reachable by
+  construction even though not exercised by Fabric-E's current demo data; fixed by rendering a loud
+  `! ERROR: no addressed vtep-role interface found ...` comment instead of the malformed command when no
+  address is found, rather than failing silently. Both fixes re-verified by re-running the synthetic render
+  plus a new edge-case render (no `overlay_asn`, no `vtep`-role interface, segments present) confirming
+  neither `router bgp` nor a malformed `vxlan add` line leaks into the output. The same review also flagged
+  three test-coverage gaps in `test_sonic_device_templates.py` (D12) — the per-template `role` field, each
+  interface range's `profiles`, and the `interfaces.parameters.expand_range` flag were all declared but never
+  asserted, meaning a copy-paste error in any of them would have left every test green — closed by extending
+  the test's expected-value tables and adding two more parametrized assertions.
 
 ## Cross-cutting: what does not change
 
