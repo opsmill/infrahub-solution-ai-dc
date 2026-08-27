@@ -6,8 +6,9 @@ templates.
 
 ## Data surface
 
-Identical to [junos-config-contract.md](./junos-config-contract.md)'s Data surface section — the shared query
-is not vendor-specific. Restated here for completeness:
+Identical to Juniper's
+[junos-config-contract.md](../../003-juniper-junos-support/contracts/junos-config-contract.md) Data surface
+section — the shared query is not vendor-specific. Restated here for completeness:
 
 | Path | Notes |
 |---|---|

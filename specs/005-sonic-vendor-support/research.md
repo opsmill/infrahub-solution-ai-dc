@@ -159,7 +159,6 @@ here. No `NEEDS CLARIFICATION` markers remain.
   announced industry-wide — so `SONiC-T6` is modelled as the forward-leaning entry, not as an equally
   long-shipping, field-proven generation the way T4 is. This is stated plainly rather than smoothed over,
   consistent with this feature's general practice of not overclaiming hardware maturity.
-
 - **Leaf**: `SONiC-TD4` (48× 10/25G SFP28 access + 6× 40/100G QSFP28 uplink) — same port shape as the
   originally-chosen AS7326-56X, renamed for the same chipset-not-box reasoning, single generation since only
   the Tomahawk (spine-class) line was asked to vary.
