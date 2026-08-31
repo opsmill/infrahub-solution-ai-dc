@@ -111,7 +111,6 @@ class RackGenerator(InfrahubGenerator):
         self.rack_amount_of_leafs: int = rack.amount_of_leafs.value  # type: ignore[union-attr, assignment]
         self.leaf_switches = []
 
-        # Resolve the vendor group once from the leaf template (raises if unresolvable).
         self.vendor_group = await vendor_group_for_template(self.client, self.rack_leaf_switch_template)
 
         self.pod_id: str = rack.pod.node.id  # type: ignore[union-attr]

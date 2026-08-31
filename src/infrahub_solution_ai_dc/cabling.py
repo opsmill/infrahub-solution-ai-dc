@@ -15,10 +15,7 @@ def build_pod_cabling_plan(
     src_interface_map: dict[NetworkDevice, list[NetworkInterface]],
     dst_interface_map: dict[NetworkDevice, list[NetworkInterface]],
 ) -> list[tuple[NetworkInterface, NetworkInterface]]:
-    """Builds a cabling plan between source and destination interfaces based on Indexes
-
-    TODO Write unit test to validate that the algorithm works as expected
-    """
+    """Build a cabling plan between source and destination interfaces, by index."""
     dst_devices = list(dst_interface_map.keys())
     dst_device_count = len(dst_devices)
     dst_interface_base_index = (pod_index - 2) * len(dst_interface_map)

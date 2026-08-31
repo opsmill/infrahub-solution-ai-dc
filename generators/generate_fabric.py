@@ -38,7 +38,6 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
         self.amount_of_super_spines = fabric.amount_of_super_spines.value  # type: ignore[union-attr, assignment]
         self.super_spine_switches = []
 
-        # Resolve the vendor group once from the super-spine template (raises if unresolvable).
         self.vendor_group = await vendor_group_for_template(self.client, self.fabric_super_spine_switch_template)
 
         await self.allocate_resource_pools()
@@ -152,7 +151,6 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
     async def update_checksum(self) -> None:
         pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
 
-        # store the checksum for the fabric in the object itself
         fabric_checksum = self.calculate_checksum()
         for pod in pods:
             if pod.checksum.value != fabric_checksum:
