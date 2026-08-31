@@ -212,11 +212,64 @@ def test(ctx: Context) -> None:
     ctx.run("pytest tests", pty=True)
 
 
+@task(
+    help={
+        "version": "Infrahub version to run the integration suite against (e.g. 1.10.6, 1.11.0).",
+        "output": "Where to write the timing JSON (default: perf-results/<version>.json).",
+        "build_image": "Build the project image for that version first (default: yes).",
+    }
+)
+def test_version(ctx: Context, version: str, output: str = "", build_image: bool = True) -> None:
+    """Run the integration suite against one Infrahub version, capturing timings.
+
+    INFRAHUB_BASE_VERSION is the only knob: the repo copy the stack clones is adapted automatically
+    for releases that predate a feature it uses (see tests/integration/repo_source.py), so no file in
+    the working tree needs editing to test an older release.
+    """
+    results_path = output or f"perf-results/{version}.json"
+    env = {"INFRAHUB_BASE_VERSION": version, "AI_DC_PERF_OUT": results_path}
+
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        if build_image:
+            # Through prepare_compose so the compose file on disk is present and matches the edition;
+            # the version in ``env`` is merged last, so it wins over the installed-package default.
+            ctx.run("docker compose build", pty=True, env={**prepare_compose(ctx, resolve_edition()), **env})
+        # warn=True: a failing suite is a *result* of the comparison, not a reason to abort before
+        # the timings are reported.
+        ctx.run("pytest tests/integration -v", pty=True, env=env, warn=True)
+
+    print(f"\nResults written to {results_path}")
+
+
 @task(name="docs")
 def docs_build(ctx: Context) -> None:
     """Build the documentation website."""
     with ctx.cd(DOCUMENTATION_DIRECTORY):
         ctx.run("pnpm run build", pty=True)
+
+
+@task(
+    help={
+        "baseline": "Baseline version (e.g. 1.10.6).",
+        "candidate": "Candidate version (e.g. 1.11.0).",
+        "output": "Where to write the markdown report.",
+    }
+)
+def compare_versions(
+    ctx: Context,
+    baseline: str = "1.10.6",
+    candidate: str = "1.11.0",
+    output: str = "perf-results/comparison.md",
+) -> None:
+    """Run the integration suite against two full Infrahub stacks and diff the results.
+
+    Delegates to dev/compare_versions.sh, which moves *both* halves of each stack together -- the
+    application image and the infrahub-testcontainers package that defines the surrounding compose
+    (Neo4j/RabbitMQ/Redis pins, container ulimits). `inv test-version` swaps the application image
+    only, which is faster but blind to stack-level changes between releases.
+    """
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run(f"./dev/compare_versions.sh {baseline} {candidate} {output}", pty=True)
 
 
 @task(

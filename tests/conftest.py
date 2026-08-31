@@ -13,6 +13,11 @@ need to move to the repo root. Re-measure that way before concluding otherwise.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
+
 # ``infrahub_testcontainers``' pytest plugin builds a host profile in ``pytest_sessionstart`` and
 # calls ``psutil.cpu_freq()`` unguarded (infrahub_testcontainers/host.py). On Apple Silicon that
 # raises ``RuntimeError: 'voltage-states1-sram' property not found`` from psutil's macOS backend,
@@ -39,3 +44,32 @@ else:
             return None
 
     psutil.cpu_freq = _cpu_freq_or_none  # type: ignore[assignment]
+
+
+# --- version-comparison timing capture -----------------------------------------------------------
+#
+# Inert unless AI_DC_PERF_OUT is set, so `inv test` and CI behave exactly as before. See tests/perf.py
+# for why the bundled infrahub_testcontainers performance plugin is not used instead.
+
+from tests.perf import PerfRecorder, build_recorder
+
+_recorder: PerfRecorder | None = None
+
+
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
+    global _recorder  # noqa: PLW0603
+    _recorder = build_recorder()
+
+
+def pytest_runtest_logreport(report: pytest.TestReport) -> None:
+    if _recorder is not None:
+        _recorder.record_report(report)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _recorder is None:
+        return
+    _recorder.add_context("exitstatus", int(exitstatus))
+    _recorder.add_context("tests_collected", session.testscollected)
+    _recorder.add_context("tests_failed", session.testsfailed)
+    _recorder.write()
