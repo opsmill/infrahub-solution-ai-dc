@@ -109,3 +109,27 @@ spec:
             index: 3
             spine_switch_template: "sonic-t5-spine-switch"
             member_of_groups: ["pods"]
+    # Fabric-F — Cumulus Linux (NVIDIA Spectrum ASICs). Mirrors Fabric-E's topology; like Fabric-E, its
+    # three pods deliberately use three different Spectrum generations (research.md D8) so all three are
+    # visible in one running demo: Pod-F1 (super-spine) on the newest silicon, Pod-F2/F3 (spine) on the two
+    # established generations.
+    - name: "Fabric-F"
+      index: 6
+      member_of_groups: ["fabrics"]
+      super_spine_switch_template: "cumulus-spectrum4-super-spine-switch"
+      amount_of_super_spines: 4
+      children:
+        kind: NetworkPod
+        data:
+          - name: "Pod-F1"
+            index: 1
+            role: "fabric"
+            member_of_groups: ["pods"]
+          - name: "Pod-F2"
+            index: 2
+            spine_switch_template: "cumulus-spectrum2-spine-switch"
+            member_of_groups: ["pods"]
+          - name: "Pod-F3"
+            index: 3
+            spine_switch_template: "cumulus-spectrum3-spine-switch"
+            member_of_groups: ["pods"]

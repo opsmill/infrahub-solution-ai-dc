@@ -338,3 +338,73 @@ spec:
       amount_of_leafs: 1
       leaf_switch_template: sonic-td4-leaf-switch-storage
       member_of_groups: ["racks"]
+    # Fabric-F (Cumulus) racks — mirror Fabric-E's layout with the Cumulus leaf templates. Leaves are not
+    # part of the three-generation split (data-model.md §6): every rack uses the same
+    # Cumulus-SPECTRUM2-TOR leaf templates regardless of which pod (and therefore which spine generation)
+    # it attaches to. Mirrors Fabric-E faithfully, including its two rack_type/template mismatches
+    # (Rack-F2-4 is storage but uses the compute template; Rack-F3-4 is compute but uses the storage
+    # template) so all six fabrics stay directly comparable.
+    - name: "Rack-F2-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-F2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F2-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-F2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F2-3"
+      index: 3
+      rack_type: compute
+      pod: Pod-F2
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F2-4"
+      index: 4
+      rack_type: storage
+      pod: Pod-F2
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F3-1"
+      index: 1
+      rack_type: compute
+      pod: Pod-F3
+      parent: "Hall-A1"
+      amount_of_leafs: 2
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F3-2"
+      index: 2
+      rack_type: compute
+      pod: Pod-F3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-compute
+      member_of_groups: ["racks"]
+    - name: "Rack-F3-3"
+      index: 3
+      rack_type: storage
+      pod: Pod-F3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-storage
+      member_of_groups: ["racks"]
+    - name: "Rack-F3-4"
+      index: 4
+      rack_type: compute
+      pod: Pod-F3
+      parent: "Hall-A1"
+      amount_of_leafs: 1
+      leaf_switch_template: cumulus-spectrum2-tor-leaf-switch-storage
+      member_of_groups: ["racks"]
