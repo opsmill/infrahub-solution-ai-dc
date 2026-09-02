@@ -110,13 +110,13 @@ Per [quickstart.md](./quickstart.md).
 
 **Purpose**: Keep the agent-facing and human-facing documentation truthful, and close the success criteria.
 
-- [ ] T026 `CONTEXT.md` — extend the Vendor group definition / Flagged-ambiguities entry to note Cumulus alongside SONiC as another manufacturer named for config dialect (OS + Spectrum ASIC generation), not a legal hardware maker distinction, consistent with the existing SONiC entry
-- [ ] T027 [P] Update the vendor list in the templates bullet at `AGENTS.md` (`startup_config_{cisco,arista,dell,juniper,sonic}.j2` → include `cumulus`)
-- [ ] T028 [P] Add this feature to the active-features list in `CLAUDE.md`
-- [ ] T029 [P] Update vendor mentions in `README.md`
-- [ ] T030 [P] Update vendor lists in `docs/docs/solution-ai-dc/` — `multivendor-config.mdx` is the dedicated page (group table, transform/artifact table, demo-data table, and the `SUPPORTED_VENDORS` prose), plus `overview.mdx`, `installation-setup.mdx`, `demo-guide.mdx`, `evpn-vxlan-overlay.mdx`
-- [ ] T031 [P] Add `Cumulus`, `Spectrum`, `ifupdown2`, `vxlan`-related terms not already present to `.vale/styles/spelling-exceptions.txt` (`FRR`/`vtysh` already present from SONiC)
-- [ ] T032 Run the documentation linter over the edited `docs/` pages and confirm it passes. `inv lint` is yamllint + ruff + mypy only and does **not** cover Vale, so nothing else verifies T031 — run Vale directly or via the CI docs job
+- [X] T026 `CONTEXT.md` — extend the Vendor group definition / Flagged-ambiguities entry to note Cumulus alongside SONiC as another manufacturer named for config dialect (OS + Spectrum ASIC generation), not a legal hardware maker distinction, consistent with the existing SONiC entry (both entries extended with parallel Cumulus text)
+- [X] T027 [P] Update the vendor list in the templates bullet at `AGENTS.md` (`startup_config_{cisco,arista,dell,juniper,sonic}.j2` → include `cumulus`) (done)
+- [X] T028 [P] Add this feature to the active-features list in `CLAUDE.md` (added after the SONiC line)
+- [X] T029 [P] Update vendor mentions in `README.md` (vendor-list prose, transforms/artifacts bullet, demo-data bullet updated to six vendors/fabrics incl. Fabric-F/Amber)
+- [X] T030 [P] Update vendor lists in `docs/docs/solution-ai-dc/` — `multivendor-config.mdx` is the dedicated page (group table, transform/artifact table, demo-data table, and the `SUPPORTED_VENDORS` prose), plus `overview.mdx`, `installation-setup.mdx`, `demo-guide.mdx`, `evpn-vxlan-overlay.mdx` (all five pages updated with Cumulus/Fabric-F/Amber parallel to every SONiC/Fabric-E/Purple mention, incl. counts: five→six vendors/fabrics, 15→18 pods, 40→48 racks)
+- [X] T031 [P] Add `Cumulus`, `Spectrum`, `ifupdown2`, `vxlan`-related terms not already present to `.vale/styles/spelling-exceptions.txt` (`FRR`/`vtysh` already present from SONiC) (added `Cumulus`, `Spectrum`, `ifupdown2`, plus `ASIC`/`ASICs` surfaced by the T032 Vale run)
+- [X] T032 Run the documentation linter over the edited `docs/` pages and confirm it passes. `inv lint` is yamllint + ruff + mypy only and does **not** cover Vale, so nothing else verifies T031 — run Vale directly or via the CI docs job (Vale v3.13.0, matching CI, downloaded and run locally: `docs/docs/**/*.{md,mdx}` → 0 errors, 16 warnings, same warning count as the pre-edit baseline, i.e. no new issues from the Cumulus text)
 - [ ] T033 Verify SC-002: `git diff --stat main -- schemas/ generators/` must be **empty**. A non-empty diff means the multivendor abstraction leaked and should be recorded as a finding (quickstart Scenario 9)
 - [ ] T034 Verify the day-two overlay path reaches Cumulus leaves: add a fourth segment to the `Amber` tenant's `amber-prod` VRF, re-run the overlay generator, and confirm carrying leaves pick it up while Cumulus spine/super-spine configs stay byte-identical across all three Spectrum generations (quickstart Scenario 8, contract A8)
 - [ ] T035 Verify SC-004: walk Fabric-F design object → generated switches and cabling → rendered Cumulus configuration, without editing code and running nothing beyond `inv load` plus the generator pipeline (quickstart Scenario 10)
