@@ -30,3 +30,5 @@ spec:
       parent: devices
     - name: sonic_devices
       parent: devices
+    - name: cumulus_devices
+      parent: devices

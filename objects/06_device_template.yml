@@ -406,3 +406,135 @@ spec:
           - template_name: "SonicTD4LeafStorageSwitchEth1/[49-54]"
             name: "Eth1/[49-54]"
             profiles: ["profile-interface-spine"]
+    # Cumulus Linux on NVIDIA Spectrum-2 (Cumulus-SPECTRUM2, 64x 100G) — spine & super-spine.
+    - template_name: "cumulus-spectrum2-super-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM2"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum2SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum2SuperSpineSwitchswp[1-64]"
+            name: "swp[1-64]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "cumulus-spectrum2-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM2"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum2SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum2SpineSwitchswp[1-32]"
+            name: "swp[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "CumulusSpectrum2SpineSwitchswp[33-64]"
+            name: "swp[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    # Cumulus Linux on NVIDIA Spectrum-3 (Cumulus-SPECTRUM3, 64x 200G) — spine & super-spine.
+    - template_name: "cumulus-spectrum3-super-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM3"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum3SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum3SuperSpineSwitchswp[1-64]"
+            name: "swp[1-64]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "cumulus-spectrum3-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM3"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum3SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum3SpineSwitchswp[1-32]"
+            name: "swp[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "CumulusSpectrum3SpineSwitchswp[33-64]"
+            name: "swp[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    # Cumulus Linux on NVIDIA Spectrum-4 (Cumulus-SPECTRUM4, 64x 800G) — spine & super-spine. Newest,
+    # least field-proven generation modeled here.
+    - template_name: "cumulus-spectrum4-super-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM4"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum4SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum4SuperSpineSwitchswp[1-64]"
+            name: "swp[1-64]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "cumulus-spectrum4-spine-switch"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM4"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum4SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum4SpineSwitchswp[1-32]"
+            name: "swp[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "CumulusSpectrum4SpineSwitchswp[33-64]"
+            name: "swp[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    # Cumulus Linux on NVIDIA Spectrum-2, access-optimized (Cumulus-SPECTRUM2-TOR, 48x 25G + 6x 100G) — leaf.
+    - template_name: "cumulus-spectrum2-tor-leaf-switch-compute"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM2-TOR"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum2TorLeafComputeSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum2TorLeafComputeSwitchswp[1-48]"
+            name: "swp[1-48]"
+            profiles: ["profile-interface-server"]
+          - template_name: "CumulusSpectrum2TorLeafComputeSwitchswp[49-54]"
+            name: "swp[49-54]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "cumulus-spectrum2-tor-leaf-switch-storage"
+      device_type: ["Cumulus", "Cumulus-SPECTRUM2-TOR"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "CumulusSpectrum2TorLeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "CumulusSpectrum2TorLeafStorageSwitchswp[1-48]"
+            name: "swp[1-48]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "CumulusSpectrum2TorLeafStorageSwitchswp[49-54]"
+            name: "swp[49-54]"
+            profiles: ["profile-interface-spine"]

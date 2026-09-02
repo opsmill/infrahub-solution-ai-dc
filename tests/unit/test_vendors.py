@@ -16,6 +16,7 @@ class TestVendorGroupForManufacturer:
             ("Dell", "dell_devices"),
             ("Juniper", "juniper_devices"),
             ("SONiC", "sonic_devices"),
+            ("Cumulus", "cumulus_devices"),
             ("  DELL  ", "dell_devices"),  # trimmed + case-insensitive
         ],
     )
