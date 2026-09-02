@@ -239,6 +239,21 @@ Confirmed by inspection, and asserted as spec SC-002:
   `contracts/cumulus-config-contract.md`).
 - **No new dependency, no CI change, no auth change.**
 
+## D11 — One defect caught by post-implementation review
+
+The `speckit-review-errors` pass (run against `HEAD`-at-implementation-start..`HEAD`) found that the
+routed-SVI stanza (`iface vlan<vlan_id>`) guarded its emission on `segment.gateway.node` but dereferenced
+`segment.vrf.node.name.value` unguarded on the `vrf` line — a segment with a gateway but a null `vrf`
+relationship would raise `jinja2.exceptions.UndefinedError` and abort the whole artifact render, not degrade
+gracefully. The review noted the identical unguarded chain exists in `startup_config_sonic.j2` too (not a
+Cumulus-specific regression, and out of scope to fix there per this feature's FR-010/Out-of-Scope constraint
+against touching existing vendor templates) — but there is no reason for Cumulus's own template to ship with
+the same gap from day one. Fixed by widening the guard to `{% if segment.gateway.node and segment.vrf.node %}`,
+matching the equivalent two-relationship guard already used in the preamble's `vns` namespace loop (research.md
+D5's copied-from-SONiC preamble, line 8). Verified: `inv lint` clean after the change; no test exercises this
+path directly (D6), consistent with the repo-wide precedent of relying on template-contract review rather than
+automated rendered-config tests.
+
 ## Note carried forward, resolved differently for Cumulus than for the four slash-named vendors
 
 See D3 above: unlike Cisco/Dell/Juniper/SONiC, Cumulus's `swpN` naming carries no slash, so the computed

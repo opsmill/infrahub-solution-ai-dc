@@ -136,7 +136,7 @@ iface vni{{ segment.l2vni.value }}
 {% endif %}
     bridge-access {{ segment.vlan_id.value }}
 
-{% if segment.gateway.node %}
+{% if segment.gateway.node and segment.vrf.node %}
 auto vlan{{ segment.vlan_id.value }}
 iface vlan{{ segment.vlan_id.value }}
     address {{ segment.gateway.node.address.value }}
