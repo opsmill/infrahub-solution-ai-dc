@@ -104,6 +104,11 @@ iface <name>
     link-down yes
 ```
 
+> `link-down yes` and the omit-`auto`-line convention are a **documented Cumulus Linux/ifupdown2 mechanic,
+> not independently verified in this repository** — the same confidence level as the anycast-gateway-MAC
+> omission below, stated plainly rather than presented as more certain than it is. Confirm at the SC-001
+> review.
+
 Plus, once per device — the `lo` stanza (research.md D4):
 
 ```text
@@ -234,7 +239,10 @@ Interface MTU; realistic management (`eth0`) addressing; AAA/NTP/syslog; per-ser
 membership (`bridge-ports` listing individual `swpN` members per VLAN) — the template renders the VNI
 interfaces and their bridge-vids membership, not the individual tagging commands for every server-facing
 port, which is not information the shared query provides per segment (same gap SONiC's contract already
-flags for `config vlan member add`); any change to the shared query. **A rendered anycast-gateway MAC on the
+flags for `config vlan member add`); any change to the shared query. **STP guard attributes on VNI
+interfaces** (`mstpctl-bpduguard`, `mstpctl-portbpdufilter`) that real Cumulus Linux EVPN reference
+configurations commonly carry — deliberately omitted, not an oversight: no STP data exists anywhere in the
+shared query or this solution's data model. **A rendered anycast-gateway MAC on the
 leaf SVI** — Arista and Juniper both render one; Cumulus Linux's real equivalent
 (`address-virtual <mac> <ip>` under a routed SVI, Cumulus's own anycast-gateway feature) was not confirmed
 with enough certainty to render here without guessing, so it is deliberately omitted, matching SONiC's own

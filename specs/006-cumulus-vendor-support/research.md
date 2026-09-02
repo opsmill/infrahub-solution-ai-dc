@@ -114,6 +114,10 @@ verified here. No `NEEDS CLARIFICATION` markers remain.
   Adopted in spirit — see the config contract's banner-comment convention — but not as two literal file
   headers, to match the single "startup configuration" framing this solution already uses for the other five
   vendors (SONiC being the nearest precedent for a two-syntax split in one artifact).
+- **Confidence note (critique-20260902-154300, E1)**: the admin-down mechanic (`link-down yes`, omitting the
+  `auto <name>` line) is a documented Cumulus Linux/ifupdown2 convention, not independently verified in this
+  repository — the same confidence level given to the anycast-gateway-MAC omission (contract Out of Scope),
+  stated explicitly in `contracts/cumulus-config-contract.md` rather than left implicit.
 
 ## D6 — No automated template validation
 
