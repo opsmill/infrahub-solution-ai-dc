@@ -61,7 +61,7 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 - `cabling_plan.py` — CSV cabling plan generation (`InfrahubTransform`)
 - `computed_interface_description.py` — Interface description transform
 - `cilium_manifest.py` — `CiliumManifest` (`InfrahubTransform`): renders a Kubernetes cluster's Cilium BGP manifest as multi-document YAML — one `CiliumBGPClusterConfig` per eligible L3 member plus one shared `CiliumBGPPeerConfig` and `CiliumBGPAdvertisement`. Selection and ordering live in `clusters.py`; this only maps to Cilium field names. `.infrahub.yml` wires it to an `application/yaml` artifact (`Cilium BGP Manifest`) targeting the `kubernetes_clusters` group.
-- `templates/startup_config_{cisco,arista,dell,juniper,sonic}.j2` — Per-vendor Jinja2 templates for device startup configs. `.infrahub.yml` wires one Jinja2 transform and one artifact definition per vendor, each targeting the matching `{vendor}_devices` group.
+- `templates/startup_config_{cisco,arista,dell,juniper,sonic}.j2` — Per-vendor Jinja2 templates for device startup configs. `.infrahub.yml` wires one Jinja2 transform and one artifact definition per vendor, each targeting the matching `{vendor}_devices` group. SONiC is the exception: `startup_config_sonic.j2` (config CLI) and `startup_config_sonic_frr.j2` (FRR routing) are two templates wired to two artifact definitions, both targeting `sonic_devices` — real SONiC applies these two dialects through separate mechanisms, so each renders as its own artifact (`Startup configuration` / `FRR configuration`) rather than one concatenated file.
 
 ### Data Files
 

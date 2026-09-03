@@ -54,8 +54,9 @@ Assumptions).
 
 1. **No schema change, no generator change** — spec SC-002. If either is needed, the multivendor abstraction
    leaked and that is a finding, not a licence to edit.
-2. **Exactly one artifact per device** — nothing may target the `devices` group; the SONiC artifact definition
-   targets `sonic_devices` only.
+2. **Exactly one artifact per device for the other four vendors; exactly two for SONiC** — nothing may target
+   the `devices` group; both SONiC artifact definitions (config-CLI + FRR) target `sonic_devices` only
+   (FR-006, revised — see `contracts/sonic-registration.md`).
 3. **`transforms/startup_config.gql` is unchanged** — every field a SONiC template needs is already queried.
 4. **Existing vendors must be untouched** — a zero-line diff on Cisco/Arista/Dell/Juniper rendered configs.
 5. Interface **role**, not interface name, is the discriminator inside the template (`CONTEXT.md`).
@@ -64,9 +65,9 @@ Assumptions).
    plain `[a-b]` range, avoiding both an authenticity trade-off and a yamllint line-length risk an earlier
    draft hit (research.md D10).
 
-**Scale/Scope**: 0 schema files; 0 generator files; 1 Python line; 1 new Jinja2 template (~120–150 lines);
-2 `.infrahub.yml` entries; 6 object files edited; 1 unit-test file edited + 1 new unit-test file (D12);
-documentation files.
+**Scale/Scope**: 0 schema files; 0 generator files; 1 Python line; 2 new Jinja2 templates (config-CLI + FRR,
+~50 and ~90 lines); 4 `.infrahub.yml` entries (2 transforms, 2 artifact definitions); 6 object files edited;
+1 unit-test file edited + 1 new unit-test file (D12); documentation files.
 
 ### Items to verify during implementation (non-blocking — see research.md)
 
@@ -138,10 +139,11 @@ src/infrahub_solution_ai_dc/
 └── vendors.py                      # EDIT — one line: add "sonic" to SUPPORTED_VENDORS
 
 transforms/templates/
-└── startup_config_sonic.j2         # NEW — SONiC config CLI + FRR (see contracts/sonic-config-contract.md)
-  # transforms/startup_config.gql   — UNCHANGED (shared by all five vendors)
+├── startup_config_sonic.j2         # NEW — SONiC config CLI (see contracts/sonic-config-contract.md)
+└── startup_config_sonic_frr.j2     # NEW — FRR routing config (see contracts/sonic-config-contract.md)
+  # transforms/startup_config.gql   — UNCHANGED (shared by all six templates)
 
-.infrahub.yml                       # EDIT — +1 jinja2_transform, +1 artifact_definition (targets sonic_devices)
+.infrahub.yml                       # EDIT — +2 jinja2_transforms, +2 artifact_definitions (both target sonic_devices)
 
 objects/
 ├── 01_groups.yml                   # EDIT — add sonic_devices (parent: devices)

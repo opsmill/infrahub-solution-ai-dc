@@ -195,7 +195,7 @@ Each Generator has a paired `.gql` query file in the same directory. The `.infra
 
 | File                                                            | Purpose                                                                |
 |-----------------------------------------------------------------|------------------------------------------------------------------------|
-| `transforms/startup_config.gql` + `templates/startup_config_{cisco,arista,dell,juniper,sonic}.j2` | Five per-vendor Jinja2 Transforms, each producing a startup configuration artifact for the devices in its vendor group (`{manufacturer}_devices`). See [Multivendor configuration](./multivendor-config). |
+| `transforms/startup_config.gql` + `templates/startup_config_{cisco,arista,dell,juniper,sonic,sonic_frr}.j2` | Six per-vendor Jinja2 Transforms, each producing a startup configuration artifact for the devices in its vendor group (`{manufacturer}_devices`) — SONiC gets two (config CLI + FRR). See [Multivendor configuration](./multivendor-config). |
 | `transforms/cabling_plan.py` / `.gql`                           | Python Transform producing a CSV cabling plan artifact per fabric      |
 | `transforms/computed_interface_description.py` / `.gql`         | Python Transform applied as a computed attribute on each interface     |
 

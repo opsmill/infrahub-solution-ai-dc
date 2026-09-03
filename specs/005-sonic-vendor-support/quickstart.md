@@ -80,40 +80,45 @@ Inspect `NetworkLink` objects between a Fabric-E rack and its pod.
 ever cabled to a spine. No port appears in two links. Four uplinks per leaf are cabled and two remain
 uncabled (6 uplinks, 4 spines).
 
-## Scenario 4 — Exactly one artifact per device, everywhere (SC-003, FR-006, FR-010)
+## Scenario 4 — Exactly one artifact per device for four vendors, exactly two for SONiC (SC-003, FR-006, FR-010)
 
-**Expected**: all ~117 devices — Fabric-A/B/C/D **and** E — have exactly one `Startup configuration` artifact.
-Zero devices with none (registration chain broken) and zero with two (something still targets `devices`).
+**Expected**: all ~94 non-SONiC devices — Fabric-A/B/C/D — have exactly one `Startup configuration` artifact.
+All ~23 SONiC devices (Fabric-E) have exactly **two** artifacts: `Startup configuration` and
+`FRR configuration` (A9). Zero devices with none of either (registration chain broken) and zero non-SONiC
+devices with two, or SONiC devices with more than two or only one (something still targets `devices`, or one
+half of SONiC's fork is mis-wired — see `contracts/sonic-registration.md` Resolution chain).
 
 ## Scenario 5 — SONiC leaf config is structurally correct (SC-001, FR-007, FR-008)
 
-Fetch the artifact for a Fabric-E **leaf** that carries tenant segments.
+Fetch **both** artifacts (`Startup configuration` and `FRR configuration`) for a Fabric-E **leaf** that
+carries tenant segments.
 
 **Expected**, per [contracts/sonic-config-contract.md](./contracts/sonic-config-contract.md) acceptance rules:
 
-- Every `config` CLI line is a complete, independently valid command (A1).
-- Contains `config vlan add`, `config vxlan add`/`evpn_nvo add`/`map add`, `config interface ip add
-  Vlan<id>` and `config interface vrf bind` for gateway-bearing segments, and an FRR `vrf <name> / vni
-  <l3vni> / exit-vrf` block for the tenant VRF (A2).
-- `config vxlan add vtep1 <ip>` uses the `vtep`-role interface's address; FRR `bgp router-id` uses the
-  `loopback`-role address — never conflated (A4). Neither is ever rendered as a literal `interface
-  Loopback1`.
-- The two uncabled uplinks appear with `config interface description`/`shutdown` and no `config interface ip
-  add` line (A7).
-- The **L2-only** segment `purple-l2` gets `config vlan add` and `config vxlan map add`, but **no**
-  `config interface ip add Vlan<id>` and **no** `config interface vrf bind` line (A5). This is the only check
-  that exercises the gateway-less path.
+- Every `config` CLI line (`Startup configuration`) is a complete, independently valid command (A1).
+- `Startup configuration` contains `config vlan add`, `config vxlan add`/`evpn_nvo add`/`map add`,
+  `config interface ip add Vlan<id>` and `config interface vrf bind` for gateway-bearing segments; `FRR
+  configuration` contains a `vrf <name> / vni <l3vni> / exit-vrf` block for the tenant VRF (A2).
+- `config vxlan add vtep1 <ip>` (`Startup configuration`) uses the `vtep`-role interface's address; FRR `bgp
+  router-id` (`FRR configuration`) uses the `loopback`-role address — never conflated, and never in the same
+  artifact (A4). Neither is ever rendered as a literal `interface Loopback1`.
+- The two uncabled uplinks appear in `Startup configuration` with `config interface description`/`shutdown`
+  and no `config interface ip add` line (A7).
+- The **L2-only** segment `purple-l2` gets `config vlan add` and `config vxlan map add` in
+  `Startup configuration`, but **no** `config interface ip add Vlan<id>` and **no** `config interface vrf
+  bind` line (A5). This is the only check that exercises the gateway-less path.
 
 ## Scenario 6 — SONiC spine config carries no tenant overlay, on every chipset generation (SC-001, FR-007)
 
-Fetch the artifact for a spine from **Pod-E2** (`SONiC-T4`), a spine from **Pod-E3** (`SONiC-T5`), and a
+Fetch both artifacts for a spine from **Pod-E2** (`SONiC-T4`), a spine from **Pod-E3** (`SONiC-T5`), and a
 super-spine from **Pod-E1** (`SONiC-T6`).
 
-**Expected**: the FRR `router bgp` / `address-family l2vpn evpn` block is present; **no** `config vlan`, **no**
-`config vxlan`, **no** `vrf ... vni ...` block anywhere in the artifact (A3). `route-reflector-client` present
-on route-reflecting tiers only (A6). All three chipset generations render **identical** config structure —
-`startup_config_sonic.j2` has no chipset-specific logic (research.md D8), so any difference beyond hostname
-and addressing between the T4, T5 and T6 artifacts is a bug.
+**Expected**: `FRR configuration` has the `router bgp` / `address-family l2vpn evpn` block but **no**
+`vrf ... vni ...` block; `Startup configuration` has **no** `config vlan` and **no** `config vxlan` line at all
+(A3). `route-reflector-client` present on route-reflecting tiers only (A6). All three chipset generations
+render **identical** config structure in both artifacts — neither `startup_config_sonic.j2` nor
+`startup_config_sonic_frr.j2` has chipset-specific logic (research.md D8), so any difference beyond hostname
+and addressing between the T4, T5 and T6 artifact pairs is a bug.
 
 ## Scenario 7 — Existing vendors are untouched (SC-003, FR-010)
 

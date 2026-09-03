@@ -60,8 +60,11 @@ The single `startup_config.j2` template was replaced by per-vendor templates, on
 | Dell   | `transforms/templates/startup_config_dell.j2`   | `dell_device_startup_config`   | `dell_startup_configuration` (`dell_devices`) |
 | Juniper | `transforms/templates/startup_config_juniper.j2` | `juniper_device_startup_config` | `juniper_startup_configuration` (`juniper_devices`) |
 | SONiC | `transforms/templates/startup_config_sonic.j2` | `sonic_device_startup_config` | `sonic_startup_configuration` (`sonic_devices`) |
+| SONiC (FRR) | `transforms/templates/startup_config_sonic_frr.j2` | `sonic_device_frr_config` | `sonic_frr_configuration` (`sonic_devices`) |
 
-Because no artifact definition targets the parent `devices` group, each device renders **exactly one** startup configuration artifact — the one for its vendor. Every artifact uses the same `artifact_name` (`Startup configuration`), so the artifact reads consistently across vendors regardless of which template produced it.
+Because no artifact definition targets the parent `devices` group, each Cisco, Arista, Dell or Juniper device renders **exactly one** startup configuration artifact — the one for its vendor. Every one of those four artifacts uses the same `artifact_name` (`Startup configuration`), so the artifact reads consistently across those vendors regardless of which template produced it.
+
+**SONiC is the one exception**: two artifact definitions both target `sonic_devices`, so every SONiC device renders **two** artifacts instead of one — `Startup configuration` (interfaces, VLAN/VXLAN, from `startup_config_sonic.j2`) and `FRR configuration` (BGP underlay + EVPN, from `startup_config_sonic_frr.j2`). Both templates share the same query and receive the same context; each renders only the dialect it owns. See [the SONiC feature specification](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/specs/005-sonic-vendor-support/spec.md) (FR-006) for why.
 
 ## Demo data
 
@@ -98,10 +101,10 @@ Then build a fabric (via the trigger pipeline, or by running `generate-fabric` f
 
 - Each device is a member of `devices` and exactly one `{vendor}_devices` group.
 - Fabric-A is 100% Cisco, Fabric-B 100% Arista, Fabric-C 100% Dell, Fabric-D 100% Juniper, Fabric-E 100% SONiC.
-- Each device yields exactly one `Startup configuration` artifact, rendered from its vendor's template.
+- Each Cisco, Arista, Dell or Juniper device yields exactly one `Startup configuration` artifact, rendered from its vendor's template; each SONiC device yields exactly two — `Startup configuration` and `FRR configuration`.
 - Editing one vendor's template changes only that vendor's device configs; the others are byte-identical.
 
-The Cisco, Arista and Dell templates started near-identical (NX-OS-style) and are diverged toward correct per-vendor syntax over time. The Juniper template is structurally different: Junos configuration is hierarchical (curly-brace) rather than flat, and it models both loopbacks as units of a single `lo0`. The SONiC template is different again: it mixes two real dialects in one artifact — SONiC's own `config` CLI for interfaces, VLANs, and VXLAN mapping, and FRR/`vtysh` syntax for the BGP and EVPN control plane, each clearly banner-commented so the split reads as deliberate rather than accidental. Editing one template in isolation is safe precisely because each vendor's devices render only from their own template.
+The Cisco, Arista and Dell templates started near-identical (NX-OS-style) and are diverged toward correct per-vendor syntax over time. The Juniper template is structurally different: Junos configuration is hierarchical (curly-brace) rather than flat, and it models both loopbacks as units of a single `lo0`. SONiC is different again: it genuinely mixes two dialects — SONiC's own `config` CLI for interfaces, VLANs, and VXLAN mapping, and FRR/`vtysh` syntax for the BGP and EVPN control plane — and rather than concatenate them into one file, each dialect gets its own template and its own artifact, matching how a real SONiC device applies them through two separate mechanisms (`config`/`config_db.json` versus `vtysh`/`frr.conf`). Editing one template in isolation is safe precisely because each vendor's devices render only from their own template(s).
 
 ## Learn more
 

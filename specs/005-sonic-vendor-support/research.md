@@ -120,6 +120,18 @@ here. No `NEEDS CLARIFICATION` markers remain.
   consumed by `config load` / rendered by `sonic-cfggen`). Rejected for a reference solution: it is JSON, not
   a "configuration a network engineer reads," and it would be the only artifact of the five that isn't a
   human-readable CLI dialect — breaking the "recognisably correct on inspection" framing SC-001 depends on.
+- **Revised**: the "one artifact, two banner-commented sections" half of this decision was superseded before
+  merge — split into two artifacts instead (`Startup configuration` from `startup_config_sonic.j2`, `FRR
+  configuration` from a new `startup_config_sonic_frr.j2`), both still driven by the unchanged shared query.
+  Rationale: the "wrong-dialect line" structural risk flagged above is real regardless of which side of the
+  banner comment it lands on if both dialects share one file; splitting into separate artifacts removes it
+  entirely, since each template can only contain its own dialect's Jinja branches. It also matches how a real
+  SONiC device actually applies the two — `config` CLI/`config_db.json` via the `swss` container, `frr.conf`
+  via the separate `bgp` container/`vtysh` — closer to that reality than one concatenated file. Cost: SONiC is
+  now the only vendor with two `startup-configuration`-style artifacts per device instead of one (spec.md
+  FR-006, SC-003 updated accordingly); the "closest honest single-artifact representation" framing above no
+  longer applies to the SONiC template, though it's still the reasoning for why the *other four* stay
+  single-artifact.
 
 ## D6 — No automated template validation
 

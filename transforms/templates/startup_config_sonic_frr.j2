@@ -1,0 +1,96 @@
+{% set device = data.NetworkDevice.edges[0].node %}
+{% set fabric = device.pod.node.parent.node %}
+{% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}
+{# Materialized VRFs (leaf-only): derived once so the tenant-overlay BGP section below can reference them. #}
+{% set vns = namespace(vrf_names=[], vrfs=[]) %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
+    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
+    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
+  {% endif %}
+{% endfor %}
+{% set is_rr = device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0 %}
+{# Sessions split by address family, load-bearing not cosmetic: an EVPN session is iBGP to the peer's
+   *loopback*, while an attached server's ipv4-unicast session is eBGP to the /31 on the peer's own
+   interface. Only a NetworkDevice peer exposes loopback_ip; letting a server session through the EVPN
+   loop dereferences a field its peer (NetworkServer) does not have. Same split every other vendor uses. #}
+{% set evpn_sessions = device.bgp_sessions.edges | rejectattr("node.address_family.value", "equalto", "ipv4_unicast") | list %}
+{% set ipv4_sessions = device.bgp_sessions.edges | selectattr("node.address_family.value", "equalto", "ipv4_unicast") | list %}
+! FRR configuration: {{ device.hostname.value }}
+{% if overlay_asn is not none %}
+!
+! --- FRR routing config: BGP underlay & EVPN control plane -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/sonic/frr/frr.conf) ---
+router bgp {{ overlay_asn }}
+ bgp router-id {{ device.loopback_ip.node.address.ip }}
+ no bgp default ipv4-unicast
+{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} update-source Loopback0
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} send-community extended
+{% endfor %}
+{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  {% set sns = namespace(addr="") %}
+  {% for iface_edge in session.peer_device.node.interfaces.edges %}
+    {% if not sns.addr and iface_edge.node.ip_address.node %}
+      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
+    {% endif %}
+  {% endfor %}
+{% if sns.addr %}
+ neighbor {{ sns.addr }} remote-as {{ session.remote_as.value }}
+{% endif %}
+{% endfor %}
+ !
+ address-family l2vpn evpn
+{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} activate
+{% if is_rr and session.rr_client.value %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} route-reflector-client
+{% endif %}
+{% endfor %}
+  advertise-all-vni
+ exit-address-family
+{% if ipv4_sessions %}
+ !
+ address-family ipv4 unicast
+{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  {% set sns = namespace(addr="") %}
+  {% for iface_edge in session.peer_device.node.interfaces.edges %}
+    {% if not sns.addr and iface_edge.node.ip_address.node %}
+      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
+    {% endif %}
+  {% endfor %}
+{% if sns.addr %}
+  neighbor {{ sns.addr }} activate
+{% endif %}
+{% endfor %}
+ exit-address-family
+{% endif %}
+exit
+{% endif %}
+{% if device.segments.edges %}
+{% if overlay_asn is not none %}
+!
+! --- FRR routing config: tenant overlay (L2VNI/L3VNI) -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/sonic/frr/frr.conf) ---
+router bgp {{ overlay_asn }}
+ address-family l2vpn evpn
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  vni {{ segment.l2vni.value }}
+   rd {{ device.loopback_ip.node.address.ip }}:{{ segment.vlan_id.value }}
+   route-target both {{ segment.route_target.value }}
+  exit-vni
+{% endfor %}
+ exit-address-family
+exit
+{% for vrf in vns.vrfs %}
+vrf {{ vrf.name.value }}
+ vni {{ vrf.l3vni.value }}
+exit-vrf
+{% endfor %}
+{% endif %}
+{% endif %}

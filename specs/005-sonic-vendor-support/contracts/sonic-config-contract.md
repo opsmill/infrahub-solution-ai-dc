@@ -1,8 +1,10 @@
 # Contract: SONiC Startup-Configuration Output
 
-What `transforms/templates/startup_config_sonic.j2` must emit. The template consumes the **unchanged** shared
-query `transforms/startup_config.gql` and receives exactly the same context as the other four vendor
-templates.
+What `transforms/templates/startup_config_sonic.j2` (SONiC `config` CLI: interfaces, VLAN/VXLAN) and
+`transforms/templates/startup_config_sonic_frr.j2` (FRR: BGP underlay + EVPN) must each emit, as two separate
+artifacts (`Startup configuration` / `FRR configuration` — see `sonic-registration.md`). Both templates consume
+the **unchanged** shared query `transforms/startup_config.gql` and receive exactly the same context as the
+other four vendor templates and each other; each renders only the section it owns.
 
 ## Data surface
 
@@ -34,33 +36,46 @@ vendor. Out of scope.
 
 ## Preamble
 
-Copy the `device`/`fabric`/`overlay_asn` fallback and the `vns` namespace loop (materialised VRFs — segments
-with both a gateway *and* a VRF) from `startup_config_arista.j2`, unchanged. That loop is the leaf-only gate:
-spines and super-spines have `device.segments.edges == []`, so every overlay section disappears for them.
+`startup_config_sonic_frr.j2` copies the `device`/`fabric`/`overlay_asn` fallback and the `vns` namespace loop
+(materialised VRFs — segments with both a gateway *and* a VRF) from `startup_config_arista.j2`, unchanged.
+That loop is the leaf-only gate: spines and super-spines have `device.segments.edges == []`, so every overlay
+section disappears for them.
 
 One addition, already present verbatim in the other templates and reused as-is:
 
 - `is_rr` — `device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0`.
+
+`vns` and `is_rr` are used only in FRR sections, so `startup_config_sonic.j2` (the config-CLI template) needs
+neither — its preamble is just the `device` line. Both templates independently derive `overlay_asn` from
+`device`/`fabric`, since each is rendered as its own separate context, not shared state between two sections
+of one file.
 
 **Not reused**: the anycast-MAC normalisation three-liner Arista/Dell/Juniper carry. Those three vendors
 render an explicit anycast-gateway MAC on the leaf SVI (`ip virtual-router mac-address` / `virtual-gateway-v4-mac`).
 SONiC's equivalent is its Static Anycast Gateway (SAG) feature, whose exact `config`/FRR syntax was not
 confirmed with enough certainty to render here without guessing — see Out of scope.
 
-## Structural rule: two dialects, one artifact, no nesting
+## Structural rule: two dialects, two artifacts, no cross-contamination
 
 This is where the SONiC template departs from the other four, and it is a **milder** departure than Junos's:
 there is no brace-nesting risk, because neither dialect SONiC actually uses is hierarchical.
 
-1. **SONiC `config` CLI section** — imperative, one command per line, in the same flat style Arista's
-   `interface <name>` block already uses per interface (loop `device.interfaces.edges` **unfiltered**, exactly
-   like Cisco/Arista/Dell — SONiC needs no per-role interface collection the way Junos's `lo0` did).
-2. **FRR routing section** — `router bgp <asn>` in FRR's Cisco-like flat CLI syntax, structurally close to
-   `startup_config_arista.j2`'s own `router bgp` block.
+1. **SONiC `config` CLI** (`startup_config_sonic.j2`, artifact `Startup configuration`) — imperative, one
+   command per line, in the same flat style Arista's `interface <name>` block already uses per interface (loop
+   `device.interfaces.edges` **unfiltered**, exactly like Cisco/Arista/Dell — SONiC needs no per-role interface
+   collection the way Junos's `lo0` did).
+2. **FRR routing** (`startup_config_sonic_frr.j2`, artifact `FRR configuration`) — `router bgp <asn>` in FRR's
+   Cisco-like flat CLI syntax, structurally close to `startup_config_arista.j2`'s own `router bgp` block.
 
-Both sections go in the same artifact, clearly separated, because there is no single native SONiC "show
-running-config" equivalent that unifies them — this is the closest honest single-file representation (see
-research.md D5).
+The two dialects render into **separate artifacts**, one template each, rather than sharing one file with
+banner comments (research.md D5, revised): there is no single native SONiC "show running-config" equivalent
+that unifies them, and real SONiC applies the two through genuinely separate mechanisms — `config`
+CLI/`config_db.json` (the `swss` container) versus `vtysh`/`frr.conf` (the `bgp` container). Splitting removes
+the risk a single combined file carried — a `config` CLI verb rendered where an FRR verb belongs, or vice versa
+— entirely, since each artifact can only contain its own dialect's Jinja branches. Both templates share the
+`device`/`fabric`/`overlay_asn` preamble (recomputed independently in each file, since each is a separate
+render); `startup_config_sonic.j2` does not need `vns`/`is_rr`/`evpn_sessions`/`ipv4_sessions` at all — those
+are used only in the FRR sections, so they belong solely in `startup_config_sonic_frr.j2`'s preamble.
 
 **Never** emit `config interface ... Loopback1` or any command naming the VTEP loopback literally as an
 interface — it is a logical name in the data model; **interface `role` is the discriminator**, exactly as
@@ -70,9 +85,10 @@ loopback interface in SONiC's own model.
 ## Required output by section
 
 Gating: `{% if overlay_asn is not none %}` guards the BGP/EVPN sections; `{% if device.segments.edges %}`
-guards every tenant-overlay section. Both gates already exist in the other four templates.
+guards every tenant-overlay section. Both gates already exist in the other four templates, and both templates
+recompute `overlay_asn` independently in their own preamble.
 
-### Always — SONiC `config` CLI, per interface (unfiltered loop, excluding `loopback`/`vtep` roles)
+### Always — SONiC `config` CLI, per interface (unfiltered loop, excluding `loopback`/`vtep` roles) — `startup_config_sonic.j2`
 
 The interface loop itself is unfiltered — every physical/access interface (`super_spine`, `spine`, `leaf`,
 `server`, `storage`) gets description/admin-state — but the `loopback`- and `vtep`-role interfaces are
@@ -98,7 +114,7 @@ config interface ip add Loopback0 <loopback_ip>/32
 > `Management1`) — the other templates already treat management addressing as a known, repo-wide
 > simplification, and SONiC's `eth0` OOB port is out of scope for the same reason.
 
-### When `overlay_asn` is set — FRR EVPN control plane, all tiers
+### When `overlay_asn` is set — FRR EVPN control plane, all tiers — `startup_config_sonic_frr.j2`
 
 **Sessions split by `address_family`, load-bearing not cosmetic** — the same split every other vendor's
 template makes: an EVPN session is iBGP to the peer's *loopback*; an attached server's `ipv4_unicast` session
@@ -142,7 +158,7 @@ carry an explicit `remote_as` (the server's own ASN) — no fallback needed ther
 
 ### Leaves only — tenant overlay
 
-SONiC `config` CLI (VLAN, SVI, VRF binding, VXLAN):
+SONiC `config` CLI (VLAN, SVI, VRF binding, VXLAN) — `startup_config_sonic.j2`:
 
 ```text
 config vlan add <vlan_id>                                         # every segment
@@ -157,7 +173,9 @@ config vxlan evpn_nvo add nvo1 vtep1                                # once per d
 config vxlan map add vtep1 <vlan_id> <l2vni>                        # every segment, gateway or not
 ```
 
-FRR (per-L2VNI RD/route-target, plus the L3VNI/VRF binding):
+FRR (per-L2VNI RD/route-target, plus the L3VNI/VRF binding) — `startup_config_sonic_frr.j2`, guarded by both
+`device.segments.edges` **and** its own nested `overlay_asn is not none` check (not just the outer BGP-section
+gate — a leaf with segments but no `overlay_asn` must still emit zero FRR content):
 
 ```text
 router bgp <overlay_asn>
@@ -182,18 +200,21 @@ exit-vrf
 
 ## Acceptance rules
 
-These map directly to spec FR-006/FR-007/FR-008 and are what the SC-001 reviewer checks.
+These map directly to spec FR-006/FR-007/FR-008 and are what the SC-001 reviewer checks. Rules marked
+**(pair)** span both artifacts — check them against `Startup configuration` and `FRR configuration` fetched
+together for the same device, not either artifact in isolation.
 
 | # | Rule |
 |---|---|
-| A1 | Every SONiC `config` CLI line is a complete, independently valid command — no partial/continuation lines. |
-| A2 | A **leaf** with segments emits `config vlan add`, `config vxlan map add`, and (for gateway-bearing segments) `config interface ip add Vlan<id>` + `config interface vrf bind` + an FRR `vrf <name> / vni <l3vni>` block. |
-| A3 | A **spine or super-spine** emits the FRR `router bgp` / `address-family l2vpn evpn` block but **no** `config vlan`, **no** `config vxlan`, **no** `vrf ... vni ...` block anywhere in the artifact. |
-| A4 | `config vxlan add vtep1 <ip>` uses the device's `vtep`-role interface address; FRR `bgp router-id` and `update-source` use the `loopback`-role address — the two are never the same line. |
-| A5 | A segment with **no** gateway still gets `config vlan add` and `config vxlan map add`, but **no** `config interface ip add Vlan<id>` and **no** `config interface vrf bind` line. |
-| A6 | `route-reflector-client` appears only on sessions with `rr_client` true, and only on devices that have at least one such session. |
-| A7 | Uncabled interfaces still get a `config interface description`/`shutdown` pair — never omitted, matching the "present but disabled" contract every other vendor already has. |
-| A8 | Re-rendering an unchanged device produces byte-identical output (session and VNI iteration order is deterministic). |
+| A1 | Every SONiC `config` CLI line (`Startup configuration`) is a complete, independently valid command — no partial/continuation lines. |
+| A2 **(pair)** | A **leaf** with segments emits, in `Startup configuration`: `config vlan add`, `config vxlan map add`, and (for gateway-bearing segments) `config interface ip add Vlan<id>` + `config interface vrf bind`; and, in `FRR configuration`: an FRR `vrf <name> / vni <l3vni>` block. |
+| A3 **(pair)** | A **spine or super-spine**'s `FRR configuration` emits the `router bgp` / `address-family l2vpn evpn` block but **no** `vrf ... vni ...` block; its `Startup configuration` has **no** `config vlan` and **no** `config vxlan` line at all. |
+| A4 **(pair)** | `config vxlan add vtep1 <ip>` (`Startup configuration`) uses the device's `vtep`-role interface address; FRR `bgp router-id` and `update-source` (`FRR configuration`) use the `loopback`-role address — the two are never the same line, and never in the same artifact. |
+| A5 | A segment with **no** gateway still gets `config vlan add` and `config vxlan map add` (`Startup configuration`), but **no** `config interface ip add Vlan<id>` and **no** `config interface vrf bind` line. |
+| A6 | `route-reflector-client` (`FRR configuration`) appears only on sessions with `rr_client` true, and only on devices that have at least one such session. |
+| A7 | Uncabled interfaces still get a `config interface description`/`shutdown` pair (`Startup configuration`) — never omitted, matching the "present but disabled" contract every other vendor already has. |
+| A8 | Re-rendering an unchanged device produces byte-identical output for **both** artifacts independently (session and VNI iteration order is deterministic). |
+| A9 | Every SONiC device has **exactly two** artifacts — `Startup configuration` and `FRR configuration` — never zero, one, or more than two (FR-006, SC-003; the other four vendors still have exactly one). |
 
 ## Out of scope for this template
 

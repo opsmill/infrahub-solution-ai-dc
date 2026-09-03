@@ -34,7 +34,7 @@ The demo data is inside this slice rather than being a follow-on. A vendor capab
 
 ### Edge Cases
 
-- **SONiC configuration is split across two distinct syntaxes.** Interface, VLAN and VXLAN-tunnel provisioning follow one (Linux-style) convention, while the EVPN/BGP control plane follows a separate routing-daemon syntax. Unlike the three flat vendor dialects (a scoping mistake there produces one wrong line) and similar in kind to Junos's hierarchy risk, mixing the two SONiC syntaxes or emitting one inside the other is this feature's most likely failure mode.
+- **SONiC configuration is split across two distinct syntaxes.** Interface, VLAN and VXLAN-tunnel provisioning follow one (Linux-style) convention, while the EVPN/BGP control plane follows a separate routing-daemon syntax. Unlike the three flat vendor dialects (a scoping mistake there produces one wrong line) and similar in kind to Junos's hierarchy risk, mixing the two SONiC syntaxes or emitting one inside the other was this feature's most likely failure mode — resolved by rendering each syntax into its own artifact (`Startup configuration` / `FRR configuration`, FR-006) rather than relying on in-file section discipline.
 
 - **Interface naming must use SONiC's real front-panel (alias) convention** (`Eth1/N`, sequential per port) rather than the alternative lane-indexed default-mode naming SONiC also supports (`EthernetN`, stepping by lane count). Cabling and rendering must use the correct SONiC-convention name per port.
 
@@ -51,7 +51,7 @@ The demo data is inside this slice rather than being a follow-on. A vendor capab
 - **FR-003**: Users MUST be able to designate a fabric, pod or rack as SONiC-built, and have generation produce SONiC switches carrying SONiC-convention interface names.
 - **FR-004**: System MUST place every generated SONiC switch into both the general device grouping and the SONiC vendor grouping.
 - **FR-005**: System MUST cable SONiC leaf uplinks to their pod's spine downlinks correctly, using SONiC's own interface-naming convention.
-- **FR-006**: System MUST render exactly one SONiC startup-configuration artifact for every SONiC switch — not zero, not more than one.
+- **FR-006**: System MUST render exactly two startup-configuration artifacts for every SONiC switch — a `Startup configuration` artifact (SONiC `config` CLI: interfaces, VLAN/VXLAN) and an `FRR configuration` artifact (BGP underlay + EVPN) — not zero of either, not more than one of either. This is a deliberate exception to the "exactly one" rule the other four vendors follow (FR-010, SC-003): SONiC genuinely applies these two dialects through separate mechanisms (`config`/`config_db.json` vs. `vtysh`/`frr.conf`), so splitting them into separate artifacts removes the risk of one dialect's command landing in the other's section, at the cost of no longer being a single "show running-config" file.
 - **FR-007**: System MUST render the tenant overlay — VLAN-to-VNI mappings, tunnel endpoint, routed interfaces and VRF bindings — only on leaf switches, and MUST NOT render any of it on spines or super-spines.
 - **FR-008**: System MUST render the EVPN control plane on SONiC switches of every tier, reflecting each switch's stored route-reflector role.
 - **FR-009**: The reference solution MUST ship a SONiC fabric of the same topology as the existing fabrics, so an evaluator sees a complete SONiC environment rather than an isolated switch.
@@ -78,7 +78,7 @@ No new kinds of thing are introduced. Every entity below already exists in the d
 
 - **SC-001**: A reviewer with production SONiC/FRR experience reviews one generated leaf configuration and one generated spine configuration and raises **zero blocking structural findings** before the change is accepted. The review is scoped to SONiC syntax, the interface/VXLAN vs. EVPN-routing split, and EVPN/VXLAN structure; management addressing, interface MTU, and operational services such as authentication, time and logging are known simplifications shared by all vendors and are outside the review's remit.
 - **SC-002**: A fifth vendor is added **without any change to the data model or to the generation logic** — only vendor data and one new configuration template. This is the measure of whether the multivendor design actually generalises; if it fails, every future vendor costs as much as the first.
-- **SC-003**: Every generated SONiC switch has exactly one startup-configuration artifact, and every existing Cisco, Arista, Dell and Juniper switch still has exactly one, unchanged.
+- **SC-003**: Every generated SONiC switch has exactly two startup-configuration artifacts (`Startup configuration` and `FRR configuration`), and every existing Cisco, Arista, Dell and Juniper switch still has exactly one, unchanged.
 - **SC-004**: A solutions engineer can present the full SONiC journey — design intent, generated switches and cabling, rendered SONiC configuration — without editing code and without running anything beyond the standard load command.
 
 ## Assumptions
@@ -94,7 +94,7 @@ No new kinds of thing are introduced. Every entity below already exists in the d
 
 ## Out of Scope
 
-- **Automated validation of rendered configuration** — no configuration-template tests, golden files or SONiC/FRR config parsing. Correctness is established by human review (SC-001), consistent with the existing four vendors. Accepted with open eyes: the two-syntax split has a structural failure mode the single-syntax dialects do not.
+- **Automated validation of rendered configuration** — no configuration-template tests, golden files or SONiC/FRR config parsing. Correctness is established by human review (SC-001), consistent with the existing four vendors.
 - **Mixed-vendor fabrics** — SONiC leaves inside a fabric of another make. This is already structurally possible, since switch models are chosen per-rack and per-pod, and is arguably a stronger story for a migrating evaluator. It is a separate feature with its own scope.
 - **Deployable-quality configuration** — interface MTU, realistic management addressing, and operational services. Raising this bar would require raising all five vendors together and extending the data retrieved for configuration rendering.
 - **Alternative SONiC EVPN/VXLAN control-plane or data-plane models.**

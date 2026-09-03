@@ -144,7 +144,7 @@ The proposed change shows a diff of every object the Generators created — devi
 
 Creating the proposed change also triggers Infrahub's CI pipeline, which runs the Transforms and artifact definitions registered from the repository. Once the pipeline completes, the following artifacts are available:
 
-- **Startup configuration** — a text artifact per device, rendered from that device's vendor template. Fabric-A is Cisco, so its devices render from the Cisco template; Fabric-B (Arista), Fabric-C (Dell), Fabric-D (Juniper) and Fabric-E (SONiC) render from theirs. See [Multivendor configuration](./multivendor-config).
+- **Startup configuration** — a text artifact per device, rendered from that device's vendor template. Fabric-A is Cisco, so its devices render from the Cisco template; Fabric-B (Arista), Fabric-C (Dell) and Fabric-D (Juniper) render from theirs. Fabric-E (SONiC) devices render **two** artifacts each — `Startup configuration` (config CLI) and `FRR configuration` (BGP/EVPN). See [Multivendor configuration](./multivendor-config).
 - **Cabling plan** — a CSV artifact per fabric, produced by a Python Transformation
 
 Browse the generated artifacts from the proposed change view or from individual device and fabric objects.

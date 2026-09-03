@@ -4,6 +4,15 @@
 T034-T035) once Docker became available mid-run. Only **T036** remains, and it always will be
 agent-unexecutable: it names a human reviewer with production SONiC/FRR experience. See §2.
 
+**Post-report addendum**: after this report was written, `startup_config_sonic.j2` was split into two
+templates/artifacts — `startup_config_sonic.j2` (config CLI, artifact `Startup configuration`) and a new
+`startup_config_sonic_frr.j2` (FRR routing, artifact `FRR configuration`) — removing the single-file
+dialect-mixing risk this report's own findings flagged, at the cost of SONiC no longer having "exactly one"
+artifact per device (FR-006/SC-003 revised; see `contracts/sonic-config-contract.md` and
+`contracts/sonic-registration.md`). This was a design decision made without Docker access, so the T022-T024
+live-stack evidence below (captured against the pre-split single-artifact design) has **not** been
+re-verified against the new two-artifact behaviour — do this before T036.
+
 **Spec dir**: `specs/005-sonic-vendor-support/`
 **Base commit**: `e39e5d9` (main, pre-feature)
 **Head commit**: `fe54a92`
