@@ -36,3 +36,18 @@ spec:
     # QSFP28 uplink [4-lane breakout-capable] (not modeled -- research.md D11) -- leaf.
     - name: "SONiC-TD4"
       manufacturer: ["SONiC"]
+    # NVIDIA Spectrum-2, 6.4 Tbps, 64x 100G (modeled radix) -- spine & super-spine. Most established of
+    # the three generations.
+    - name: "Cumulus-SPECTRUM2"
+      manufacturer: ["Cumulus"]
+    # NVIDIA Spectrum-3, 12.8 Tbps, 64x 200G (modeled radix) -- spine & super-spine.
+    - name: "Cumulus-SPECTRUM3"
+      manufacturer: ["Cumulus"]
+    # NVIDIA Spectrum-4, 51.2 Tbps, 64x 800G (modeled radix) -- spine & super-spine. Newest, least
+    # field-proven generation modeled here.
+    - name: "Cumulus-SPECTRUM4"
+      manufacturer: ["Cumulus"]
+    # NVIDIA Spectrum-2, access-optimized port configuration: 48x 25G SFP28 access + 6x 100G QSFP28
+    # uplink -- leaf. Same ASIC generation as Cumulus-SPECTRUM2, different port mix (research.md D7).
+    - name: "Cumulus-SPECTRUM2-TOR"
+      manufacturer: ["Cumulus"]

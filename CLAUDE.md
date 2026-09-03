@@ -10,6 +10,7 @@ Active features:
 - Kubernetes Clusters with Cilium BGP — group Server services into a cluster and render its
   Cilium BGP manifest (`specs/004-kubernetes-cilium-bgp/`)
 - SONiC Vendor Support (`specs/005-sonic-vendor-support/`)
+- NVIDIA Cumulus Linux Vendor Support (`specs/006-cumulus-vendor-support/`)
 
 For technologies, project structure, and design decisions, read each feature's
 `plan.md` (and its `research.md`, `data-model.md`, `contracts/`, `quickstart.md`).

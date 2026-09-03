@@ -9,3 +9,4 @@ spec:
     - name: Arista
     - name: Juniper
     - name: SONiC
+    - name: Cumulus

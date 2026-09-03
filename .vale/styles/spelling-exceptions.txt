@@ -2,6 +2,8 @@ Ansible
 anycast
 Anycast
 Arista
+ASIC
+ASICs
 ASN
 ASNs
 Async
@@ -21,6 +23,7 @@ configs
 containerlab
 Containerlab
 Containerlab's
+Cumulus
 datacenter
 Dcim
 Diataxis
@@ -43,6 +46,7 @@ Hostname
 http
 https
 Idempotency
+ifupdown2
 Infrahub
 Infrahub's
 infrahubctl
@@ -86,6 +90,7 @@ schema's
 SDN
 SONiC
 SONiC's
+Spectrum
 ssl
 Streamlit
 subnet

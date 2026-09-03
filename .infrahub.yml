@@ -160,6 +160,10 @@ jinja2_transforms:
     description: "SONiC device config transform"
     query: "network_device_startup_config"
     template_path: "./transforms/templates/startup_config_sonic.j2"
+  - name: cumulus_device_startup_config
+    description: "Cumulus Linux device config transform"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_cumulus.j2"
 
 python_transforms:
   - name: computed_interface_description
@@ -228,6 +232,13 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "sonic_devices"
     transformation: "sonic_device_startup_config"
+  - name: "cumulus_startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "cumulus_devices"
+    transformation: "cumulus_device_startup_config"
   - name: "cabling_plan"
     artifact_name: "Cabling Plan"
     parameters:

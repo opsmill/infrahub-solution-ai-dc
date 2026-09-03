@@ -32,7 +32,10 @@ conversation; the stored entity is the Manufacturer._ **Manufacturer** and **Dev
 actually config-relevant, not necessarily a legal hardware maker or a specific ODM box — e.g. `SONiC` is an
 OS, not a hardware maker, and its device types (`SONiC-T4`/`T5`/`T6`, `SONiC-TD4`) are named after chipset
 generation rather than any vendor's SKU, because for SONiC the chipset generation is what determines
-capacity and port behaviour, not which ODM's chassis it ships in.
+capacity and port behaviour, not which ODM's chassis it ships in. `Cumulus` follows the same pattern: it is
+an OS (NVIDIA Cumulus Linux), not a distinct legal hardware maker, and its device types
+(`Cumulus-SPECTRUM2`/`3`/`4`, `Cumulus-SPECTRUM2-TOR`) are named after Spectrum ASIC generation rather than
+any SKU, for the same reason SONiC's are.
 
 ### Physical hierarchy (5-stage Clos)
 
@@ -186,4 +189,7 @@ _Avoid_: label, hostname (the selector is _derived_ from the hostname; the label
   company that makes the hardware and writes the OS; for SONiC it is not — `SONiC` the Manufacturer is an OS,
   and its Device Types (`SONiC-T4`/`T5`/`T6`, `SONiC-TD4`) are named after **chipset generation**, not any
   ODM's box model, because the chipset generation is what actually drives capacity and port behaviour under
-  SONiC. Two different ODMs' boxes on the same chipset are the same Device Type in this data model.
+  SONiC. Two different ODMs' boxes on the same chipset are the same Device Type in this data model. `Cumulus`
+  is the same case again: `Cumulus` the Manufacturer is NVIDIA Cumulus Linux, an OS, and its Device Types
+  (`Cumulus-SPECTRUM2`/`3`/`4`, `Cumulus-SPECTRUM2-TOR`) are named after **Spectrum ASIC generation**, not a
+  chassis SKU, for the same reason.
