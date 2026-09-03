@@ -2,23 +2,9 @@
 version: 2
 updates:
   # Maintain dependencies for uv (pip replacement)
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "12:00"
-    open-pull-requests-limit: 10
-    target-branch: main
-    labels:
-      - "dependencies"
-    groups:
-      all:
-        patterns:
-          - "^(?!infrahub-sdk$).*"  # Exclude infrahub-sdk from this group
-      infrahub-sdk:
-        patterns:
-          - "infrahub-sdk"
+  #
+  # Only the `uv` ecosystem is declared for this directory. A `pip` entry alongside it reads the
+  # same pyproject.toml and opens a duplicate pull request for every bump.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
@@ -31,11 +17,23 @@ updates:
       - "dependencies"
     groups:
       all:
+        # infrahub-sdk is excluded here and grouped alone below, so an SDK bump arrives as a pull
+        # request of its own rather than buried in a bundle.
+        #
+        # `exclude-patterns`, not a regex lookahead in `patterns`. Dependabot matches these as
+        # globs, so the `^(?!infrahub-sdk$).*` this file used to carry matched no package at all and
+        # the `all` group silently covered nothing.
+        #
+        # The trailing `*` is load-bearing. Dependabot names the dependency by its specifier
+        # including extras, `infrahub-sdk[all]`, so a bare `infrahub-sdk` matches neither the
+        # exclusion here nor the group below.
         patterns:
-          - "^(?!infrahub-sdk$).*"  # Exclude infrahub-sdk from this group
+          - "*"
+        exclude-patterns:
+          - "infrahub-sdk*"
       infrahub-sdk:
         patterns:
-          - "infrahub-sdk"
+          - "infrahub-sdk*"
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
