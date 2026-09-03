@@ -198,6 +198,11 @@ this feature adds instances of them.
   newer `vni-map`-integrated model). The simpler, single-instance bridge/VXLAN-plus-FRR model is
   assumed appropriate for a reference solution, matching the precedent set for Juniper and
   SONiC.
+- **Configuration mode/version scope**: the rendered artifact assumes **Cumulus Linux 5.x running
+  in classic (non-NVUE) configuration mode**. NVUE is 5.x's default control plane and owns
+  `/etc/network/interfaces` and `frr.conf` directly when active, rather than consuming
+  hand-edited files. This template neither produces nor consumes an NVUE `startup.yaml`, and its
+  output has not been verified against an NVUE-managed switch or a pre-5.x install.
 - **Switch models chosen**: what matters for config generation is the Spectrum-ASIC chipset
   generation, not a specific reseller's box, mirroring SONiC's chipset-first precedent. Three
   high-radix generations (Spectrum-2, Spectrum-3, Spectrum-4) serve the spine and super-spine

@@ -1,3 +1,7 @@
+{# This template assumes Cumulus Linux 5.x running in classic (non-NVUE) configuration mode --
+   NVUE is 5.x's default control plane and owns /etc/network/interfaces and frr.conf directly
+   when active, rather than consuming hand-edited files. Applying this rendered artifact to an
+   NVUE-managed switch, or to a pre-5.x install, is unverified. #}
 {% set device = data.NetworkDevice.edges[0].node %}
 {% set fabric = device.pod.node.parent.node %}
 {% set overlay_asn = device.asn.value if device.asn.value is not none else fabric.overlay_asn.value %}

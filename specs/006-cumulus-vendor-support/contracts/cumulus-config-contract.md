@@ -69,6 +69,13 @@ Both sections go in the same artifact, clearly separated, because a real Cumulus
 configuration is genuinely split across `/etc/network/interfaces` and `/etc/frr/frr.conf` — this is the
 closest honest single-file representation (research.md D5).
 
+> **Version/mode scope**: this single-file, split-by-section representation assumes **Cumulus Linux 5.x
+> running in classic (non-NVUE) configuration mode**. NVUE is 5.x's default control plane and owns
+> `/etc/network/interfaces` and `frr.conf` directly when active — it does not consume hand-edited files the
+> way classic mode does. This template neither produces nor consumes an NVUE `startup.yaml`; applying its
+> output to an NVUE-managed switch, or to a pre-5.x install, has not been verified. Confirm at the SC-001
+> review alongside the other confidence-flagged items below.
+
 **Never** emit an `iface Loopback1` stanza or any command naming the VTEP loopback literally as a separate
 interface — it is a logical name in the data model; **interface `role` is the discriminator**, exactly as
 established for Juniper and SONiC. The `vtep`-role interface's address becomes a second `address` line inside
