@@ -107,6 +107,11 @@ carries tenant segments.
 - The **L2-only** segment `purple-l2` gets `config vlan add` and `config vxlan map add` in
   `Startup configuration`, but **no** `config interface ip add Vlan<id>` and **no** `config interface vrf
   bind` line (A5). This is the only check that exercises the gateway-less path.
+- `purple-prod` gets exactly one `config vrf add purple-prod` command (`Startup configuration`), rendered
+  before every `config interface vrf bind ... purple-prod` reference to it; exactly one L3VNI transit-VLAN
+  set; and exactly one `router bgp <asn> vrf purple-prod` instance (`FRR configuration`) advertising into
+  EVPN (A10).
+- Exactly one `router bgp <asn>` (default-VRF) block appears in `FRR configuration` — never two (A10).
 
 ## Scenario 6 — SONiC spine config carries no tenant overlay, on every chipset generation (SC-001, FR-007)
 
@@ -114,8 +119,9 @@ Fetch both artifacts for a spine from **Pod-E2** (`SONiC-T4`), a spine from **Po
 super-spine from **Pod-E1** (`SONiC-T6`).
 
 **Expected**: `FRR configuration` has the `router bgp` / `address-family l2vpn evpn` block but **no**
-`vrf ... vni ...` block; `Startup configuration` has **no** `config vlan` and **no** `config vxlan` line at all
-(A3). `route-reflector-client` present on route-reflecting tiers only (A6). All three chipset generations
+`vrf ... vni ...` block and **no** `router bgp ... vrf ...` block; `Startup configuration` has **no**
+`config vlan`, **no** `config vrf add`, and **no** `config vxlan` line at all (A3). `route-reflector-client`
+present on route-reflecting tiers only (A6). All three chipset generations
 render **identical** config structure in both artifacts — neither `startup_config_sonic.j2` nor
 `startup_config_sonic_frr.j2` has chipset-specific logic (research.md D8), so any difference beyond hostname
 and addressing between the T4, T5 and T6 artifact pairs is a bug.

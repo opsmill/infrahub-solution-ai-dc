@@ -1,4 +1,14 @@
 {% set device = data.NetworkDevice.edges[0].node %}
+{# Materialized VRFs (leaf-only): derived once so the VRF-creation and L3VNI-transit-VLAN commands below
+   can reference them. Same pattern as startup_config_sonic_frr.j2's own `vns` namespace. #}
+{% set vns = namespace(vrf_names=[], vrfs=[]) %}
+{% for segment_edge in device.segments.edges %}
+  {% set segment = segment_edge.node %}
+  {% if segment.gateway.node and segment.vrf.node and segment.vrf.node.name.value not in vns.vrf_names %}
+    {% set vns.vrf_names = vns.vrf_names + [segment.vrf.node.name.value] %}
+    {% set vns.vrfs = vns.vrfs + [segment.vrf.node] %}
+  {% endif %}
+{% endfor %}
 ! Startup configuration: {{ device.hostname.value }}
 !
 ! --- SONiC config CLI: interfaces & underlay -- applied one command per line via `config <verb>` (or loaded from the equivalent config_db.json) ---
@@ -22,6 +32,9 @@ config interface ip add Loopback0 {{ device.loopback_ip.node.address.ip }}/32
 {% if device.segments.edges %}
 !
 ! --- SONiC config CLI: tenant overlay (VLAN/VXLAN) -- applied one command per line via `config <verb>` ---
+{% for vrf in vns.vrfs %}
+config vrf add {{ vrf.name.value }}
+{% endfor %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
 config vlan add {{ segment.vlan_id.value }}
@@ -29,6 +42,13 @@ config vlan add {{ segment.vlan_id.value }}
 config interface ip add Vlan{{ segment.vlan_id.value }} {{ segment.gateway.node.address.value }}
 config interface vrf bind Vlan{{ segment.vlan_id.value }} {{ segment.vrf.node.name.value }}
 {% endif %}
+{% endfor %}
+{# L3VNI transit VLAN per materialized VRF -- the symmetric-IRB routed leg. No `ip add` line: it is a
+   transit interface into the VRF, not an anycast gateway (same shape as startup_config_cisco.j2's
+   `interface Vlan<l3_vlan_id>`, which carries no `ip address` either). #}
+{% for vrf in vns.vrfs %}
+config vlan add {{ vrf.l3_vlan_id.value }}
+config interface vrf bind Vlan{{ vrf.l3_vlan_id.value }} {{ vrf.name.value }}
 {% endfor %}
 {% set vtep = namespace(addr="") %}
 {% for interface_edge in device.interfaces.edges %}
@@ -46,5 +66,8 @@ config vxlan evpn_nvo add nvo1 vtep1
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
 config vxlan map add vtep1 {{ segment.vlan_id.value }} {{ segment.l2vni.value }}
+{% endfor %}
+{% for vrf in vns.vrfs %}
+config vxlan map add vtep1 {{ vrf.l3_vlan_id.value }} {{ vrf.l3vni.value }}
 {% endfor %}
 {% endif %}

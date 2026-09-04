@@ -368,6 +368,52 @@ GraphQL data (two devices: a leaf with a mixed EVPN + attached-server session, a
   asserted, meaning a copy-paste error in any of them would have left every test green — closed by extending
   the test's expected-value tables and adding two more parametrized assertions.
 
+## D14 — Three defects found by a comparative audit against 006-cumulus-vendor-support's PR review
+
+PR #97 (006, Cumulus Linux vendor support) received a review that found four defects in
+`startup_config_cumulus.j2`. Two of them — the reviewer's own words — were flagged as "inherited rather than
+invented" from this feature's SONiC templates, and a follow-up audit against this file confirmed a third,
+independent of Cumulus:
+
+- **Defect 1 — the VRF was referenced but never created.** `config interface vrf bind Vlan<vlan_id> <vrf
+  name>` (`startup_config_sonic.j2`) had no corresponding `config vrf add <vrf name>` anywhere — on a real
+  SONiC switch this bind would fail. Not previously documented anywhere in this file or the contract as a
+  known gap (D13's synthetic render checked rendering succeeds, not that every command's prerequisites are
+  present). Fixed by rendering `config vrf add <vrf name>` once per materialised VRF, before the segment loop
+  that binds to it.
+- **Defect 2 — the routed-segment overlay was an incomplete symmetric IRB.** `startup_config_sonic_frr.j2`
+  had the `vrf <name> / vni <l3vni> / exit-vrf` static zebra-level binding but nothing else: no L3VNI transit
+  VLAN, and no per-VRF BGP instance to redistribute the VRF's routes into EVPN — so tenant prefixes were
+  never advertised as Type-5 routes. The contract's Data Surface note framed `vrf.l3_vlan_id` as
+  "deliberately unused" and the static binding as sufficient, which understated this as a modelling choice
+  rather than disclosing it as a functional limitation. Fixed by adding, per materialised VRF: a
+  `config vlan add <l3_vlan_id>` / `config interface vrf bind Vlan<l3_vlan_id> <vrf name>` transit VLAN (no
+  `ip add` line — a transit interface, not a gateway, mirroring `startup_config_cisco.j2`'s `interface
+  Vlan<l3_vlan_id>`) plus its `config vxlan map add vtep1 <l3_vlan_id> <l3vni>` entry in
+  `startup_config_sonic.j2`; and a `router bgp <asn> vrf <name>` instance (`address-family ipv4 unicast /
+  redistribute connected`, `address-family l2vpn evpn / rd / route-target both / advertise ipv4 unicast`) in
+  `startup_config_sonic_frr.j2`. `vrf.l3_vlan_id` and `vrf.route_target` are now load-bearing.
+- **Defect 3 — `startup_config_sonic_frr.j2` reopened `router bgp {{ overlay_asn }}` a second time** for the
+  tenant `vni`/`rd`/`route-target` entries, instead of rendering them inside the one underlay/EVPN
+  `router bgp` block already open. D13 (defect 3) added a guard to this second block but never questioned the
+  reopening itself. FRR itself tolerates re-entering an already-declared `router bgp <asn>` context (this is
+  not confirmed to have broken anything live), but a single artifact containing two headers for the same
+  default-VRF BGP instance is untidy and inconsistent with the one-block in one place, "structural rule" this
+  contract otherwise holds every other section to. Fixed by merging the tenant `vni` entries into the
+  existing block's `address-family l2vpn evpn`, before `advertise-all-vni`, and rendering the new per-VRF
+  `router bgp <asn> vrf <name>` instances (defect 2) as their own, clearly distinct, non-default-VRF blocks
+  afterward.
+- **Verification method**: same as D13 — a synthetic Jinja2 render (matching Infrahub's real
+  `trim_blocks`/`lstrip_blocks`/`StrictUndefined` settings, not just `inv lint`) against hand-built mock data
+  for a Fabric-E-shaped leaf (two segments, one routed with a gateway and VRF, one L2-only) and a spine.
+  Confirmed: `config vrf add` precedes every reference to it; the L3VNI transit VLAN and its VXLAN map entry
+  render only when a VRF is materialised; exactly one `router bgp <asn>` block in the FRR artifact, with the
+  tenant `vni` entries inside it; the new per-VRF `router bgp <asn> vrf <name>` instance renders after the
+  `vrf/vni/exit-vrf` binding; the spine renders none of this (A3 preserved).
+- **Scope note**: this audit was triggered by, and limited to, the specific defect classes 006's PR review
+  found. It is not a general re-review of `startup_config_sonic.j2`/`startup_config_sonic_frr.j2` against
+  every acceptance rule from scratch.
+
 ## Cross-cutting: what does not change
 
 Confirmed by inspection, and asserted as spec SC-002:

@@ -21,15 +21,17 @@ section — the shared query is not vendor-specific. Restated here for completen
 | `device.interfaces.edges[].node` | `.name.value`, `.description.value`, `.role.value`, `.status.value`, `.ip_address.node.address.value` (**CIDR**) |
 | `device.bgp_sessions.edges[].node` | `.remote_as.value`, `.rr_client.value`, `.address_family.value`, `.peer_device.node.hostname.value`, `.peer_device.node.loopback_ip.node.address.ip` (`NetworkDevice` peers only), `.peer_device.node.interfaces.edges[].node.ip_address.node.address.value` (`NetworkServer` peers only) |
 | `device.segments.edges[].node` | `.name.value`, `.vlan_id.value`, `.l2vni.value`, `.route_target.value`, `.gateway.node.address.value` |
-| `segment.vrf.node` | `.name.value`, `.l3vni.value`, `.route_target.value`, `.l3_vlan_id.value` (**not used** — see below) |
+| `segment.vrf.node` | `.name.value`, `.l3vni.value`, `.route_target.value`, `.l3_vlan_id.value` |
 
 Interface `role` values that matter: `super_spine`, `spine`, `leaf` (physical underlay links), `loopback`,
 `vtep` (never rendered as a literal `interface Loopback1` — see Loopbacks below), and access roles (`server`,
 `storage`) which carry no IP. Interface `status` value that matters: `"inactive"`.
 
 **Queried but deliberately unused**: `device.role.value`, `device.vtep_ip`, `segment.routed`,
-`segment.subnet`, `vrf.l3_vlan_id` (SONiC's symmetric-IRB EVPN model binds the L3VNI to the VRF's FRR `vni`
-statement directly — only the Cisco template renders a transit VLAN).
+`segment.subnet`. `vrf.l3_vlan_id` and `vrf.route_target` **are** used (research.md D14): the L3VNI is bound
+to the VRF both via FRR's `vrf <name> / vni <l3vni>` static binding *and* a `router bgp <asn> vrf <name>`
+instance that advertises the VRF's routes into EVPN; the transit VLAN that binding needs is
+`vlan<l3_vlan_id>` — SONiC does render one, like Cisco does, contrary to what this contract said before D14.
 
 **Not available**: `NetworkInterface.mtu` exists in the schema but is not in the query and is rendered by no
 vendor. Out of scope.
@@ -45,10 +47,12 @@ One addition, already present verbatim in the other templates and reused as-is:
 
 - `is_rr` — `device.bgp_sessions.edges | selectattr("node.rr_client.value") | list | length > 0`.
 
-`vns` and `is_rr` are used only in FRR sections, so `startup_config_sonic.j2` (the config-CLI template) needs
-neither — its preamble is just the `device` line. Both templates independently derive `overlay_asn` from
-`device`/`fabric`, since each is rendered as its own separate context, not shared state between two sections
-of one file.
+`is_rr` is used only in the FRR section, so `startup_config_sonic.j2` (the config-CLI template) does not need
+it. `vns`, however, **is** needed by both templates as of research.md D14: the config-CLI template uses it to
+render `config vrf add <name>` (before anything binds to that VRF) and the L3VNI transit VLAN; the FRR
+template uses it as before, for the `vrf/vni/exit-vrf` binding and the per-VRF `router bgp <asn> vrf <name>`
+instance. Both templates independently derive `overlay_asn` and `vns` from `device`/`fabric`, since each is
+rendered as its own separate context, not shared state between two sections of one file.
 
 **Not reused**: the anycast-MAC normalisation three-liner Arista/Dell/Juniper carry. Those three vendors
 render an explicit anycast-gateway MAC on the leaf SVI (`ip virtual-router mac-address` / `virtual-gateway-v4-mac`).
@@ -145,6 +149,11 @@ router bgp <overlay_asn>
 exit
 ```
 
+On a **leaf with segments**, the `vni <l2vni> / rd .. / route-target both .. / exit-vni` entries shown under
+"Leaves only" below go **inside this same `address-family l2vpn evpn` block**, before `advertise-all-vni` —
+not in a second, reopened `router bgp <asn>` block (research.md D14). A single `FRR configuration` artifact
+must never contain two `router bgp <same-asn>` (default-VRF) blocks.
+
 The `ipv4_sessions` peer address is not on the session itself — derive it the same way Arista/Juniper do: scan
 `session.peer_device.node.interfaces.edges` for the first interface carrying an `ip_address`, take the address
 minus its mask (`.split("/")[0]`).
@@ -158,9 +167,13 @@ carry an explicit `remote_as` (the server's own ASN) — no fallback needed ther
 
 ### Leaves only — tenant overlay
 
-SONiC `config` CLI (VLAN, SVI, VRF binding, VXLAN) — `startup_config_sonic.j2`:
+SONiC `config` CLI (VRF, VLAN, SVI, VRF binding, VXLAN) — `startup_config_sonic.j2`:
 
 ```text
+config vrf add <vrf name>                                           # once per materialised VRF, before
+                                                                      # anything binds to it (research.md
+                                                                      # D14) -- without it, `config
+                                                                      # interface vrf bind` fails
 config vlan add <vlan_id>                                         # every segment
 config vlan member add <vlan_id> <access-interface> -u             # not rendered here -- access-port
                                                                      # membership is out of scope; the
@@ -168,35 +181,45 @@ config vlan member add <vlan_id> <access-interface> -u             # not rendere
                                                                      # VNI map, not per-server tagging
 config interface ip add Vlan<vlan_id> <gateway CIDR>                # only segments WITH a gateway
 config interface vrf bind Vlan<vlan_id> <vrf name>                  # only segments WITH a gateway
+config vlan add <vrf l3_vlan_id>                                    # once per materialised VRF -- the
+config interface vrf bind Vlan<vrf l3_vlan_id> <vrf name>           # L3VNI transit VLAN; no `ip add` line,
+                                                                     # it is a transit interface into the
+                                                                     # VRF, not an anycast gateway
 config vxlan add vtep1 <vtep ip>                                    # once per device, from the vtep-role interface
 config vxlan evpn_nvo add nvo1 vtep1                                # once per device
 config vxlan map add vtep1 <vlan_id> <l2vni>                        # every segment, gateway or not
+config vxlan map add vtep1 <vrf l3_vlan_id> <vrf l3vni>             # once per materialised VRF
 ```
 
-FRR (per-L2VNI RD/route-target, plus the L3VNI/VRF binding) — `startup_config_sonic_frr.j2`, guarded by both
-`device.segments.edges` **and** its own nested `overlay_asn is not none` check (not just the outer BGP-section
-gate — a leaf with segments but no `overlay_asn` must still emit zero FRR content):
+FRR — per-L2VNI RD/route-target inside the single underlay `router bgp <asn>` block (see above), the
+L3VNI/VRF static binding, and a per-VRF BGP instance that actually advertises the VRF's routes into EVPN
+(research.md D14 — the static binding alone advertises nothing) — `startup_config_sonic_frr.j2`, guarded by
+`device.segments.edges` **and** its own nested `overlay_asn is not none` check (not just the outer
+BGP-section gate — a leaf with segments but no `overlay_asn` must still emit zero FRR content):
 
 ```text
-router bgp <overlay_asn>
- address-family l2vpn evpn
-  vni <l2vni>
-   rd <loopback_ip>:<vlan_id>
-   route-target both <segment route_target>
-  exit-vni
-  ...
- exit-address-family
-exit
-
 vrf <vrf name>
  vni <vrf l3vni>
 exit-vrf
+
+router bgp <overlay_asn> vrf <vrf name>
+ address-family ipv4 unicast
+  redistribute connected
+ exit-address-family
+ address-family l2vpn evpn
+  rd <loopback_ip>:<vrf l3vni>
+  route-target both <vrf route_target>
+  advertise ipv4 unicast
+ exit-address-family
+exit
 ```
 
 > The `vrf <name> / vni <l3vni> / exit-vrf` block is FRR's top-level VRF-to-L3VNI binding, separate from
 > `router bgp`. It is the SONiC/FRR equivalent of Junos's `irb-symmetric-routing { vni ... }` and Arista's
 > `vxlan vrf <name> vni <l3vni>` — every vendor expresses the same L3VNI-to-VRF binding, in that vendor's own
-> syntax.
+> syntax. It is **not** an alternative to the `router bgp <asn> vrf <name>` instance above — the two are
+> complementary, and both are required for tenant prefixes to actually reach EVPN as Type-5 routes
+> (research.md D14 corrects an earlier, incomplete rendering of this).
 
 ## Acceptance rules
 
@@ -208,13 +231,14 @@ together for the same device, not either artifact in isolation.
 |---|---|
 | A1 | Every SONiC `config` CLI line (`Startup configuration`) is a complete, independently valid command — no partial/continuation lines. |
 | A2 **(pair)** | A **leaf** with segments emits, in `Startup configuration`: `config vlan add`, `config vxlan map add`, and (for gateway-bearing segments) `config interface ip add Vlan<id>` + `config interface vrf bind`; and, in `FRR configuration`: an FRR `vrf <name> / vni <l3vni>` block. |
-| A3 **(pair)** | A **spine or super-spine**'s `FRR configuration` emits the `router bgp` / `address-family l2vpn evpn` block but **no** `vrf ... vni ...` block; its `Startup configuration` has **no** `config vlan` and **no** `config vxlan` line at all. |
+| A3 **(pair)** | A **spine or super-spine**'s `FRR configuration` emits the `router bgp` / `address-family l2vpn evpn` block but **no** `vrf ... vni ...` block and **no** `router bgp ... vrf ...` block; its `Startup configuration` has **no** `config vlan`, **no** `config vrf add`, and **no** `config vxlan` line at all. |
 | A4 **(pair)** | `config vxlan add vtep1 <ip>` (`Startup configuration`) uses the device's `vtep`-role interface address; FRR `bgp router-id` and `update-source` (`FRR configuration`) use the `loopback`-role address — the two are never the same line, and never in the same artifact. |
 | A5 | A segment with **no** gateway still gets `config vlan add` and `config vxlan map add` (`Startup configuration`), but **no** `config interface ip add Vlan<id>` and **no** `config interface vrf bind` line. |
 | A6 | `route-reflector-client` (`FRR configuration`) appears only on sessions with `rr_client` true, and only on devices that have at least one such session. |
 | A7 | Uncabled interfaces still get a `config interface description`/`shutdown` pair (`Startup configuration`) — never omitted, matching the "present but disabled" contract every other vendor already has. |
 | A8 | Re-rendering an unchanged device produces byte-identical output for **both** artifacts independently (session and VNI iteration order is deterministic). |
 | A9 | Every SONiC device has **exactly two** artifacts — `Startup configuration` and `FRR configuration` — never zero, one, or more than two (FR-006, SC-003; the other four vendors still have exactly one). |
+| A10 **(pair)** | Every materialised VRF gets, in `Startup configuration`: exactly one `config vrf add <name>` command, rendered before any `config interface vrf bind ... <name>` referencing it; and exactly one L3VNI `config vlan add`/`config interface vrf bind`/`config vxlan map add` set. In `FRR configuration`: exactly one `router bgp <asn> vrf <name>` instance. `FRR configuration` contains exactly one `router bgp <asn>` (default-VRF) block, never two. |
 
 ## Out of scope for this template
 
