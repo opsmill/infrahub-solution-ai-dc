@@ -28,7 +28,11 @@ A `CoreStandardGroup` child of the `devices` group — one per **Manufacturer**
 (`{manufacturer}_devices`, lowercased — e.g. `cisco_devices`) — whose direct members are the generated devices
 of that make; the per-vendor startup-config artifacts target it. Membership is stamped by the generators
 from each device's `device_type` manufacturer. _"Vendor" is used interchangeably with **Manufacturer** in
-conversation; the stored entity is the Manufacturer._
+conversation; the stored entity is the Manufacturer._ **Manufacturer** and **Device Type** name whatever is
+actually config-relevant, not necessarily a legal hardware maker or a specific ODM box — e.g. `SONiC` is an
+OS, not a hardware maker, and its device types (`SONiC-T4`/`T5`/`T6`, `SONiC-TD4`) are named after chipset
+generation rather than any vendor's SKU, because for SONiC the chipset generation is what determines
+capacity and port behaviour, not which ODM's chassis it ships in.
 
 ### Physical hierarchy (5-stage Clos)
 
@@ -177,3 +181,9 @@ _Avoid_: label, hostname (the selector is _derived_ from the hostname; the label
   (super-spine → spine → leaf) is applied once by the generators when populating sessions.
 - "Tenant" vs "Organization" — resolved: **Tenant** is an overlay-services owner; **Organization** is the
   existing manufacturer namespace. They are unrelated.
+- "Manufacturer" and "Device Type" were assumed to mean legal hardware maker and specific SKU — resolved:
+  they name whatever is actually **config-relevant**. For Cisco/Arista/Juniper this happens to be the same
+  company that makes the hardware and writes the OS; for SONiC it is not — `SONiC` the Manufacturer is an OS,
+  and its Device Types (`SONiC-T4`/`T5`/`T6`, `SONiC-TD4`) are named after **chipset generation**, not any
+  ODM's box model, because the chipset generation is what actually drives capacity and port behaviour under
+  SONiC. Two different ODMs' boxes on the same chipset are the same Device Type in this data model.
