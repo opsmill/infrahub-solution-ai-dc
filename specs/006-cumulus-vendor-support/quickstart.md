@@ -81,11 +81,13 @@ Inspect `NetworkLink` objects between a Fabric-F rack and its pod.
 cabled to a spine. No port appears in two links. Four uplinks per leaf are cabled and two remain uncabled (6
 uplinks, 4 spines).
 
-## Scenario 4 — Exactly one artifact per device, everywhere (SC-003, FR-006, FR-010)
+## Scenario 4 — Exactly one artifact per device, everywhere it should be exactly one (SC-003, FR-006, FR-010)
 
-**Expected**: all ~140 devices — Fabric-A/B/C/D/E **and** F — have exactly one `Startup configuration`
-artifact. Zero devices with none (registration chain broken) and zero with two (something still targets
-`devices`).
+**Expected**: every device across Fabric-A/B/C/D/F has exactly one `Startup configuration` artifact.
+Fabric-E's SONiC devices are the one deliberate exception (005-sonic-vendor-support split their config-CLI
+and FRR routing config into two separate artifacts, `Startup configuration` + `FRR configuration`) — they
+should have exactly those two, not one and not three. Zero devices anywhere with none (registration chain
+broken) and zero with an unexplained extra (something still targets `devices`).
 
 ## Scenario 5 — Cumulus leaf config is structurally correct (SC-001, FR-007, FR-008)
 
@@ -101,10 +103,14 @@ Fetch the artifact for a Fabric-F **leaf** that carries tenant segments.
   tenant VRF (A2).
 - `vxlan-local-tunnelip` uses the `vtep`-role interface's address; FRR `bgp router-id` uses the
   `loopback`-role address — never conflated (A4). Neither is ever rendered as a literal `iface Loopback1`.
-- The two uncabled uplinks appear with an `iface` stanza carrying `alias`/`link-down yes` and no `auto` line,
-  and no `address` line (A7).
+- The two uncabled uplinks appear with an `iface` stanza carrying `auto`/`alias`/`link-down yes`, and no
+  `address` line (A7).
 - The **L2-only** segment `amber-l2` gets a `vni<l2vni>` stanza and appears in `bridge-vids`, but **no**
   `vlan<vlan_id>` stanza (A5). This is the only check that exercises the gateway-less path.
+- `amber-prod` gets exactly one `auto amber-prod`/`iface amber-prod`/`vrf-table auto` stanza, rendered before
+  every `vrf amber-prod` reference; exactly one L3VNI `vni<N>`/`vlan<N>` pair; and exactly one
+  `router bgp <asn> vrf amber-prod` instance advertising into EVPN (A9).
+- Exactly one `router bgp <asn>` (default-VRF) block appears in the whole artifact — never two (A9).
 
 ## Scenario 6 — Cumulus spine config carries no tenant overlay, on every Spectrum generation (SC-001, FR-007)
 
@@ -112,7 +118,8 @@ Fetch the artifact for a spine from **Pod-F2** (`Cumulus-SPECTRUM2`), a spine fr
 (`Cumulus-SPECTRUM3`), and a super-spine from **Pod-F1** (`Cumulus-SPECTRUM4`).
 
 **Expected**: the FRR `router bgp` / `address-family l2vpn evpn` block is present; **no** `bridge` stanza,
-**no** `vni<N>` stanza, **no** `vrf ... vni ...` block anywhere in the artifact (A3). `route-reflector-client`
+**no** `vni<N>` stanza, **no** `vrf ... vni ...` block, and **no** `router bgp ... vrf ...` block anywhere in
+the artifact (A3). `route-reflector-client`
 present on route-reflecting tiers only (A6). All three Spectrum generations render **identical** config
 structure — `startup_config_cumulus.j2` has no chipset-specific logic (research.md D8), so any difference
 beyond hostname and addressing between the Spectrum-2, -3 and -4 artifacts is a bug.

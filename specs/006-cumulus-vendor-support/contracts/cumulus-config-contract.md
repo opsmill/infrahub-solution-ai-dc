@@ -19,15 +19,17 @@ section — the shared query is not vendor-specific. Restated here for completen
 | `device.interfaces.edges[].node` | `.name.value`, `.description.value`, `.role.value`, `.status.value`, `.ip_address.node.address.value` (**CIDR**) |
 | `device.bgp_sessions.edges[].node` | `.remote_as.value`, `.rr_client.value`, `.address_family.value`, `.peer_device.node.hostname.value`, `.peer_device.node.loopback_ip.node.address.ip` (`NetworkDevice` peers only), `.peer_device.node.interfaces.edges[].node.ip_address.node.address.value` (`NetworkServer` peers only) |
 | `device.segments.edges[].node` | `.name.value`, `.vlan_id.value`, `.l2vni.value`, `.route_target.value`, `.gateway.node.address.value` |
-| `segment.vrf.node` | `.name.value`, `.l3vni.value` |
+| `segment.vrf.node` | `.name.value`, `.l3vni.value`, `.l3_vlan_id.value`, `.route_target.value` |
 
 Interface `role` values that matter: `super_spine`, `spine`, `leaf` (physical underlay links), `loopback`,
 `vtep` (never rendered as a literal `iface Loopback1` — see Loopbacks below), and access roles (`server`,
 `storage`) which carry no IP. Interface `status` value that matters: `"inactive"`.
 
 **Queried but deliberately unused**: `device.role.value`, `device.vtep_ip`, `segment.routed`,
-`segment.subnet`, `vrf.l3_vlan_id` — same reasoning as SONiC: the L3VNI is bound to the VRF via FRR's own
-`vrf <name> / vni <l3vni>` static binding, not a transit VLAN.
+`segment.subnet`. Unlike SONiC, `vrf.l3_vlan_id` and `vrf.route_target` **are** used here — the L3VNI is
+bound to the VRF both via FRR's `vrf <name> / vni <l3vni>` static binding *and* a `router bgp <asn> vrf
+<name>` instance that advertises the VRF's routes into EVPN (research.md D12, defect 4); the transit SVI
+that binding needs is `vlan<l3_vlan_id>`.
 
 **Not available**: `NetworkInterface.mtu` exists in the schema but is not in the query and is rendered by no
 vendor. Out of scope.
@@ -65,9 +67,13 @@ split:
 2. **FRR routing section** — `router bgp <asn>` in FRR's flat CLI syntax, byte-for-byte structurally identical
    to `startup_config_sonic.j2`'s own FRR section, because it is the same daemon.
 
-Both sections go in the same artifact, clearly separated, because a real Cumulus Linux device's running
-configuration is genuinely split across `/etc/network/interfaces` and `/etc/frr/frr.conf` — this is the
-closest honest single-file representation (research.md D5).
+Both sections go in the same artifact, **each contiguous and rendered exactly once** — every ifupdown2
+stanza first, then a single `router bgp <asn>` block (underlay sessions, EVPN activation, and the tenant
+`vni <l2vni>` entries all together), then the `vrf <name> / vni <l3vni> / exit-vrf` bindings and any per-VRF
+`router bgp <asn> vrf <name>` instances — because a real Cumulus Linux device's running configuration is
+genuinely split across `/etc/network/interfaces` and `/etc/frr/frr.conf` — this is the closest honest
+single-file representation (research.md D5). A first draft interleaved these into four alternating sections
+with a second, reopened `router bgp <asn>` block, which is not valid FRR syntax; fixed per research.md D12.
 
 > **Version/mode scope**: this single-file, split-by-section representation assumes **Cumulus Linux 5.x
 > running in classic (non-NVUE) configuration mode**. NVUE is 5.x's default control plane and owns
@@ -100,27 +106,26 @@ iface <name>
     address <ip_address CIDR>                  # if ip_address present, roles super_spine|spine|leaf|server
 ```
 
-For an interface with `status == "inactive"`, omit the `auto <name>` line entirely and add `link-down yes`
-inside the stanza — Cumulus Linux's ifupdown2 still renders the `iface` stanza (so the interface is
-described and its port role is visible), but the missing `auto` line and `link-down yes` together are what
-keep it administratively down, matching the "present but disabled" contract every other vendor already has.
+For an interface with `status == "inactive"`, keep the `auto <name>` line and add `link-down yes` inside the
+stanza — without `auto`, `ifreload -a` never processes the stanza at all, so `link-down yes` would have no
+effect (research.md D12, defect 5; a first draft omitted `auto` here, which is the wrong convention).
 
 ```text
+auto <name>
 iface <name>
     alias <description>                        # if set
     link-down yes
 ```
 
-> `link-down yes` and the omit-`auto`-line convention are a **documented Cumulus Linux/ifupdown2 mechanic,
-> not independently verified in this repository** — the same confidence level as the anycast-gateway-MAC
-> omission below, stated plainly rather than presented as more certain than it is. Confirm at the SC-001
-> review.
+> `link-down yes` is a **documented Cumulus Linux/ifupdown2 mechanic, not independently verified in this
+> repository** — the same confidence level as the anycast-gateway-MAC omission below, stated plainly rather
+> than presented as more certain than it is. Confirm at the SC-001 review.
 
 Plus, once per device — the `lo` stanza (research.md D4):
 
 ```text
 auto lo
-iface lo
+iface lo inet loopback
     address <loopback_ip>/32
     address <vtep_ip>/32                        # only if a leaf has an addressed vtep-role interface
 ```
@@ -159,6 +164,11 @@ exit
 `update-source lo` is Cumulus Linux's own loopback interface name — the one difference from SONiC's
 `update-source Loopback0` line, both naming the same routing-loopback role.
 
+On a **leaf with segments**, the `vni <l2vni> / rd .. / route-target both .. / exit-vni` entries shown under
+"Leaves only" below go **inside this same `address-family l2vpn evpn` block**, before `advertise-all-vni` —
+not in a second, reopened `router bgp <asn>` block. A single artifact must never contain two `router bgp
+<same-asn>` (default-VRF) blocks (research.md D12, defect 1).
+
 The `ipv4_sessions` peer address is derived the same way SONiC/Arista/Juniper do: scan
 `session.peer_device.node.interfaces.edges` for the first interface carrying an `ip_address`, take the address
 minus its mask (`.split("/")[0]`).
@@ -168,15 +178,22 @@ five existing templates use.
 
 ### Leaves only — tenant overlay
 
-`/etc/network/interfaces` (VLAN-aware bridge, per-segment VNI stanza, routed SVI, VXLAN tunnel source):
+`/etc/network/interfaces` — VRF device, VLAN-aware bridge, per-segment VNI stanza, routed SVI, VXLAN tunnel
+source, plus the L3VNI VXLAN interface and transit SVI per materialised VRF:
 
 ```text
+auto <vrf name>                                  # once per materialised VRF, before the bridge stanza --
+iface <vrf name>                                 # without it, `vrf <vrf name>` below has no target and
+    vrf-table auto                               # `ifreload -a` fails (research.md D12, defect 2)
+
 auto bridge
 iface bridge
     bridge-vlan-aware yes
-    bridge-ports vni<l2vni> vni<l2vni> ...      # every segment's VNI interface; physical access-port
-                                                  # membership is out of scope (see below)
-    bridge-vids <vlan_id> <vlan_id> ...          # every segment, space-separated
+    bridge-ports vni<l2vni> vni<l2vni> ... vni<vrf l3vni> ...   # every segment's VNI interface, plus
+                                                  # every materialised VRF's L3VNI interface; physical
+                                                  # access-port membership is out of scope (see below)
+    bridge-vids <vlan_id> <vlan_id> ... <vrf l3_vlan_id> ...    # every segment, plus every VRF's transit
+                                                  # VLAN, space-separated
 
 auto vni<l2vni>                                  # every segment, gateway or not
 iface vni<l2vni>
@@ -190,40 +207,54 @@ iface vlan<vlan_id>
     vlan-raw-device bridge
     vlan-id <vlan_id>
     vrf <vrf name>
+
+auto vni<vrf l3vni>                              # once per materialised VRF -- the L3VNI transit VXLAN
+iface vni<vrf l3vni>
+    vxlan-id <vrf l3vni>
+    vxlan-local-tunnelip <vtep ip>
+    bridge-access <vrf l3_vlan_id>
+
+auto vlan<vrf l3_vlan_id>                        # the L3VNI transit SVI -- no `address` line: this is a
+iface vlan<vrf l3_vlan_id>                       # transit interface into the VRF, not an anycast gateway
+    vlan-raw-device bridge                       # (mirrors startup_config_cisco.j2's `interface
+    vlan-id <vrf l3_vlan_id>                     # Vlan<l3_vlan_id>`, which carries no `ip address` either)
+    vrf <vrf name>
 ```
 
 If no addressed `vtep`-role interface is found, render a loud comment instead of a malformed
-`vxlan-local-tunnelip` line, the same defensive pattern SONiC's D13 (defect 4) established:
+`vxlan-local-tunnelip` line — for the L3VNI VXLAN interface exactly as for every segment's — the same
+defensive pattern SONiC's D13 (defect 4) established:
 
 ```text
 # ERROR: no addressed vtep-role interface found on <hostname> -- VXLAN tunnel cannot be configured
 ```
 
-FRR (per-L2VNI RD/route-target, plus the L3VNI/VRF binding) — identical shape to SONiC's own tenant-overlay
-FRR block, including its own `overlay_asn is not none` guard (SONiC D13, defect 3 — this block must carry its
-own guard, not rely on the outer one):
+FRR — per-L2VNI RD/route-target inside the single underlay `router bgp <asn>` block (see above), the
+L3VNI/VRF static binding, and a per-VRF BGP instance that actually advertises the VRF's routes into EVPN
+(research.md D12, defect 4 — the static binding alone advertises nothing):
 
 ```text
-router bgp <overlay_asn>
- address-family l2vpn evpn
-  vni <l2vni>
-   rd <loopback_ip>:<vlan_id>
-   route-target both <segment route_target>
-  exit-vni
-  ...
- exit-address-family
-exit
-
 vrf <vrf name>
  vni <vrf l3vni>
 exit-vrf
+
+router bgp <overlay_asn> vrf <vrf name>
+ address-family ipv4 unicast
+  redistribute connected
+ exit-address-family
+ address-family l2vpn evpn
+  rd <loopback_ip>:<vrf l3vni>
+  route-target both <vrf route_target>
+  advertise ipv4 unicast
+ exit-address-family
+exit
 ```
 
 > The `vrf <name> / vni <l3vni> / exit-vrf` block is FRR's top-level VRF-to-L3VNI static binding — the same
 > construct SONiC's template already uses, reused here unchanged because Cumulus Linux runs the identical FRR
-> daemon (research.md D5). This is a deliberate simplification relative to the alternative
-> `router bgp <asn> vrf <name>` per-VRF BGP instance some Cumulus EVPN reference designs also use — see Out of
-> scope.
+> daemon (research.md D5). It is **not** an alternative to the `router bgp <asn> vrf <name>` per-VRF BGP
+> instance above — the two are complementary, and both are required for tenant prefixes to actually reach
+> EVPN as Type-5 routes (research.md D12, defect 4 corrects an earlier, incorrect either/or framing of this).
 
 ## Acceptance rules
 
@@ -233,12 +264,13 @@ These map directly to spec FR-006/FR-007/FR-008 and are what the SC-001 reviewer
 |---|---|
 | A1 | Every `/etc/network/interfaces` stanza is complete — an `iface <name>` header followed only by that interface's own indented attribute lines, terminated by a blank line before the next stanza. |
 | A2 | A **leaf** with segments emits `auto bridge`/`iface bridge`, one `vni<l2vni>` stanza per segment, and (for gateway-bearing segments) a `vlan<vlan_id>` stanza with `address`/`vrf` plus an FRR `vrf <name> / vni <l3vni>` block. |
-| A3 | A **spine or super-spine** emits the FRR `router bgp` / `address-family l2vpn evpn` block but **no** `bridge` stanza, **no** `vni<N>` stanza, **no** `vrf ... vni ...` block anywhere in the artifact. |
+| A3 | A **spine or super-spine** emits the FRR `router bgp` / `address-family l2vpn evpn` block but **no** `bridge` stanza, **no** `vni<N>` stanza, **no** `vrf ... vni ...` block, and **no** `router bgp ... vrf ...` block anywhere in the artifact. |
 | A4 | `vxlan-local-tunnelip` uses the device's `vtep`-role interface address; FRR `bgp router-id` and `update-source` use the `loopback`-role address — the two are never the same line. |
 | A5 | A segment with **no** gateway still gets a `vni<l2vni>` stanza and appears in `bridge-vids`, but **no** `vlan<vlan_id>` stanza. |
 | A6 | `route-reflector-client` appears only on sessions with `rr_client` true, and only on devices that have at least one such session. |
-| A7 | Uncabled interfaces still get an `iface` stanza with `alias`/`link-down yes` — never omitted, matching the "present but disabled" contract every other vendor already has. |
+| A7 | Uncabled interfaces still get an `iface` stanza with `auto`/`alias`/`link-down yes` — never omitted, matching the "present but disabled" contract every other vendor already has. |
 | A8 | Re-rendering an unchanged device produces byte-identical output (session and VNI iteration order is deterministic). |
+| A9 | Every materialised VRF gets exactly one `auto <name>/iface <name>/vrf-table auto` stanza, rendered before any `vrf <name>` reference to it; exactly one `vni<vrf l3vni>`/`vlan<vrf l3_vlan_id>` pair; and exactly one `router bgp <asn> vrf <name>` instance. The artifact contains exactly one `router bgp <asn>` (default-VRF) block, never two. |
 
 ## Out of scope for this template
 
@@ -253,6 +285,4 @@ shared query or this solution's data model. **A rendered anycast-gateway MAC on 
 leaf SVI** — Arista and Juniper both render one; Cumulus Linux's real equivalent
 (`address-virtual <mac> <ip>` under a routed SVI, Cumulus's own anycast-gateway feature) was not confirmed
 with enough certainty to render here without guessing, so it is deliberately omitted, matching SONiC's own
-SAG omission precedent exactly — flag explicitly for the SC-001 reviewer. **The alternative
-`router bgp <asn> vrf <name>` per-VRF BGP-instance EVPN model** some Cumulus reference designs use instead of
-the static `vrf/vni/exit-vrf` binding — not rendered; see spec Out of Scope.
+SAG omission precedent exactly — flag explicitly for the SC-001 reviewer.

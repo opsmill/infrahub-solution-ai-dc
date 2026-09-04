@@ -32,11 +32,12 @@
 {% endfor %}
 # Startup configuration: {{ device.hostname.value }}
 #
-# --- /etc/network/interfaces (ifupdown2) -- interfaces & underlay -- applied by `ifreload -a` (or present at boot as the file itself) ---
+# --- /etc/network/interfaces (ifupdown2) -- applied by `ifreload -a` (or present at boot as the file itself) ---
 {% for interface_edge in device.interfaces.edges %}
   {% set interface = interface_edge.node %}
 {% if interface.role.value not in ["loopback", "vtep"] %}
 {% if interface.status.value == "inactive" %}
+auto {{ interface.name.value }}
 iface {{ interface.name.value }}
 {% if interface.description.value %}
     alias {{ interface.description.value }}
@@ -56,70 +57,21 @@ iface {{ interface.name.value }}
 {% endif %}
 {% endfor %}
 auto lo
-iface lo
+iface lo inet loopback
     address {{ device.loopback_ip.node.address.ip }}/32
 {% if vtep.addr %}
     address {{ vtep.addr }}/32
 {% endif %}
-{% if overlay_asn is not none %}
-!
-! --- FRR routing config: BGP underlay & EVPN control plane -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/frr/frr.conf) ---
-router bgp {{ overlay_asn }}
- bgp router-id {{ device.loopback_ip.node.address.ip }}
- no bgp default ipv4-unicast
-{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
-  {% set session = session_edge.node %}
- neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
- neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} update-source lo
- neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} send-community extended
-{% endfor %}
-{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
-  {% set session = session_edge.node %}
-  {% set sns = namespace(addr="") %}
-  {% for iface_edge in session.peer_device.node.interfaces.edges %}
-    {% if not sns.addr and iface_edge.node.ip_address.node %}
-      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
-    {% endif %}
-  {% endfor %}
-{% if sns.addr %}
- neighbor {{ sns.addr }} remote-as {{ session.remote_as.value }}
-{% endif %}
-{% endfor %}
- !
- address-family l2vpn evpn
-{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
-  {% set session = session_edge.node %}
-  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} activate
-{% if is_rr and session.rr_client.value %}
-  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} route-reflector-client
-{% endif %}
-{% endfor %}
-  advertise-all-vni
- exit-address-family
-{% if ipv4_sessions %}
- !
- address-family ipv4 unicast
-{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
-  {% set session = session_edge.node %}
-  {% set sns = namespace(addr="") %}
-  {% for iface_edge in session.peer_device.node.interfaces.edges %}
-    {% if not sns.addr and iface_edge.node.ip_address.node %}
-      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
-    {% endif %}
-  {% endfor %}
-{% if sns.addr %}
-  neighbor {{ sns.addr }} activate
-{% endif %}
-{% endfor %}
- exit-address-family
-{% endif %}
-exit
-{% endif %}
+
 {% if device.segments.edges %}
-{% set l2vnis = device.segments.edges | map(attribute="node.l2vni.value") | list %}
-{% set vlan_ids = device.segments.edges | map(attribute="node.vlan_id.value") | list %}
-!
-# --- /etc/network/interfaces (ifupdown2) -- tenant overlay (bridge/VLAN/VXLAN) -- applied by `ifreload -a` (or present at boot as the file itself) ---
+{% for vrf in vns.vrfs %}
+auto {{ vrf.name.value }}
+iface {{ vrf.name.value }}
+    vrf-table auto
+
+{% endfor %}
+{% set l2vnis = (device.segments.edges | map(attribute="node.l2vni.value") | list) + (vns.vrfs | map(attribute="l3vni.value") | list) %}
+{% set vlan_ids = (device.segments.edges | map(attribute="node.vlan_id.value") | list) + (vns.vrfs | map(attribute="l3_vlan_id.value") | list) %}
 auto bridge
 iface bridge
     bridge-vlan-aware yes
@@ -150,10 +102,61 @@ iface vlan{{ segment.vlan_id.value }}
 
 {% endif %}
 {% endfor %}
+{# L3VNI transit VXLAN + SVI per materialized VRF -- the symmetric-IRB routed leg. No `address` line on
+   the SVI: it is a transit interface into the VRF, not an anycast gateway (same shape as Cisco's
+   `interface Vlan<l3_vlan_id>` -- startup_config_cisco.j2:140-145 -- which carries no `ip address` either). #}
+{% for vrf in vns.vrfs %}
+auto vni{{ vrf.l3vni.value }}
+iface vni{{ vrf.l3vni.value }}
+    vxlan-id {{ vrf.l3vni.value }}
+{% if vtep.addr %}
+    vxlan-local-tunnelip {{ vtep.addr }}
+{% else %}
+    # ERROR: no addressed vtep-role interface found on {{ device.hostname.value }} -- VXLAN tunnel cannot be configured
+{% endif %}
+    bridge-access {{ vrf.l3_vlan_id.value }}
+
+auto vlan{{ vrf.l3_vlan_id.value }}
+iface vlan{{ vrf.l3_vlan_id.value }}
+    vlan-raw-device bridge
+    vlan-id {{ vrf.l3_vlan_id.value }}
+    vrf {{ vrf.name.value }}
+
+{% endfor %}
+{% endif %}
 {% if overlay_asn is not none %}
-! --- FRR routing config: tenant overlay (L2VNI/L3VNI) -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/frr/frr.conf) ---
+#
+# --- FRR routing config: BGP underlay, EVPN control plane, tenant overlay -- applied via `vtysh -c "configure terminal" -c ...` (or loaded as /etc/frr/frr.conf) ---
 router bgp {{ overlay_asn }}
+ bgp router-id {{ device.loopback_ip.node.address.ip }}
+ no bgp default ipv4-unicast
+{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} remote-as {{ session.remote_as.value if session.remote_as.value is not none else overlay_asn }}
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} update-source lo
+ neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} send-community extended
+{% endfor %}
+{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  {% set sns = namespace(addr="") %}
+  {% for iface_edge in session.peer_device.node.interfaces.edges %}
+    {% if not sns.addr and iface_edge.node.ip_address.node %}
+      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
+    {% endif %}
+  {% endfor %}
+{% if sns.addr %}
+ neighbor {{ sns.addr }} remote-as {{ session.remote_as.value }}
+{% endif %}
+{% endfor %}
+ !
  address-family l2vpn evpn
+{% for session_edge in evpn_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} activate
+{% if is_rr and session.rr_client.value %}
+  neighbor {{ session.peer_device.node.loopback_ip.node.address.ip }} route-reflector-client
+{% endif %}
+{% endfor %}
 {% for segment_edge in device.segments.edges %}
   {% set segment = segment_edge.node %}
   vni {{ segment.l2vni.value }}
@@ -161,12 +164,48 @@ router bgp {{ overlay_asn }}
    route-target both {{ segment.route_target.value }}
   exit-vni
 {% endfor %}
+  advertise-all-vni
  exit-address-family
+{% if ipv4_sessions %}
+ !
+ address-family ipv4 unicast
+{% for session_edge in ipv4_sessions | sort(attribute="node.peer_device.node.hostname.value") %}
+  {% set session = session_edge.node %}
+  {% set sns = namespace(addr="") %}
+  {% for iface_edge in session.peer_device.node.interfaces.edges %}
+    {% if not sns.addr and iface_edge.node.ip_address.node %}
+      {% set sns.addr = iface_edge.node.ip_address.node.address.value.split("/")[0] %}
+    {% endif %}
+  {% endfor %}
+{% if sns.addr %}
+  neighbor {{ sns.addr }} activate
+{% endif %}
+{% endfor %}
+ exit-address-family
+{% endif %}
 exit
-{% for vrf in vns.vrfs %}
+{% for vrf in vns.vrfs | sort(attribute="name.value") %}
+!
 vrf {{ vrf.name.value }}
  vni {{ vrf.l3vni.value }}
 exit-vrf
+!
+{# Per-VRF BGP instance: the piece the static `vrf/vni/exit-vrf` binding above does not provide on its
+   own -- without it the VRF's connected/local routes are never redistributed into EVPN as Type-5 routes,
+   so tenant prefixes never leave this leaf (contrast startup_config_cisco.j2:96-100/112-123, which
+   renders the equivalent `vrf context ... address-family ipv4 unicast / advertise l2vpn evpn` in NX-OS's
+   own syntax). #}
+router bgp {{ overlay_asn }} vrf {{ vrf.name.value }}
+ !
+ address-family ipv4 unicast
+  redistribute connected
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  rd {{ device.loopback_ip.node.address.ip }}:{{ vrf.l3vni.value }}
+  route-target both {{ vrf.route_target.value }}
+  advertise ipv4 unicast
+ exit-address-family
+exit
 {% endfor %}
-{% endif %}
 {% endif %}

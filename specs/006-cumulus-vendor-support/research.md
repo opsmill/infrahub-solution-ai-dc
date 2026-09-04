@@ -114,10 +114,11 @@ verified here. No `NEEDS CLARIFICATION` markers remain.
   Adopted in spirit — see the config contract's banner-comment convention — but not as two literal file
   headers, to match the single "startup configuration" framing this solution already uses for the other five
   vendors (SONiC being the nearest precedent for a two-syntax split in one artifact).
-- **Confidence note (critique-20260902-154300, E1)**: the admin-down mechanic (`link-down yes`, omitting the
-  `auto <name>` line) is a documented Cumulus Linux/ifupdown2 convention, not independently verified in this
-  repository — the same confidence level given to the anycast-gateway-MAC omission (contract Out of Scope),
-  stated explicitly in `contracts/cumulus-config-contract.md` rather than left implicit.
+- **Admin-down mechanic, corrected by D12**: the original decision here was `link-down yes` **with the `auto
+  <name>` line omitted**, flagged at the time (critique-20260902-154300, E1) as a documented-but-unverified
+  Cumulus Linux/ifupdown2 convention. PR review (D12, defect 5) found this backwards: without `auto`,
+  `ifreload -a` never processes the stanza, so `link-down yes` has no effect. The real convention is `auto
+  <name>` **plus** `link-down yes`, and that is what the template and contract now both specify.
 
 ## D6 — No automated template validation
 
@@ -253,6 +254,70 @@ matching the equivalent two-relationship guard already used in the preamble's `v
 D5's copied-from-SONiC preamble, line 8). Verified: `inv lint` clean after the change; no test exercises this
 path directly (D6), consistent with the repo-wide precedent of relying on template-contract review rather than
 automated rendered-config tests.
+
+## D12 — Four defects and one scope reversal, caught by PR review (PR #97)
+
+An external review of the merged template (not `speckit-review-errors`, which only ran once at
+implementation time per D11 — this was a human/reviewer pass against the live-rendered artifact) found that
+the first-draft template, despite parsing cleanly and passing D11's fix, produced output that was neither a
+valid `/etc/network/interfaces` nor a valid `frr.conf`, and could not be mechanically split into either.
+
+- **Defect 1 — four alternating dialect sections, not the two D5 promised.** The template interleaved
+  ifupdown2 → FRR → ifupdown2 → FRR (underlay interfaces, then underlay/EVPN `router bgp`, then the tenant
+  bridge/VNI/VLAN stanzas, then a **second, reopened** `router bgp {{ overlay_asn }}` block for the tenant
+  VNI/RD/route-target entries) with a stray `!` — FRR's comment character — introducing an ifupdown2 section
+  header, and `#`/`!` comment styles mixed across the boundary. Two separate `router bgp <same-asn>` blocks
+  in one `frr.conf` is not valid FRR syntax regardless of the dialect-mixing. Fixed by consolidating into
+  the two genuinely contiguous sections D5 always specified: every ifupdown2 stanza first (interfaces, `lo`,
+  VRF devices, bridge, per-segment VNI/VLAN, per-VRF L3VNI VXLAN/VLAN — see Defect 2/4 below), then one
+  single `router bgp {{ overlay_asn }}` block carrying underlay sessions, EVPN activation, *and* the tenant
+  `vni <l2vni>` entries together, followed by the `vrf <name> / vni <l3vni> / exit-vrf` bindings and the new
+  per-VRF BGP instances (Defect 4).
+- **Defect 2 — the VRF device was referenced but never created.** `iface vlan<vlan_id>`'s `vrf <name>` line
+  (and the new L3VNI transit SVI's, Defect 4) has no target without a matching `auto <name> / iface <name> /
+  vrf-table auto` stanza — in ifupdown2 that stanza is what actually creates the VRF; without it `ifreload -a`
+  would fail. Fixed by rendering one such stanza per materialised VRF, before the bridge stanza. The
+  equivalent gap exists in `startup_config_sonic.j2` too (`config interface vrf bind` with no `config vrf
+  add`) — inherited, not invented here, and out of scope to fix on SONiC's template per this feature's
+  FR-010 constraint, exactly as D11 treated the analogous shared-gap case.
+- **Defect 3 (renumbered from the reviewer's own item 5) — `iface lo` was missing `inet loopback`.** Cumulus
+  Linux's own default loopback stanza is `iface lo inet loopback`; the template rendered a bare `iface lo`.
+  Fixed.
+- **Defect 4 — the routed-segment overlay was an incomplete symmetric IRB.** The FRR side had `vrf <name> /
+  vni <l3vni> / exit-vrf` (the zebra-level VRF-to-L3VNI binding) but nothing else: no L3VNI VXLAN interface,
+  no L3VNI transit SVI, and no per-VRF BGP instance to redistribute the VRF's routes into EVPN — so tenant
+  prefixes were never advertised as Type-5 routes. **This reverses this file's own D5/the contract's explicit
+  "out of scope: the `router bgp <asn> vrf <name>` per-VRF BGP-instance model" call** — that call
+  under-described the tradeoff as a stylistic alternative to the static `vrf/vni/exit-vrf` binding, when the
+  two are actually complementary and the static binding alone does not advertise anything. Fixed by adding,
+  per materialised VRF: an `auto vni<l3vni>` VXLAN interface and an `auto vlan<l3_vlan_id>` transit SVI in
+  the VRF (ifupdown2 — no `address` line, mirroring `startup_config_cisco.j2`'s `interface Vlan<l3_vlan_id>`,
+  lines 140-145, which is a transit interface, not a gateway), both added to the shared `bridge`'s
+  `bridge-ports`/`bridge-vids`; and a `router bgp {{ overlay_asn }} vrf {{ vrf.name.value }}` instance (FRR)
+  with `address-family ipv4 unicast / redistribute connected` and `address-family l2vpn evpn / rd
+  <loopback>:<l3vni> / route-target both <vrf.route_target> / advertise ipv4 unicast`. `vrf.l3_vlan_id` and
+  `vrf.route_target` — both already queried, both previously listed as "deliberately unused" in the contract
+  — are now load-bearing.
+- **Defect 5 (renumbered from the reviewer's own item 6) — inactive-port stanzas were inert.** D5's own
+  confidence note flagged the omit-`auto`-line convention as "documented, not independently verified" — the
+  review's correction: real ifupdown2 practice is `auto <name>` **plus** `link-down yes`, not `auto`'s
+  absence. Without `auto`, `ifreload -a` never processes the stanza at all, so `link-down yes` had no effect
+  on any of the 50 (of 55) unattached ports on every Fabric-F leaf. Fixed by restoring `auto <name>` on the
+  inactive branch, matching the active branch. `contracts/cumulus-config-contract.md` and this file's D5 are
+  both updated to drop the now-incorrect omit-`auto` convention rather than merely noting the fix here.
+- **Verification method**: same as D13 in `005`'s research.md — a synthetic Jinja2 render (not `inv lint`,
+  not a live Infrahub stack) against hand-built mock data matching the shared query's exact field shape,
+  covering a Fabric-F leaf with all three tenant segments (two routed, one L2-only) and an uncabled port, plus
+  a spine with no segments. Confirmed: exactly two contiguous sections; the VRF stanza precedes every `vrf
+  <name>` reference; `iface lo inet loopback`; the inactive port carries both `auto` and `link-down yes`; the
+  L3VNI VXLAN/SVI pair and the per-VRF `router bgp ... vrf ...` instance render only on the leaf, never the
+  spine (A3 preserved).
+- **Not addressed by this review pass**: the reviewer's other findings were explicitly non-defects (house-wide
+  `sort()`-determinism reliance on query-order stability; no committed Jinja render tests, D6's known
+  tradeoff; `bridge-ports` omitting per-server `swpN` membership, already Out of Scope; the Fabric-E-mirroring
+  rack template mismatches, already commented as deliberate) or documentation-only (demo-guide.mdx's stale
+  tenant list; quickstart.md's stale artifact-per-device count) — fixed directly in those files, not recorded
+  as template decisions here.
 
 ## Note carried forward, resolved differently for Cumulus than for the four slash-named vendors
 
