@@ -10,6 +10,9 @@ spec:
     - name: "Green"
       fabric: "Fabric-D"
       member_of_groups: ["tenants"]
+    - name: "Purple"
+      fabric: "Fabric-E"
+      member_of_groups: ["tenants"]
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -20,6 +23,8 @@ spec:
       tenant: "Blue"
     - name: "green-prod"
       tenant: "Green"
+    - name: "purple-prod"
+      tenant: "Purple"
 ---
 apiVersion: infrahub.app/v1
 kind: Object
@@ -53,4 +58,16 @@ spec:
       routed: true
     - name: "green-l2"
       vrf: ["Green", "green-prod"]
+      routed: false
+    # Fabric-E (SONiC) tenant segments — two routed (IRB) plus one L2-only; placement is left empty so
+    # every Fabric-E leaf carries them. Scoped to Fabric-E only (research.md D8, spec FR-011): adding
+    # tenants to Fabric-B/C would change their rendered configs and violate FR-010.
+    - name: "purple-web"
+      vrf: ["Purple", "purple-prod"]
+      routed: true
+    - name: "purple-app"
+      vrf: ["Purple", "purple-prod"]
+      routed: true
+    - name: "purple-l2"
+      vrf: ["Purple", "purple-prod"]
       routed: false

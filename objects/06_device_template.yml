@@ -275,3 +275,134 @@ spec:
           - template_name: "JuniperQFX5120LeafStorageSwitchet-0/0/[48-55]"
             name: "et-0/0/[48-55]"
             profiles: ["profile-interface-spine"]
+    # SONiC on Broadcom Tomahawk4 (SONiC-T4, 64x 400G) — spine & super-spine.
+    - template_name: "sonic-t4-spine-switch"
+      device_type: ["SONiC", "SONiC-T4"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT4SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT4SpineSwitchEth1/[1-32]"
+            name: "Eth1/[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "SonicT4SpineSwitchEth1/[33-64]"
+            name: "Eth1/[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "sonic-t4-super-spine-switch"
+      device_type: ["SONiC", "SONiC-T4"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT4SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT4SuperSpineSwitchEth1/[1-64]"
+            name: "Eth1/[1-64]"
+            profiles: ["profile-interface-spine"]
+    # SONiC on Broadcom Tomahawk5 (SONiC-T5, 64x 800G) — spine & super-spine.
+    - template_name: "sonic-t5-spine-switch"
+      device_type: ["SONiC", "SONiC-T5"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT5SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT5SpineSwitchEth1/[1-32]"
+            name: "Eth1/[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "SonicT5SpineSwitchEth1/[33-64]"
+            name: "Eth1/[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "sonic-t5-super-spine-switch"
+      device_type: ["SONiC", "SONiC-T5"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT5SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT5SuperSpineSwitchEth1/[1-64]"
+            name: "Eth1/[1-64]"
+            profiles: ["profile-interface-spine"]
+    # SONiC on Broadcom Tomahawk6 (SONiC-T6, 64x 1.6T) — spine & super-spine.
+    - template_name: "sonic-t6-spine-switch"
+      device_type: ["SONiC", "SONiC-T6"]
+      role: "spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT6SpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT6SpineSwitchEth1/[1-32]"
+            name: "Eth1/[1-32]"
+            profiles: ["profile-interface-leaf"]
+          - template_name: "SonicT6SpineSwitchEth1/[33-64]"
+            name: "Eth1/[33-64]"
+            profiles: ["profile-interface-super-spine"]
+    - template_name: "sonic-t6-super-spine-switch"
+      device_type: ["SONiC", "SONiC-T6"]
+      role: "super_spine"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicT6SuperSpineSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicT6SuperSpineSwitchEth1/[1-64]"
+            name: "Eth1/[1-64]"
+            profiles: ["profile-interface-spine"]
+    # SONiC on Broadcom Trident4-class (SONiC-TD4, 48x 10/25G + 6x 40/100G) — leaf.
+    - template_name: "sonic-td4-leaf-switch-compute"
+      device_type: ["SONiC", "SONiC-TD4"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicTD4LeafComputeSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicTD4LeafComputeSwitchEth1/[1-48]"
+            name: "Eth1/[1-48]"
+            profiles: ["profile-interface-server"]
+          - template_name: "SonicTD4LeafComputeSwitchEth1/[49-54]"
+            name: "Eth1/[49-54]"
+            profiles: ["profile-interface-spine"]
+    - template_name: "sonic-td4-leaf-switch-storage"
+      device_type: ["SONiC", "SONiC-TD4"]
+      role: "leaf"
+      interfaces:
+        kind: TemplateNetworkInterface
+        parameters:
+          expand_range: true
+        data:
+          - template_name: "SonicTD4LeafStorageSwitchLoopback0"
+            name: "Loopback0"
+            role: "loopback"
+          - template_name: "SonicTD4LeafStorageSwitchEth1/[1-48]"
+            name: "Eth1/[1-48]"
+            profiles: ["profile-interface-compute"]
+          - template_name: "SonicTD4LeafStorageSwitchEth1/[49-54]"
+            name: "Eth1/[49-54]"
+            profiles: ["profile-interface-spine"]

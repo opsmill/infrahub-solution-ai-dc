@@ -86,3 +86,26 @@ spec:
             index: 3
             spine_switch_template: "juniper-qfx5230-64cd-spine-switch"
             member_of_groups: ["pods"]
+    # Fabric-E — SONiC. Mirrors Fabric-D's topology; unlike every prior fabric, its three pods deliberately
+    # use three different chipset generations (research.md D8) so all three are visible in one running demo:
+    # Pod-E1 (super-spine) on the newest silicon, Pod-E2/E3 (spine) on the two established generations.
+    - name: "Fabric-E"
+      index: 5
+      member_of_groups: ["fabrics"]
+      super_spine_switch_template: "sonic-t6-super-spine-switch"
+      amount_of_super_spines: 4
+      children:
+        kind: NetworkPod
+        data:
+          - name: "Pod-E1"
+            index: 1
+            role: "fabric"
+            member_of_groups: ["pods"]
+          - name: "Pod-E2"
+            index: 2
+            spine_switch_template: "sonic-t4-spine-switch"
+            member_of_groups: ["pods"]
+          - name: "Pod-E3"
+            index: 3
+            spine_switch_template: "sonic-t5-spine-switch"
+            member_of_groups: ["pods"]
