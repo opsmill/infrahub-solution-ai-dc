@@ -220,8 +220,14 @@ jobs:
           BODY="${INFRAHUB_VERSION:+Bumps infrahub-testcontainers to ${INFRAHUB_VERSION}, which is also the base image \`inv build\` builds FROM. }${SDK_VERSION:+Bumps infrahub-sdk to ${SDK_VERSION}.}"
           QA_NOTE="This pull request's CI is the QA for this bump. The core integration tier runs and blocks the merge. An Infrahub-version bump additionally runs the full suite, extended tier included, as an advisory non-blocking report -- read its outcome in the run summary -- for as long as the upstream CoreGeneratorGroup / CoreGraphQLQueryGroup resolution fault keeps that tier from blocking."
           BODY=$(printf '%s\n\n%s' "${BODY}" "${QA_NOTE}")
+          # A dependency bump carries no behaviour change of its own, so it is
+          # exempt from the news-fragment gate in changelog-check.yml. Labelled
+          # here rather than relying on that workflow's author exemption: this
+          # runs through a PAT, so the pull request's author is not
+          # `dependabot[bot]` and that exemption does not cover it.
           gh pr create \
             --title "${COMMIT_MESSAGE}" \
             --body "${BODY}" \
             --base main \
-            --head "${BRANCH_NAME}"
+            --head "${BRANCH_NAME}" \
+            --label "ci/skip-changelog"
