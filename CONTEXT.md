@@ -23,6 +23,21 @@ _Avoid_: output, artifact (an "artifact" is specifically a rendered file like a 
 Code that reads one design object via a GraphQL query and produces its implementation objects;
 idempotent and triggered by checksum changes.
 
+**Generator target**:
+A design object that carries a **checksum** — the `GeneratorTarget` schema generic, worn by Pod, Rack,
+Tenant and Server service. Being a target is what lets a node _drive_ a Generator: `triggers.yml` watches
+that attribute.
+_Avoid_: trigger, watched node, subscriber.
+
+**Checksum**:
+The digest a Generator stamps on a **generator target** to declare what it produced, and thereby to ask
+the next Generator to run. It is derived either over everything one run touched — the physical cascade,
+where a Fabric stamps its Pods and a Pod stamps its Racks — or over an explicit set of produced object
+ids, which is how the Overlay and Server generators stamp their own design object. It is written **only
+when it changes**: re-stamping an unchanged digest re-fires the Generator's own trigger and the cascade
+never settles. A Rack carries a checksum but stamps none, being the last tier.
+_Avoid_: hash, version, revision (it identifies a _set of objects_, not a point in time).
+
 **Vendor group**:
 A `CoreStandardGroup` child of the `devices` group — one per **Manufacturer**
 (`{manufacturer}_devices`, lowercased — e.g. `cisco_devices`) — whose direct members are the generated devices

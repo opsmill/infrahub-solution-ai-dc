@@ -425,8 +425,8 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         """Characterises the latch that makes a broken chain unrecoverable.
 
         Re-running the fabric generator recomputes the same checksum from the same related ids
-        (GeneratorMixin.calculate_checksum), so the ``if pod.checksum.value != fabric_checksum``
-        guard in generate_fabric.py:158 writes nothing and no NodeUpdatedEvent is emitted.
+        (``Checksum.over_session``), and ``Checksum.stamp_on`` writes only on a change, so nothing is
+        written and no NodeUpdatedEvent is emitted.
 
         Idempotence is the intent, and this test asserts it. The defect is what the same
         behaviour does after a downstream failure: the pod is already stamped, so re-running the
@@ -439,7 +439,7 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         Read what this pins narrowly, because it is weaker than it looks in two ways:
 
         * It pins that the recomputed checksum is the SAME VALUE, i.e. that
-          ``calculate_checksum`` is deterministic over an unchanged related-id set. That is the
+          ``Checksum.over_session`` is deterministic over an unchanged related-id set. That is the
           load-bearing half of the latch -- a nondeterministic checksum (unsorted ids, a timestamp)
           would re-fire the whole cascade on every run. It does NOT prove the ``!=`` guard exists:
           deleting the guard and writing unconditionally would write the identical value, so no
@@ -513,7 +513,7 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         # Control 2: the trigger's precondition was satisfied -- a checksum WRITE landed on the
         # default branch, so a NodeUpdatedEvent was emitted there. Asserted as a change rather than
         # as presence: the default-branch run builds its own super-spines, so
-        # GeneratorMixin.calculate_checksum hashes a different set of related ids and the stamp must
+        # Checksum.over_session hashes a different set of related ids and the stamp must
         # move. Anything that does not happen next is therefore down to the event not matching,
         # rather than to the event never existing -- which mere presence could not distinguish,
         # since update_checksum runs last and a generator dying before it would leave the

@@ -5,7 +5,7 @@ import logging
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool, CoreNumberPool
 
-from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, NetworkInterface, NetworkPod
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
@@ -15,7 +15,7 @@ ASN_POOL_NAME = "Overlay ASN Pool"
 DEFAULT_ROUTING_DESIGN = "ibgp_evpn_ospf_underlay"
 
 
-class FabricGenerator(InfrahubGenerator, GeneratorMixin):
+class FabricGenerator(InfrahubGenerator):
     fabric_name: str
     fabric_id: str
     fabric_super_spine_switch_template: str
@@ -149,11 +149,6 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
         await self.loopback_pool.save(allow_upsert=True)
 
     async def update_checksum(self) -> None:
+        """Drive the pod tier: stamp this run's session checksum on every pod of the fabric."""
         pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
-
-        fabric_checksum = self.calculate_checksum()
-        for pod in pods:
-            if pod.checksum.value != fabric_checksum:
-                pod.checksum.value = fabric_checksum
-                await pod.save(allow_upsert=True)
-                self.logger.info(f"Pod {pod.name.value} has been updated to checksum {fabric_checksum}")
+        await Checksum.over_session(self.client).stamp_on(pods, logger=self.logger, track=None)
