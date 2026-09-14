@@ -27,11 +27,15 @@ and why each is dropped, is tests/unit/test_clusters.py; here it is only that th
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from transforms.cilium_manifest import render_cluster_manifest
+from transforms.cilium_manifest import cluster_member_facts, render_cluster_manifest
+from transforms.cilium_manifest_query import CiliumManifestQuery
+
+if TYPE_CHECKING:
+    from infrahub_solution_ai_dc.clusters import MemberFacts
 
 #: The leaf's local AS in the seeded fabric — every member's ``remote_as`` and so every ``peerASN``.
 OVERLAY_ASN = 65000
@@ -560,3 +564,213 @@ class TestEmptyCluster:
         how PyYAML renders an empty stream, while still pinning down that Cilium receives no resource.
         """
         assert list(yaml.safe_load_all(_body([]))) == []
+
+
+# --- Reading the query result --------------------------------------------------------------------
+#
+# The peering rules decide over `MemberFacts`; turning a GraphQL result into those facts is this
+# module's job, so the graph-walking properties are asserted here rather than against the rules.
+
+
+def _facts(members: list[dict[str, Any]]) -> list[MemberFacts]:
+    """Every member's facts, read the way the transform reads them."""
+    return cluster_member_facts(CiliumManifestQuery(**_cluster_result(members)))
+
+
+def _interface(name: str, *, leaf_address: str | None, cabled: bool = True) -> dict[str, Any]:
+    """One of a server's ports, optionally cabled to a leaf port holding ``leaf_address``."""
+    interface_id = f"interface-{name}"
+    link = (
+        {
+            "node": {
+                "id": f"link-{name}",
+                "endpoints": {
+                    "edges": [
+                        {"node": _server_endpoint(interface_id)},
+                        {"node": _leaf_endpoint(leaf_address)},
+                    ]
+                },
+            }
+        }
+        if cabled
+        else None
+    )
+    return {"node": {"id": interface_id, "name": {"value": name}, "link": link}}
+
+
+def _member_with(
+    *,
+    sessions: list[dict[str, Any]] | None = None,
+    interfaces: list[dict[str, Any]] | None = None,
+    name: str = "cilium-worker-1",
+) -> dict[str, Any]:
+    """A member whose server carries exactly the sessions and ports given."""
+    return {
+        "node": {
+            "id": f"service-{name}",
+            "name": {"value": name},
+            "layer": {"value": "l3"},
+            "server": {
+                "node": {
+                    "id": f"server-{name}",
+                    "hostname": {"value": f"server-{name}"},
+                    "node_selector": {"value": name},
+                    "asn": {"value": 4200000001},
+                    "bgp_sessions": {"edges": sessions if sessions is not None else []},
+                    "interfaces": {"edges": interfaces if interfaces is not None else []},
+                }
+            },
+        }
+    }
+
+
+def _session(
+    address_family: str, local_as: int | None = 4200000001, remote_as: int | None = OVERLAY_ASN
+) -> dict[str, Any]:
+    return {
+        "node": {
+            "id": f"session-{address_family}",
+            "address_family": {"value": address_family},
+            "local_as": {"value": local_as},
+            "remote_as": {"value": remote_as},
+        }
+    }
+
+
+class TestSessionSelection:
+    """Which of a server's sessions supplies the ASN pair."""
+
+    def test_the_ipv4_unicast_session_is_the_one(self) -> None:
+        (facts,) = _facts([_member_with(sessions=[_session("ipv4_unicast", 4200000001, OVERLAY_ASN)])])
+
+        assert facts.session_present
+        assert (facts.local_asn, facts.peer_asn) == (4200000001, OVERLAY_ASN)
+
+    def test_a_session_of_another_address_family_does_not_count(self) -> None:
+        """An L2VPN-EVPN session belongs to the overlay, and describes no Cilium peering."""
+        (facts,) = _facts([_member_with(sessions=[_session("l2vpn_evpn")])])
+
+        assert not facts.session_present
+        assert facts.local_asn is None
+
+    def test_the_ipv4_unicast_session_is_found_among_others(self) -> None:
+        members = [
+            _member_with(sessions=[_session("l2vpn_evpn", 1, 2), _session("ipv4_unicast", 4200000001, OVERLAY_ASN)])
+        ]
+
+        (facts,) = _facts(members)
+
+        assert (facts.local_asn, facts.peer_asn) == (4200000001, OVERLAY_ASN)
+
+    def test_a_server_with_no_sessions_reports_none_present(self) -> None:
+        (facts,) = _facts([_member_with(sessions=[])])
+
+        assert not facts.session_present
+
+    def test_a_half_written_session_is_present_but_has_no_asn(self) -> None:
+        """``session_present`` and the ASNs are separate facts, because they fail different checks."""
+        (facts,) = _facts([_member_with(sessions=[_session("ipv4_unicast", None, OVERLAY_ASN)])])
+
+        assert facts.session_present
+        assert facts.local_asn is None
+
+
+class TestLeafAddressSelection:
+    """Which cabled port supplies ``peerAddress`` — the within-member half of checksum stability."""
+
+    def test_lowest_named_cabled_interface_wins_regardless_of_query_order(self) -> None:
+        """Interfaces are walked in name order, not query order, so the address cannot flip.
+
+        The spec assumes one uplink per member, but a second cabled port (management, or leftovers
+        mid-move) would otherwise let ``peerAddress`` alternate between renders.
+        """
+        low = _interface("eth1", leaf_address="10.0.0.1/31")
+        high = _interface("eth2", leaf_address="10.0.0.3/31")
+
+        (forward,) = _facts([_member_with(interfaces=[low, high])])
+        (reverse,) = _facts([_member_with(interfaces=[high, low])])
+
+        assert forward.leaf_address == "10.0.0.1/31"
+        assert reverse.leaf_address == "10.0.0.1/31"
+
+    def test_an_uncabled_interface_is_skipped_for_the_next_candidate(self) -> None:
+        """A lower-named but uncabled port does not shadow the real uplink."""
+        members = [
+            _member_with(
+                interfaces=[
+                    _interface("eth0", leaf_address=None, cabled=False),
+                    _interface("eth1", leaf_address="10.0.0.1/31"),
+                ]
+            )
+        ]
+
+        (facts,) = _facts(members)
+
+        assert facts.leaf_address == "10.0.0.1/31"
+
+    def test_the_leaf_end_of_the_link_is_taken_never_the_server_end(self) -> None:
+        """Both ends hold half of the /31; the server's half is a plausible-looking wrong answer.
+
+        The kind on each endpoint is what discriminates them. The real query selects ``ip_address``
+        only ``on NetworkInterface``, so this gives the server end one too — the shape that would
+        expose a walker relying on selection rather than on the kind.
+        """
+        server_end = _server_endpoint("interface-eth1")
+        server_end["ip_address"] = {"node": {"id": "server-ip", "address": {"value": "10.0.0.0/31"}}}
+        members = [
+            _member_with(
+                interfaces=[
+                    {
+                        "node": {
+                            "id": "interface-eth1",
+                            "name": {"value": "eth1"},
+                            "link": {
+                                "node": {
+                                    "id": "link",
+                                    "endpoints": {
+                                        "edges": [{"node": server_end}, {"node": _leaf_endpoint("10.0.0.1/31")}]
+                                    },
+                                }
+                            },
+                        }
+                    }
+                ]
+            )
+        ]
+
+        (facts,) = _facts(members)
+
+        assert facts.leaf_address == "10.0.0.1/31"
+
+    def test_a_server_with_no_interfaces_resolves_no_address(self) -> None:
+        (facts,) = _facts([_member_with(interfaces=[])])
+
+        assert facts.leaf_address is None
+
+    def test_a_leaf_port_without_an_ip_resolves_no_address(self) -> None:
+        """Cabled, but the /31 is not allocated yet."""
+        (facts,) = _facts([_member_with(interfaces=[_interface("eth1", leaf_address=None)])])
+
+        assert facts.leaf_address is None
+
+
+class TestMemberFactsShape:
+    def test_a_member_without_a_server_reports_it_absent(self) -> None:
+        """The Server generator has not run yet, so there is nothing else to read."""
+        member = {"node": {"id": "service-x", "name": {"value": "x"}, "layer": {"value": "l3"}, "server": None}}
+
+        (facts,) = _facts([member])
+
+        assert facts.name == "x"
+        assert not facts.server_present
+
+    def test_the_layer_and_node_selector_pass_through(self) -> None:
+        (facts,) = _facts([_member("cilium-worker-1", layer="l2", node_selector="selected")])
+
+        assert facts.layer == "l2"
+        assert facts.node_selector == "selected"
+
+    def test_a_cluster_that_matched_nothing_yields_no_facts(self) -> None:
+        no_cluster: dict[str, Any] = {"NetworkKubernetesCluster": {"edges": []}}
+
+        assert cluster_member_facts(CiliumManifestQuery(**no_cluster)) == []
