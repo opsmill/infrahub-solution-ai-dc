@@ -29,13 +29,13 @@ class TestInfrahub(TestInfrahubDockerClient):
         self,
         client: InfrahubClient,
         remote_repos_dir: Path,
-        root_directory: Path,
+        repo_source_directory: Path,
     ) -> None:
         """Add the local directory as a repository in Infrahub and wait for the import to be complete"""
 
         repo = GitRepo(
             name="local-repository",
-            src_directory=root_directory,
+            src_directory=repo_source_directory,
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
