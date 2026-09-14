@@ -297,7 +297,14 @@ def lint_markdown(ctx: Context) -> None:
 
 @task(name="lint")
 def lint_all(ctx: Context) -> None:
-    """Run all linters."""
+    """Run all linters.
+
+    Every linter CI runs as an invoke task, and no more. CI has one further check this does not
+    cover: the ``validate-documentation-style`` job runs vale over ``docs/docs``, from a binary it
+    downloads itself rather than from a declared dependency. There is deliberately no ``lint-prose``
+    task wrapping it, so a green ``inv lint`` is not proof that job will pass -- check the pull
+    request for that one.
+    """
     lint_markdown(ctx)
     lint_yaml(ctx)
     lint_ruff(ctx)

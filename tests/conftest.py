@@ -15,13 +15,32 @@ from __future__ import annotations
 
 # ``infrahub_testcontainers``' pytest plugin builds a host profile in ``pytest_sessionstart`` and
 # calls ``psutil.cpu_freq()`` unguarded (infrahub_testcontainers/host.py). On Apple Silicon that
-# raises ``RuntimeError: 'voltage-states1-sram' property not found`` from psutil's macOS backend,
-# which surfaces as a pytest INTERNALERROR before a single test is collected -- taking the whole
-# suite down, unit tests included, purely to record a CPU frequency.
+# raises, and because a ``pytest_sessionstart`` failure is an INTERNALERROR the whole run dies
+# before a single test is collected -- taking the unit suite down with it, purely to record a CPU
+# frequency.
 #
 # Report the frequency as unavailable instead of crashing. ``get_system_stats`` already writes
 # ``None`` for the three frequency fields when the call returns falsy, and nothing in the suite
 # asserts on them; they only feed the performance-profile output.
+#
+# The catch below is bare ``Exception`` on purpose rather than out of laziness. A tuple naming the
+# plausible-looking errors reads as the more careful choice and is the wrong one here, because the
+# exception this call raises is not stable across psutil versions. Measured on one arm64 macOS host,
+# calling ``psutil.cpu_freq()`` directly:
+#
+#     psutil 7.0.0, which uv.lock pins today
+#         RuntimeError: 'voltage-states1-sram' property not found
+#     psutil 7.2.2
+#         SystemError: <built-in function cpu_freq> returned a result with an exception set
+#
+# ``SystemError`` inherits from ``Exception`` directly -- not from ``RuntimeError``, ``OSError``,
+# ``NotImplementedError`` or ``AttributeError``, the tuple this file used to name. So that tuple
+# happens to hold on the pinned psutil and stops holding on the next one, with no signal at review
+# time and the INTERNALERROR this file exists to prevent as the failure mode. psutil is not declared
+# in pyproject.toml -- the lock picks it up through infrahub-testcontainers -- so that bump arrives
+# with a routine lock refresh rather than as anyone's decision. Enumerating the errors buys nothing
+# to pay for that: all three frequency fields are cosmetic telemetry, so whatever the call raises is
+# worth swallowing.
 #
 # psutil is only a transitive dependency (via infrahub-testcontainers) and only the integration
 # suite needs this, so a missing psutil must not take the unit suite down at collection time.
@@ -35,7 +54,7 @@ else:
     def _cpu_freq_or_none(*args: object, **kwargs: object) -> object:
         try:
             return _original_cpu_freq(*args, **kwargs)  # type: ignore[arg-type]
-        except (RuntimeError, OSError, NotImplementedError, AttributeError):
+        except Exception:  # noqa: BLE001 - the exception type varies by psutil version; see above.
             return None
 
     psutil.cpu_freq = _cpu_freq_or_none  # type: ignore[assignment]
