@@ -1,0 +1,32 @@
+.github/workflows/changelog-check.yml
+  s_e814976895190a::t_8381f07433f807 1-109
+pyproject.toml
+  s_e814976895190a::t_535033fa25a6d8 143-190
+  s_e814976895190a::t_7eeb04353d190e 24
+.github/dependabot.yml
+  s_e814976895190a::t_7ebfe9e5a1ba9b 15-17,35-37,55-57
+changelog/+towncrier.housekeeping.md
+  s_e814976895190a::t_f963aa1e96e7c3 1
+changelog/.gitignore
+  s_e814976895190a::t_dd15fea9c4a372 1
+changelog/towncrier.md.template
+  s_e814976895190a::t_365a8d8b641d08 1-53
+uv.lock
+  s_e814976895190a::t_37083e6beb0715 560,577,1976-1988
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3091fef3fac0468695a011e082fd8175313039f5",
+  "prompts": {},
+  "sessions": {
+    "s_e814976895190a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38e30c4-8c78-42ea-9268-f3396fdc0b01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
