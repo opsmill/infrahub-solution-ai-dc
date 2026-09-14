@@ -136,7 +136,6 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         fabric_id = service.vrf.node.tenant.node.fabric.node.id
         service_vrf_id = service.vrf.node.id
 
-        # Resolve the (optional) segment + its VRF from the parsed query.
         segment = service.segment.node if service.segment else None
         segment_id = segment.id if segment else None
         segment_vrf_id = segment.vrf.node.id if segment and segment.vrf and segment.vrf.node else None
@@ -145,10 +144,8 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         # segment in the service's VRF; L3 forbids a segment (contradictory request).
         validate_service(layer, service_name, service_vrf_id, segment_id, segment_vrf_id)
 
-        # Placement: least-utilized rack + lowest free role:server leaf port (fail-loud on none).
         placement = await self.resolve_placement(service, fabric_id)
 
-        # Shared across L2/L3: create the server, its port, and the server<->leaf link.
         server = await self.materialize_server(service_name, layer, placement.rack.id)
         server_port = await self.materialize_server_port(server)
 

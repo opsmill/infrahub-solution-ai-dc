@@ -91,7 +91,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
         self.fabric_interface_sorting_function = getattr(sorting, fabric_interface_sorting_method)
         self.spine_interface_sorting_function = getattr(sorting, spine_interface_sorting_method)
 
-        # Resolve the vendor group once from the spine template (raises if unresolvable).
         self.vendor_group = await vendor_group_for_template(self.client, self.pod_spine_switch_template)
 
         await self.allocate_resource_pools()
@@ -315,7 +314,6 @@ class PodGenerator(InfrahubGenerator, GeneratorMixin):
     async def update_checksum(self) -> None:
         racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
 
-        # store the checksum for the fabric in the object itself
         checksum = self.calculate_checksum()
         for rack in racks:
             if rack.checksum.value != checksum:
