@@ -4,7 +4,7 @@ const sidebars: SidebarsConfig = {
   solutionAiDcSidebar: [
     {
       type: 'category',
-      label: 'Infrahub AI/DC Solution',
+      label: 'AI Data Center Reference Design',
       link: {
         type: 'doc',
         id: 'solution-ai-dc/overview',
