@@ -36,6 +36,11 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The persisted GITHUB_TOKEN header (contents: read) would override the
+          # GH_UPDATE_PACKAGE_OTTO token the commit step pushes with, and the push
+          # would be denied to github-actions[bot].
+          persist-credentials: false
 
       - name: "Resolve the requested versions"
         env:
