@@ -13,7 +13,7 @@ dependencies = [
 dev = [
     "infrahub-sdk[all]>=1.23.0",
     # Also selects the base image `inv build` builds FROM, via tasks.py.
-    "infrahub-testcontainers>=1.11.3",
+    "infrahub-testcontainers>=1.11.5",
     "invoke>=2.2.0",
     "mypy>=2.3.1",
     "pytest>=8.4.1",
