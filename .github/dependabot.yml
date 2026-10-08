@@ -11,6 +11,7 @@ updates:
     target-branch: main
     labels:
       - "dependencies"
+      - "changes/patch"
       # Dependency bumps carry no behaviour change of their own, so they are
       # exempt from the news-fragment gate in changelog-check.yml.
       - "ci/skip-changelog"
@@ -43,6 +44,7 @@ updates:
     target-branch: main
     labels:
       - "dependencies"
+      - "changes/patch"
       # Dependency bumps carry no behaviour change of their own, so they are
       # exempt from the news-fragment gate in changelog-check.yml.
       - "ci/skip-changelog"

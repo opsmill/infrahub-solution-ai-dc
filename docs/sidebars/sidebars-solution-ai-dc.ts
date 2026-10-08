@@ -19,6 +19,11 @@ const sidebars: SidebarsConfig = {
         'solution-ai-dc/multivendor-config',
       ],
     },
+    {
+      type: 'category',
+      label: 'Release Notes',
+      items: ['solution-ai-dc/release-notes/index'],
+    },
   ],
 };
 
