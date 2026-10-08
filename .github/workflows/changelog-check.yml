@@ -7,11 +7,8 @@ name: Changelog
 # time, the way the shared platform does — puts the cost on the author while
 # they still have the context, instead of on whoever cuts the release.
 #
-# Scoped to `main`: it is this repository's only long-lived branch, so it is
-# the branch any future release would be cut from. The gate is deliberately
-# ahead of the release tooling — fragments accumulate under changelog/ from
-# now on, and `towncrier build` is wired up when this repository first needs
-# to publish a release.
+# Scoped to `main`: it is this repository's only long-lived branch, where
+# fragments accumulate until the release workflow builds the changelog.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]

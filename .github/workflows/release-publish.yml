@@ -75,6 +75,27 @@ jobs:
           echo "publish=true" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - uses: astral-sh/setup-uv@v7
+        if: steps.decide.outputs.publish == 'true'
+
+      - name: Classify the release version
+        id: classify
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          uv run --no-project --with packaging python - <<'PY'
+          import os
+
+          from packaging.version import Version
+
+          version = Version(os.environ["VERSION"])
+          is_prerelease = version.is_prerelease or version.is_devrelease
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"prerelease={str(is_prerelease).lower()}\n")
+          PY
+
       - name: Extract the changelog section
         if: steps.decide.outputs.publish == 'true'
         env:
@@ -111,22 +132,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
           VERSION: ${{ steps.decide.outputs.version }}
+          IS_PRERELEASE: ${{ steps.classify.outputs.prerelease }}
         run: |
           set -euo pipefail
 
-          # Mark only the highest full release as latest.
-          RELEASED=$(gh release list --exclude-drafts --exclude-pre-releases \
-            --limit 1000 --json tagName --jq '.[].tagName')
-          HIGHEST=$(printf '%s\n%s\n' "${RELEASED}" "v${VERSION}" | sed '/^$/d; s/^v//' | sort -V | tail -n 1)
-          if [ "${HIGHEST}" = "${VERSION}" ]; then
-            IS_LATEST=true
-          else
+          if [ "${IS_PRERELEASE}" = "true" ]; then
             IS_LATEST=false
+            RELEASE_FLAGS=(--prerelease)
+          else
+            # Mark only the highest full release as latest.
+            RELEASED=$(gh release list --exclude-drafts --exclude-pre-releases \
+              --limit 1000 --json tagName --jq '.[].tagName')
+            HIGHEST=$(printf '%s\n%s\n' "${RELEASED}" "v${VERSION}" | sed '/^$/d; s/^v//' | sort -V | tail -n 1)
+            if [ "${HIGHEST}" = "${VERSION}" ]; then
+              IS_LATEST=true
+            else
+              IS_LATEST=false
+            fi
+            RELEASE_FLAGS=()
           fi
-          echo "Highest full release: ${HIGHEST}; v${VERSION} latest=${IS_LATEST}"
+          echo "v${VERSION} prerelease=${IS_PRERELEASE} latest=${IS_LATEST}"
 
           gh release create "v${VERSION}" \
             --target "${GITHUB_SHA}" \
             --title "v${VERSION}" \
             --latest="${IS_LATEST}" \
+            "${RELEASE_FLAGS[@]}" \
             --notes-file /tmp/release-body.md
