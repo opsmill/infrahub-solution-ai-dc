@@ -53,7 +53,6 @@ async def assign_ip_addresses_to_p2p_connections(
     the interfaces they address and produce the same set every run, so they keep the default.
     """
     for src_interface, dst_interface in connections:
-        # allocate a new prefix for the p2p connection
         prefix = await client.allocate_next_ip_prefix(
             resource_pool=pool,
             identifier=src_interface.id + dst_interface.id,

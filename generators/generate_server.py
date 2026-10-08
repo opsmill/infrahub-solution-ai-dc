@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 from typing import NamedTuple
 
@@ -8,7 +7,7 @@ from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.protocols import CoreIPPrefixPool, CoreNumberPool
 
 from infrahub_solution_ai_dc.addressing import assign_ip_addresses_to_p2p_connections
-from infrahub_solution_ai_dc.generator import GeneratorMixin
+from infrahub_solution_ai_dc.checksum import Checksum
 from infrahub_solution_ai_dc.protocols import (
     IpamIPAddress,
     IpamIPPrefix,
@@ -70,7 +69,7 @@ class ResolvedPlacement(NamedTuple):
     released_ports: tuple[NetworkInterface, ...] = ()
 
 
-class ServerGenerator(InfrahubGenerator, GeneratorMixin):
+class ServerGenerator(InfrahubGenerator):
     """Materialize a ``NetworkServerService`` by attaching a server to a fabric leaf.
 
     Resolves the request's scope through ``vrf.tenant.fabric``, picks a placement (least-utilized rack +
@@ -136,7 +135,6 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         fabric_id = service.vrf.node.tenant.node.fabric.node.id
         service_vrf_id = service.vrf.node.id
 
-        # Resolve the (optional) segment + its VRF from the parsed query.
         segment = service.segment.node if service.segment else None
         segment_id = segment.id if segment else None
         segment_vrf_id = segment.vrf.node.id if segment and segment.vrf and segment.vrf.node else None
@@ -145,10 +143,8 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         # segment in the service's VRF; L3 forbids a segment (contradictory request).
         validate_service(layer, service_name, service_vrf_id, segment_id, segment_vrf_id)
 
-        # Placement: least-utilized rack + lowest free role:server leaf port (fail-loud on none).
         placement = await self.resolve_placement(service, fabric_id)
 
-        # Shared across L2/L3: create the server, its port, and the server<->leaf link.
         server = await self.materialize_server(service_name, layer, placement.rack.id)
         server_port = await self.materialize_server_port(server)
 
@@ -745,14 +741,9 @@ class ServerGenerator(InfrahubGenerator, GeneratorMixin):
         self.logger.info(f"Recorded {', '.join(changed)} on the service")
 
     async def update_checksum(self, service_id: str, object_ids: list[str]) -> None:
-        """Stamp a content checksum (over the materialized object ids) on the service.
+        """Stamp a content checksum over the materialized object ids on the service.
 
-        Stamped with ``update_group_context=False`` and only when it changes, so an unchanged re-run is a
-        no-op (no self-retrigger loop), mirroring ``OverlayGenerator.update_checksum``.
+        Untracked: the service is the operator's design object, not this generator's output.
         """
-        payload = ",".join(sorted(object_ids))
-        checksum = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         service = await self.client.get(kind=NetworkServerService, id=service_id)
-        if service.checksum.value != checksum:
-            service.checksum.value = checksum
-            await service.save(allow_upsert=True, update_group_context=False)
+        await Checksum.over_contents(object_ids).stamp_on([service], logger=self.logger, track=False)
