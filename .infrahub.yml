@@ -156,6 +156,14 @@ jinja2_transforms:
     description: "Juniper device config transform"
     query: "network_device_startup_config"
     template_path: "./transforms/templates/startup_config_juniper.j2"
+  - name: sonic_device_startup_config
+    description: "SONiC device config-CLI transform (interfaces, VLAN/VXLAN -- config_db.json)"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_sonic.j2"
+  - name: sonic_device_frr_config
+    description: "SONiC device FRR routing transform (BGP underlay + EVPN -- frr.conf)"
+    query: "network_device_startup_config"
+    template_path: "./transforms/templates/startup_config_sonic_frr.j2"
 
 python_transforms:
   - name: computed_interface_description
@@ -217,6 +225,20 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "juniper_devices"
     transformation: "juniper_device_startup_config"
+  - name: "sonic_startup_configuration"
+    artifact_name: "Startup configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "sonic_devices"
+    transformation: "sonic_device_startup_config"
+  - name: "sonic_frr_configuration"
+    artifact_name: "FRR configuration"
+    parameters:
+      name: "hostname__value"
+    content_type: "text/plain"
+    targets: "sonic_devices"
+    transformation: "sonic_device_frr_config"
   - name: "cabling_plan"
     artifact_name: "Cabling Plan"
     parameters:
