@@ -9,10 +9,13 @@ name: Changelog
 #
 # Scoped to `main`: it is this repository's only long-lived branch, where
 # fragments accumulate until the release workflow builds the changelog.
+# The fragment gate is muted to match the other ecosystem repositories.
+# Keep the manual trigger so the check remains available during rollout.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
-    branches: [main]
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, synchronize, reopened, labeled, unlabeled]
+  #   branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
