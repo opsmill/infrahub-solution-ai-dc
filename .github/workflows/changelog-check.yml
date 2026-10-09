@@ -10,7 +10,8 @@ name: Changelog
 # Scoped to `main`: it is this repository's only long-lived branch, where
 # fragments accumulate until the release workflow builds the changelog.
 # The fragment gate is muted to match the other ecosystem repositories.
-# Keep the manual trigger so the check remains available during rollout.
+# Keep the dispatch-only trigger used by the other repositories; the PR-specific
+# check stays dormant until the pull_request trigger is restored.
 on:
   workflow_dispatch:
   # pull_request:
