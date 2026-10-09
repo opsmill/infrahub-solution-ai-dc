@@ -119,3 +119,13 @@ run a mixed stack when it does not match.
 - Change detection goes through `checksum.Checksum`, never a hand-rolled hash: the digest is order-independent over an id set, and a stamp is written only when it changes (re-stamping an identical value re-fires the generator's own trigger). `RackGenerator` stamps nothing — the rack is the last tier of the cascade
 - GraphQL queries live alongside their Python files as `.gql` files
 - Query response models (`*_query.py`) are generated — do not edit manually
+
+## Changelog and releases
+
+Record release-worthy changes as Towncrier fragments under `changelog/`: `<issue>.<type>.md`, or `+<slug>.<type>.md` without an issue. Types are `security`, `removed`, `deprecated`, `added`, `changed`, `fixed`, and `housekeeping`. Preview with `uv run towncrier build --draft --version X.Y.Z`. Use `ci/skip-changelog` only when no entry is needed.
+
+Ordinary pull requests to `main` carry exactly one `changes/major`, `changes/minor`, or `changes/patch` label. Those labels calculate the next release version. Generated release pull requests are exempt.
+
+Dispatch **Auto bump version** on `main` to prepare a release. The first release needs an explicit version because no release tag exists yet; later versions can come from merged PR labels. The workflow updates `pyproject.toml` and `uv.lock`, assembles `CHANGELOG.md`, and opens a `chore(release)` pull request. Add a release-notes page and sidebar entry to that PR. A human reviews and merges it; the merge creates the `v<version>` tag and GitHub Release. Do not bump, build, tag, or publish directly on `main`.
+
+Release-notes pages belong under `docs/docs/solution-ai-dc/release-notes/` and are listed explicitly in `docs/sidebars/sidebars-solution-ai-dc.ts`. Dependabot and automated dependency bumps use `changes/patch`.

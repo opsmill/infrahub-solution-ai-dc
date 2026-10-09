@@ -232,4 +232,5 @@ jobs:
             --body "${BODY}" \
             --base main \
             --head "${BRANCH_NAME}" \
-            --label "ci/skip-changelog"
+            --label "ci/skip-changelog" \
+            --label "changes/patch"
