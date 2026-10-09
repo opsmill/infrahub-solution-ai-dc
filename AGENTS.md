@@ -31,9 +31,21 @@ inv format                      # Format with ruff
 inv test-unit                   # Everything that needs no deployment — the fast gate
 inv test-integration            # --tier=core (default) or --tier=full
 inv test                        # Run pytest over everything
+
+inv test-version --version=X    # Integration suite against one Infrahub version
+inv compare-versions            # Two full stacks, sequentially, then diff the results
 ```
 
 Run a single test: `pytest tests/unit/test_computed_attribute.py`
+
+### Version testing
+
+The integration suite runs against any Infrahub release; `INFRAHUB_BASE_VERSION` is the only knob.
+A release older than the repo targets needs no hand-edited config — the stack clones a version-adapted
+copy of the repo. Full guide: `dev/guides/compare-infrahub-versions.md`.
+
+Set `PYTEST_DEBUG_TEMPROOT` to a disk-backed path before a long session. Pytest's default temp root is
+often tmpfs, and three of the four integration classes clone a repo per class.
 
 ## Architecture
 
@@ -71,8 +83,20 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 ### Tests (`tests/`)
 
 - `unit/` — pure-Python tests, no containers; the fast gate.
-- `integration/` — four classes, each spinning its own Infrahub stack via `infrahub-testcontainers`; expect ~35 min for the full suite.
+- `integration/` — four classes, each spinning its own Infrahub stack via `infrahub-testcontainers`.
+  Expect ~35 min for the full suite: three of the four classes drive the whole fabric → pod → rack
+  cascade, because the overlay and server-service assertions need real leaf devices.
 - `integration/stack_config.py` — resolves the stack image and tag from the environment and the installed `infrahub-testcontainers`.
+- `integration/cascade.py` — the shared cascade machinery (`provision_fabric_cascade`,
+  `load_trigger_rules`, condition-based `wait_until`/`stays_false`). Use it rather than re-deriving the
+  setup: `triggers.yml` is loaded by neither `inv load` nor repository sync, and every rule is
+  `branch_scope: other_branches`, so nothing cascades on `main`.
+- `integration/repo_source.py` — builds the version-adapted copy of the repo that the stack clones
+  (strips `watch:` for pre-1.11 targets, keeps virtualenvs out of the copy).
+- `perf.py` — local-only timing capture, inert unless `AI_DC_PERF_OUT` is set. Deliberately not the
+  bundled testcontainers performance plugin, whose `send_results` POSTs to a public URL by default.
+
+`dev/compare_runs.py` diffs two result files; `dev/compare_versions.sh` drives a full two-version run.
 
 ### Data Files
 
@@ -101,6 +125,9 @@ run a mixed stack when it does not match.
 - `.mcp.json` — committed MCP client config for the `infrahub-mcp` sidecar in `docker-compose.override.yml`: how agents reach live Infrahub data (`mcp__infrahub__*` tools; token from `INFRAHUB_API_TOKEN`)
 - `.specify/` — spec-kit workflow engine (constitution, templates, scripts)
 - `dev/` — human-facing reference: `adr/` (MADR decision records), `guides/`, `guidelines/`, `knowledge/`.
+  Read `guides/compare-infrahub-versions.md` before qualifying a release, and
+  `knowledge/generator-cascade-troubleshooting.md` before concluding anything from a half-built fabric —
+  the usual causes are configuration or host pressure, not the platform.
 
 ## Code Style
 

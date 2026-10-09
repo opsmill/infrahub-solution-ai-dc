@@ -31,20 +31,11 @@ condition-based with an env-overridable ceiling -- no fixed sleeps standing in f
 
 from __future__ import annotations
 
-import asyncio
-import os
-import time
 from collections import Counter
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import (
-    CoreGeneratorAction,
-    CoreGeneratorDefinition,
-    CoreGenericRepository,
-    CoreNodeTriggerRule,
-)
-from infrahub_sdk.spec.object import ObjectFile
+from infrahub_sdk.protocols import CoreGenericRepository
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
@@ -57,8 +48,29 @@ from infrahub_solution_ai_dc.protocols import (
     TemplateNetworkDevice,
 )
 
+# The cascade machinery lives in tests/integration/cascade.py so the overlay and server-service
+# suites can drive the same cascade instead of being skipped for want of leaf devices. This module
+# keeps only what is specific to asserting the chain itself.
+from tests.integration.cascade import (
+    FABRIC_NAME,
+    FABRIC_POD_ROLE,
+    FABRIC_TIER_TIMEOUT,
+    NO_CASCADE_WINDOW,
+    POD_TIER_TIMEOUT,
+    RACK_TIER_TIMEOUT,
+    count_devices_in_pod,
+    count_leaves_in_rack,
+    env_seconds,
+    generated_pods,
+    get_fabric_pods,
+    get_generated_pods,
+    load_trigger_rules,
+    run_generator,
+    stays_false,
+    wait_until,
+)
+
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
@@ -72,155 +84,21 @@ REQUIRED_GROUPS = ["halls", "racks", "fabrics", "pods", "devices", "tenants"]
 # assertions run here.
 CHAIN_BRANCH = "generator-chain-test"
 
-# Fabric-A from objects/10_fabric.yml: 6 super-spines, one role="fabric" pod holding them
-# (Pod-A1) plus two generated pods (Pod-A2, Pod-A3), each with its own racks.
-FABRIC_NAME = "Fabric-A"
-FABRIC_POD_ROLE = "fabric"
-
 # ``LocationRack.amount_of_leafs`` is capped at 2 by the schema (``schemas/physical_location.yml``,
 # ``parameters: {min_value: 1, max_value: 2}``). Any test that raises a rack's leaf count has to pick
 # a rack with headroom, or the save is rejected by validation before the trigger is ever exercised.
 MAX_LEAFS_PER_RACK = 2
 
-
-def _env_seconds(name: str, default: float) -> float:
-    """Read a seconds-valued env override, falling back on anything unparseable.
-
-    Read at import time, so a bare ``float()`` on a typo'd or empty override would raise during
-    collection and take the whole module (not just one test) down with a collection error.
-    """
-    try:
-        return float(os.environ[name])
-    except (KeyError, ValueError):
-        return default
-
-
-# Ceilings, not expected durations: each wait returns as soon as its condition holds.
-FABRIC_TIER_TIMEOUT = _env_seconds("AI_DC_FABRIC_TIER_TIMEOUT", 600)
-POD_TIER_TIMEOUT = _env_seconds("AI_DC_POD_TIER_TIMEOUT", 900)
-RACK_TIER_TIMEOUT = _env_seconds("AI_DC_RACK_TIER_TIMEOUT", 1200)
-# How long to watch for a cascade that must NOT happen. Bounded on purpose: a negative
-# assertion can only ever be "nothing within this window".
-NO_CASCADE_WINDOW = _env_seconds("AI_DC_NO_CASCADE_WINDOW", 120)
-# Ceiling for the two xfail gap tests below. Deliberately much tighter than the tier timeouts:
-# timing out IS the expected path today, so a generous ceiling buys nothing and costs that much
-# wall-clock on every run. It only needs to be long enough to build ONE extra device, so that
-# adding the missing trigger rule turns the test green (strict xfail then fails the run and forces
-# the marker off) rather than still timing out and hiding the fix.
-GAP_TIMEOUT = _env_seconds("AI_DC_GAP_TIMEOUT", 300)
-POLL_INTERVAL = 5.0
-# ``wait_until`` polls at this rate for its first ``FAST_POLL_WINDOW`` seconds before settling to
-# ``POLL_INTERVAL``, so a condition that is already true is noticed promptly instead of up to 5s
-# later. ``stays_false`` deliberately does not use it -- it wants the whole window regardless.
-FAST_POLL_INTERVAL = 1.0
-FAST_POLL_WINDOW = 15.0
-
-# wait_until_completion is false so a long generator run cannot trip the client HTTP timeout;
-# the tests poll the resulting data instead. Registered as CoreGeneratorDefinitionRun
-# (backend/infrahub/graphql/schema.py).
-RUN_GENERATOR_MUTATION = """
-mutation RunGenerator($id: String!, $nodes: [String!]) {
-  CoreGeneratorDefinitionRun(data: {id: $id, nodes: $nodes}, wait_until_completion: false) {
-    ok
-    task { id }
-  }
-}
-"""
-
-
-async def wait_until(
-    predicate: Callable[[], Awaitable[bool]],
-    *,
-    what: str | Callable[[], str],
-    timeout_seconds: float,
-) -> None:
-    """Poll ``predicate`` until it holds, failing with a named message on timeout.
-
-    ``what`` may be a callable, rendered only on timeout, so a predicate that tracks *which* targets
-    are still short can report them without paying for the string on every successful wait.
-
-    Polls fast at first, then settles to ``POLL_INTERVAL``. Several waits here converge on their
-    first or second poll (the checksum stamps especially), and a flat 5s interval spends up to 5s
-    sleeping past a condition that is already true. Polling sooner is never less responsive, so this
-    costs nothing and cannot introduce flakiness in either direction.
-    """
-    deadline = time.monotonic() + timeout_seconds
-    fast_until = time.monotonic() + FAST_POLL_WINDOW
-    while True:
-        if await predicate():
-            return
-        if time.monotonic() >= deadline:
-            message = what() if callable(what) else what
-            pytest.fail(f"timed out after {timeout_seconds:.0f}s waiting for {message}")
-        await asyncio.sleep(FAST_POLL_INTERVAL if time.monotonic() < fast_until else POLL_INTERVAL)
-
-
-async def stays_false(predicate: Callable[[], Awaitable[bool]], *, window: float) -> bool:
-    """Return True when ``predicate`` never holds for the whole ``window``."""
-    deadline = time.monotonic() + window
-    while time.monotonic() < deadline:
-        if await predicate():
-            return False
-        await asyncio.sleep(POLL_INTERVAL)
-    return True
-
-
-async def run_generator(
-    client: InfrahubClient,
-    *,
-    definition_name: str,
-    branch: str,
-    node_ids: list[str],
-) -> None:
-    """Submit a generator definition run for specific targets, without waiting for completion."""
-    definition = await client.get(kind=CoreGeneratorDefinition, name__value=definition_name, branch=branch)
-    result = await client.execute_graphql(
-        query=RUN_GENERATOR_MUTATION,
-        variables={"id": definition.id, "nodes": node_ids},
-        branch_name=branch,
-    )
-    assert result["CoreGeneratorDefinitionRun"]["ok"] is True
-
-
-async def count_devices_in_pod(client: InfrahubClient, *, branch: str, pod_id: str, role: str) -> int:
-    """Count the devices of a given role attached to a pod.
-
-    ``count`` rather than ``filters`` + ``len``: these two helpers are the body of nearly every poll
-    in this module, so hundreds of calls per run would otherwise hydrate complete device nodes --
-    every attribute and every relationship peer -- purely to discard them and take a length.
-
-    Kept separate from the rack counter rather than merged into one ``**filters`` helper: forwarding
-    ``**kwargs`` into the client matches none of its overloads under mypy strict, and the workarounds
-    (a ``type: ignore``, or ``**filters: Any`` plus an ANN401 noqa) cost more than the duplicated line.
-    """
-    return await client.count(kind=NetworkDevice, branch=branch, pod__ids=[pod_id], role__value=role)
-
-
-async def count_leaves_in_rack(client: InfrahubClient, *, branch: str, rack_id: str) -> int:
-    """Count the leaf devices attached to a rack."""
-    return await client.count(kind=NetworkDevice, branch=branch, rack__ids=[rack_id], role__value="leaf")
-
-
-async def get_fabric_pods(client: InfrahubClient, *, branch: str, fabric_id: str) -> list[NetworkPod]:
-    """Return every pod of a fabric, including the role="fabric" pod that holds the super-spines."""
-    return await client.filters(kind=NetworkPod, branch=branch, parent__ids=[fabric_id])
-
-
-def generated_pods(pods: list[NetworkPod]) -> list[NetworkPod]:
-    """Filter out the role="fabric" pod, which PodGenerator skips (EXCLUDED_POD_ROLES)."""
-    return [pod for pod in pods if pod.role.value != FABRIC_POD_ROLE]
-
-
-async def get_generated_pods(client: InfrahubClient, *, branch: str) -> list[NetworkPod]:
-    """Fetch the fabric under test and return only the pods its PodGenerator manages.
-
-    The plain ``get_fabric_pods`` / ``generated_pods`` pair stays available for the tests that need
-    the fabric object itself or the unfiltered pod list (the checksum tests, which reuse the fabric
-    id inside their predicates, and ``test_default_branch_does_not_cascade``, which needs the
-    role="fabric" pod).
-    """
-    fabric = await client.get(kind=NetworkFabric, name__value=FABRIC_NAME, branch=branch)
-    return generated_pods(await get_fabric_pods(client, branch=branch, fabric_id=fabric.id))
+# Ceiling for the two single-device regeneration tests below, deliberately tighter than the tier
+# timeouts: each only has to build ONE extra device, which was measured at ~8.5s for the equivalent
+# pod-tier test. It is a ceiling, not an expected duration -- both tests return as soon as the device
+# appears.
+#
+# Until the LocationRack and NetworkFabric trigger rules existed, both were strict xfails and timing
+# out WAS the expected path, costing the full ceiling twice per run. The rack test now passes in
+# seconds. The fabric one still consumes the ceiling because its generator run errors rather than
+# producing a device, so lowering this knob is worth ~5 min per run.
+GAP_TIMEOUT = env_seconds("AI_DC_GAP_TIMEOUT", 300)
 
 
 class TestGeneratorTriggerChain(TestInfrahubDockerClient):
@@ -245,12 +123,12 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         self,
         client: InfrahubClient,
         remote_repos_dir: Path,
-        root_directory: Path,
+        repo_source_directory: Path,
     ) -> None:
         """Register and sync this repo: generator definitions, queries and the objects/ seed."""
         repo = GitRepo(
             name="local-repository",
-            src_directory=root_directory,
+            src_directory=repo_source_directory,
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
@@ -287,23 +165,7 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
         Loaded after repository sync on purpose: each CoreGeneratorAction references a generator
         definition by name, which only exists once the repo has been imported.
         """
-        trigger_files = ObjectFile.load_from_disk(paths=[root_directory / "triggers.yml"])
-        assert trigger_files, "triggers.yml produced no object documents"
-
-        for trigger_file in trigger_files:
-            trigger_file.validate_content()
-            await trigger_file.process(client=client)
-
-        actions = await client.all(kind=CoreGeneratorAction)
-        assert {action.name.value for action in actions} >= {
-            "run-pod-generator",
-            "run-rack-generator",
-        }, "the pod/rack generator actions are missing; the cascade cannot dispatch"
-
-        rules = await client.all(kind=CoreNodeTriggerRule)
-        assert {"NetworkPod", "LocationRack"} <= {rule.node_kind.value for rule in rules}, (
-            "no trigger rules for NetworkPod/LocationRack; fabric -> pod -> rack cannot fire"
-        )
+        await load_trigger_rules(client, root_directory)
 
     @pytest.mark.asyncio
     async def test_create_chain_branch(self, client: InfrahubClient) -> None:
@@ -663,12 +525,12 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
     async def test_pod_spine_count_change_regenerates(self, client: InfrahubClient) -> None:
         """A watched non-checksum attribute must dispatch: amount_of_spines has a rule.
 
-        The highest-signal test for comparing 1.10.6 against 1.11.0b0. Unlike the checksum
+        The highest-signal test for comparing 1.10.6 against 1.11.x. Unlike the checksum
         relay, this exercises ``CoreNodeTriggerAttributeMatch`` on an ordinary attribute
         end-to-end: the mutation's changelog has to surface an ``infrahub.node.attribute_update``
         related resource carrying ``infrahub.field.name = amount_of_spines`` for the automation to
         match (see ``events/node_action.py`` ``get_related``). If this passes on 1.10.6 and fails
-        on 1.11.0b0, the regression is in event emission or matching, not in this repo.
+        on 1.11.x, the regression is in event emission or matching, not in this repo.
         """
         pods = await get_generated_pods(client, branch=CHAIN_BRANCH)
         assert pods
@@ -750,29 +612,24 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
             "is now open and the operating model changed -- update this test and triggers.yml docs"
         )
 
-    # --- coverage gaps in triggers.yml -----------------------------------------------------------
+    # --- the other two tiers regenerate on a design-object edit ------------------------------------
     #
-    # triggers.yml covers NetworkPod.amount_of_spines but nothing equivalent for the other two
-    # tiers: LocationRack.amount_of_leafs has no rule, and NetworkFabric has no rule at all (the
-    # file holds 9 rules across NetworkPod, LocationRack, NetworkTenant and NetworkServerService
-    # -- there is no NetworkFabric entry). Editing a fabric's super-spine count or a rack's leaf
-    # count therefore regenerates nothing, which presents exactly as "the generators don't
-    # trigger consistently".
+    # triggers.yml long covered NetworkPod.amount_of_spines but had nothing equivalent for the other
+    # two tiers: LocationRack.amount_of_leafs had no rule, and NetworkFabric had no rule of any kind.
+    # Editing a fabric's super-spine count or a rack's leaf count therefore regenerated nothing, which
+    # presents exactly as "the generators don't trigger consistently". Both rules now exist, and these
+    # two tests are the proof. The rack one passes. The fabric one still xfails, but for a different
+    # reason than before: its rule *does* dispatch, and the generator run then 500s on an internal
+    # CoreGraphQLQueryGroup hfid collision -- see the marker for detail.
     #
-    # Both tests assert the behaviour we want and are strict xfails, so adding the missing rules
-    # turns them green and forces the marker off rather than leaving dead coverage behind.
+    # Creating a fabric still dispatches nothing: the new rule is mutation_action "updated" only, and
+    # test_new_fabric_has_no_automatic_dispatch above pins that.
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(
-        strict=True,
-        reason="triggers.yml has no LocationRack.amount_of_leafs rule, so a leaf-count edit "
-        "never re-runs the rack generator",
-    )
     async def test_rack_leaf_count_change_regenerates(self, client: InfrahubClient) -> None:
         """Raising amount_of_leafs on a rack should build the extra leaf.
 
-        The rack has to be chosen carefully or the xfail can never flip green when the rule lands,
-        which would defeat the whole point of asserting the wanted behaviour:
+        The rack has to be chosen carefully or this cannot pass even with the rule in place:
 
         * Scoped to Fabric-A's generated pods. An unscoped ``LocationRack`` query returns all 32
           seeded racks -- ``LocationRack`` is ``branch: agnostic``, and Fabric-B/C/D never cascade
@@ -810,11 +667,20 @@ class TestGeneratorTriggerChain(TestInfrahubDockerClient):
     @pytest.mark.asyncio
     @pytest.mark.xfail(
         strict=True,
-        reason="triggers.yml has no NetworkFabric rule at all, so a super-spine-count edit "
-        "never re-runs the fabric generator",
+        reason="The NetworkFabric rule dispatches correctly, but the generator run then fails inside "
+        "Infrahub with a 500: CoreGraphQLQueryGroupUpsert -> 'Multiple CoreGraphQLQueryGroup nodes "
+        "have the same hfid'. Not a super-spine problem and not version-specific -- identical on "
+        "1.10.6, 1.11.0b1 and 1.11.0b2. See dev/knowledge/generator-cascade-troubleshooting.md",
     )
     async def test_fabric_super_spine_count_change_regenerates(self, client: InfrahubClient) -> None:
-        """Raising amount_of_super_spines on a fabric should build the extra super-spine."""
+        """Raising amount_of_super_spines on a fabric should build the extra super-spine.
+
+        Kept as a strict xfail rather than deleted: the trigger rule this asserts is in triggers.yml
+        and demonstrably dispatches (a generate-fabric run starts within seconds of the attribute
+        change). What fails is the run itself, on an internal query-group upsert that has nothing to
+        do with fabrics. When that is fixed upstream this test xpasses, the strict marker fails the
+        run, and the marker comes off -- which is exactly the signal we want.
+        """
         fabric = await client.get(kind=NetworkFabric, name__value=FABRIC_NAME, branch=CHAIN_BRANCH)
         fabric_pod = await client.get(
             kind=NetworkPod, branch=CHAIN_BRANCH, parent__ids=[fabric.id], role__value=FABRIC_POD_ROLE
