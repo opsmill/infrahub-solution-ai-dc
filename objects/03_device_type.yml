@@ -20,3 +20,19 @@ spec:
       manufacturer: ["Juniper"]
     - name: "QFX5120-48Y-8C"
       manufacturer: ["Juniper"]
+    # Broadcom Tomahawk4, 25.6 Tbps, 64x 400G, 4-lane breakout-capable (not modeled -- research.md D11)
+    # -- spine & super-spine. Most established of the three generations.
+    - name: "SONiC-T4"
+      manufacturer: ["SONiC"]
+    # Broadcom Tomahawk5, 51.2 Tbps, 64x 800G, 8-lane breakout-capable (not modeled -- research.md D11)
+    # -- spine & super-spine.
+    - name: "SONiC-T5"
+      manufacturer: ["SONiC"]
+    # Broadcom Tomahawk6, 102.4 Tbps, 64x 1.6T, 8-lane breakout-capable at a higher per-lane rate (not
+    # modeled -- research.md D11) -- spine & super-spine. Newest, least field-proven generation modeled here.
+    - name: "SONiC-T6"
+      manufacturer: ["SONiC"]
+    # Broadcom Trident4-class, 48x 10/25G SFP28 access [fixed-form, not breakout-capable] + 6x 40/100G
+    # QSFP28 uplink [4-lane breakout-capable] (not modeled -- research.md D11) -- leaf.
+    - name: "SONiC-TD4"
+      manufacturer: ["SONiC"]

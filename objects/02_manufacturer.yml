@@ -8,3 +8,4 @@ spec:
     - name: Cisco
     - name: Arista
     - name: Juniper
+    - name: SONiC
