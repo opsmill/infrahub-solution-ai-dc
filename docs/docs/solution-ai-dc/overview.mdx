@@ -1,13 +1,13 @@
 ---
-title: AI/DC solution
+title: AI Data Center Reference Design
 description: Design-driven automation for large-scale AI data center fabrics using Infrahub Generators.
 ---
 
-# AI/DC solution
+# AI Data Center Reference Design
 
-The AI/DC solution is a reference implementation demonstrating how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Four modular Generators connect automatically via event-driven triggers: three build the physical fabric (Fabric → Pod → Rack), and a fourth layers multi-tenant EVPN/VXLAN overlay services on top. Triggering one Generator at the fabric level causes the entire data center to build itself, and the same design renders per-vendor (Cisco, Arista, Dell, Juniper) device configuration. The solution is fully functional today and is positioned as a demo and reference implementation.
+The AI Data Center reference design demonstrates how to use Infrahub to automate the full lifecycle of a large-scale AI data center. It takes a small number of design inputs — fabric topology, pod configuration, rack assignments — and generates a complete data center: devices, IP allocations, cabling plans, and configuration data. Four modular Generators connect automatically via event-driven triggers: three build the physical fabric (Fabric → Pod → Rack), and a fourth layers multi-tenant EVPN/VXLAN overlay services on top. Triggering one Generator at the fabric level causes the entire data center to build itself, and the same design renders per-vendor (Cisco, Arista, Dell, Juniper) device configuration. The reference design is fully functional today, and is meant to be run as a demo and adapted as a reference implementation.
 
-All of the content provided in this solution can be found on the [`infrahub-solution-ai-dc` GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc).
+All of the content provided in this reference design can be found on the [`infrahub-solution-ai-dc` GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc).
 
 ## The problem this solves
 
@@ -17,9 +17,9 @@ All of the content provided in this solution can be found on the [`infrahub-solu
 - Infrahub's design-driven approach solves this: operators define what infrastructure should look like, and Generators produce it — consistently, in parallel, and with surgical day-two change support.
 - The pattern is not AI-specific. It applies to any standardized, layered infrastructure domain.
 
-## What the AI/DC solution is
+## What the reference design is
 
-The AI/DC solution builds a 5-stage Clos data center fabric from minimal design inputs. The hierarchy follows a three-level structure:
+The reference design builds a 5-stage Clos data center fabric from minimal design inputs. The hierarchy follows a three-level structure:
 
 - **Fabric** — the top level, containing super spine switches
 - **Pod** — the middle level, containing spine switches connected to the super spines above
@@ -44,12 +44,12 @@ The demo data includes three complete, single-vendor fabrics:
 
 Each fabric is built entirely from one vendor's device templates, and each device's configuration is rendered from that vendor's template. See [Multivendor configuration](./multivendor-config).
 
-The solution generates IP pool allocations, interface-level cabling plans, OSPF underlay configuration, EVPN/VXLAN overlay configuration, and computed interface descriptions.
+The reference design generates IP pool allocations, interface-level cabling plans, OSPF underlay configuration, EVPN/VXLAN overlay configuration, and computed interface descriptions.
 
 ## Who this is for
 
 :::tip Choose your path
-**Running a demo or evaluating Infrahub?** Start with the [Demo Guide](./demo-guide) — it walks through the solution end to end with no code modifications required.
+**Running a demo or evaluating Infrahub?** Start with the [Demo Guide](./demo-guide) — it walks through the reference design end to end with no code modifications required.
 
 **Building your own Generators or adapting the patterns?** Start with the [Reference Guide: Generator Patterns](./generator-patterns) — it covers the implementation patterns in detail.
 :::
