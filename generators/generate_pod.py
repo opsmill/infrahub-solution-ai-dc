@@ -314,4 +314,4 @@ class PodGenerator(InfrahubGenerator):
     async def update_checksum(self) -> None:
         """Drive the rack tier: stamp this run's session checksum on every rack of the pod."""
         racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
-        await Checksum.over_session(self.client).stamp_on(racks, logger=self.logger, track=None)
+        await Checksum.over_session(self.client).stamp_on(racks, logger=self.logger, track=False)
