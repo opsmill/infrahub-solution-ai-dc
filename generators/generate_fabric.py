@@ -10,6 +10,7 @@ from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, Netw
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .fabric_generator_query import FabricGeneratorQuery
+from .tracking import release_from_tracking_group
 
 ASN_POOL_NAME = "Overlay ASN Pool"
 DEFAULT_ROUTING_DESIGN = "ibgp_evpn_ospf_underlay"
@@ -151,4 +152,5 @@ class FabricGenerator(InfrahubGenerator):
     async def update_checksum(self) -> None:
         """Drive the pod tier: stamp this run's session checksum on every pod of the fabric."""
         pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
+        await release_from_tracking_group(self.client, [self.fabric_id, *(pod.id for pod in pods)])
         await Checksum.over_session(self.client).stamp_on(pods, logger=self.logger, track=False)

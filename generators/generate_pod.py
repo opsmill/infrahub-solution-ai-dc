@@ -15,6 +15,7 @@ from infrahub_solution_ai_dc.protocols import LocationRack, NetworkDevice, Netwo
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .pod_generator_query import PodGeneratorQuery
+from .tracking import release_from_tracking_group
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -314,4 +315,5 @@ class PodGenerator(InfrahubGenerator):
     async def update_checksum(self) -> None:
         """Drive the rack tier: stamp this run's session checksum on every rack of the pod."""
         racks = await self.client.filters(kind=LocationRack, pod__ids=[self.pod_id])
+        await release_from_tracking_group(self.client, [rack.id for rack in racks])
         await Checksum.over_session(self.client).stamp_on(racks, logger=self.logger, track=False)
