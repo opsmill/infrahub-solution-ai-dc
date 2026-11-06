@@ -1,0 +1,1 @@
+Running the fabric or pod generator again with no changes no longer deletes the pods or racks it stamps a checksum on. The generators no longer add those nodes, or the fabric they update, to their tracking group, and they remove them from the group if an earlier run added them. So the tracking-group cleanup in the SDK that ships with Infrahub 1.12 does not remove them.
