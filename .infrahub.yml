@@ -57,10 +57,10 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/checksum.py
         - src/infrahub_solution_ai_dc/protocols.py
         - src/infrahub_solution_ai_dc/vendors.py
-        - src/infrahub_solution_ai_dc/fabric_generator_query.py
+        - ./generators/fabric_generator_query.py
 
   - name: generate-pod
     file_path: "./generators/generate_pod.py"
@@ -77,11 +77,11 @@ generator_definitions:
         - src/infrahub_solution_ai_dc/sorting.py
         - src/infrahub_solution_ai_dc/addressing.py
         - src/infrahub_solution_ai_dc/cabling.py
-        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/checksum.py
         - src/infrahub_solution_ai_dc/overlay.py
         - src/infrahub_solution_ai_dc/protocols.py
         - src/infrahub_solution_ai_dc/vendors.py
-        - src/infrahub_solution_ai_dc/pod_generator_query.py
+        - ./generators/pod_generator_query.py
 
   - name: generate-rack
     file_path: "./generators/generate_rack.py"
@@ -101,7 +101,7 @@ generator_definitions:
         - src/infrahub_solution_ai_dc/overlay.py
         - src/infrahub_solution_ai_dc/protocols.py
         - src/infrahub_solution_ai_dc/vendors.py
-        - src/infrahub_solution_ai_dc/rack_generator_query.py
+        - ./generators/rack_generator_query.py
 
   - name: generate-tenant
     file_path: "./generators/generate_tenant.py"
@@ -115,10 +115,10 @@ generator_definitions:
     execute_after_merge: false
     watch:
       files:
-        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/checksum.py
         - src/infrahub_solution_ai_dc/overlay.py
         - src/infrahub_solution_ai_dc/protocols.py
-        - src/infrahub_solution_ai_dc/generate_tenant_query.py
+        - ./generators/generate_tenant_query.py
 
   - name: generate-server
     file_path: "./generators/generate_server.py"
@@ -133,10 +133,10 @@ generator_definitions:
     watch:
       files:
         - src/infrahub_solution_ai_dc/addressing.py
-        - src/infrahub_solution_ai_dc/generator.py
+        - src/infrahub_solution_ai_dc/checksum.py
         - src/infrahub_solution_ai_dc/protocols.py
-        - src/infrahub_solution_ai_dc/server.py
-        - src/infrahub_solution_ai_dc/generate_server_query.py
+        - src/infrahub_solution_ai_dc/servers.py
+        - ./generators/generate_server_query.py
 
 
 jinja2_transforms:
@@ -187,6 +187,7 @@ python_transforms:
       files:
         - ./transforms/cilium_manifest_query.py
         - src/infrahub_solution_ai_dc/clusters.py
+        - src/infrahub_solution_ai_dc/protocols.py
 
 artifact_definitions:
   - name: "cisco_startup_configuration"
