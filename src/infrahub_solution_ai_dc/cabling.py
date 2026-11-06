@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .protocols import NetworkDevice, NetworkInterface
+from .protocols import NetworkDevice, NetworkInterface, NetworkLink
 
 if TYPE_CHECKING:
     import logging
@@ -58,15 +58,40 @@ def build_rack_cabling_plan(
     return cabling_plan
 
 
+async def find_link_between(
+    client: InfrahubClient, src_interface: NetworkInterface, dst_interface: NetworkInterface
+) -> NetworkLink | None:
+    """Return the link that already connects exactly these two interfaces, or ``None``.
+
+    The link name is derived from the device display labels, so it cannot identify the link once a
+    device is renamed: an upsert by name would create a second link on an interface that already has one.
+    """
+    wanted = {src_interface.id, dst_interface.id}
+    links = await client.filters(
+        kind=NetworkLink, endpoints__ids=[src_interface.id, dst_interface.id], include=["endpoints"]
+    )
+    for link in links:
+        if {peer.id for peer in link.endpoints.peers} == wanted:
+            return link
+    return None
+
+
 async def connect_interface_maps(
     client: InfrahubClient, logger: logging.Logger, cabling_plan: list[tuple[NetworkInterface, NetworkInterface]]
 ) -> None:
     for src_interface, dst_interface in cabling_plan:
         name = f"{src_interface.device.display_label}-{src_interface.name.value}__{dst_interface.device.display_label}-{dst_interface.name.value}"
-        network_link = await client.create(
-            kind="NetworkLink", name=name, medium="copper", endpoints=[src_interface, dst_interface]
-        )
-        await network_link.save(allow_upsert=True)
+        existing_link = await find_link_between(client, src_interface, dst_interface)
+        if existing_link is None:
+            network_link = await client.create(
+                kind="NetworkLink", name=name, medium="copper", endpoints=[src_interface, dst_interface]
+            )
+            await network_link.save(allow_upsert=True)
+        else:
+            # A device rename changes the computed name: keep the link and refresh its name. Save it even
+            # when nothing changed, so the generator's group still tracks it.
+            existing_link.name.value = name
+            await existing_link.save(allow_upsert=True)
 
         src_intf = await client.get(NetworkInterface, id=src_interface.id, include=["link"])
         dst_intf = await client.get(NetworkInterface, id=dst_interface.id, include=["link"])
