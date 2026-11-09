@@ -9,8 +9,12 @@ The steps are idempotent, so running them again gives the same result:
 
 1. Register the repository as a read-only repository. Infrahub then imports the schemas, the menu, the objects, the
    generators, the transforms and the artifact definitions from ``.infrahub.yml``.
-2. Wait until the import is ``in-sync``. The trigger rules name generator definitions, which exist only after the import.
-3. Load ``triggers.yml``, the rules that make one run of ``generate-fabric`` cascade to the pods and the racks.
+2. Wait until the import is ``in-sync`` and the generator definitions that ``triggers.yml`` names exist.
+3. Load ``triggers.yml``, the rules that make a run of ``generate-fabric`` on a branch cascade to the pods and the racks.
+   The rules apply on branches only, so a run on ``main`` builds the fabric tier alone.
+
+A repeat run with another ref can see the previous import as ``in-sync`` until Infrahub starts the new one. The wait then
+returns at once, and the pipeline's own wait after the task covers the new import.
 
 The task starts no container and calls no ``localhost`` address.
 """
@@ -27,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import yaml
 from infrahub_sdk import Config, InfrahubClient
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,11 +40,18 @@ REQUIRED_VARIABLES = ("INFRAHUB_ADDRESS", "INFRAHUB_API_TOKEN", "INFRAHUB_REPO_U
 # The pipeline stops the task after SETUP_TIMEOUT (1800 s by default). This wait stays well inside it.
 IMPORT_TIMEOUT = int(os.getenv("SANDBOX_SETUP_IMPORT_TIMEOUT", "900"))
 POLL_INTERVAL = int(os.getenv("SANDBOX_SETUP_POLL_INTERVAL", "5"))
+# infrahubctl loads a few dozen small nodes; this only stops a hung call.
+TRIGGERS_TIMEOUT = 600
+# An unreadable repository (wrong address or ref, no network) may recover on the next pull, so it must last this many polls.
+UNREADABLE_POLLS = 3
 
-REPOSITORY_STATUS_QUERY = """
+STATUS_QUERY = """
 {
   CoreGenericRepository {
     edges { node { name { value } sync_status { value } operational_status { value } } }
+  }
+  CoreGeneratorDefinition {
+    edges { node { name { value } } }
   }
 }
 """
@@ -68,8 +80,18 @@ def repository_name(url: str) -> str:
     return name
 
 
+def required_generators(path: Path = ROOT / TRIGGERS_FILE) -> set[str]:
+    """Return the names of the generator definitions that the trigger rules of ``triggers.yml`` run."""
+    names: set[str] = set()
+    for document in yaml.safe_load_all(path.read_text(encoding="utf-8")):
+        spec = document.get("spec", {}) if isinstance(document, dict) else {}
+        if spec.get("kind") == "CoreGeneratorAction":
+            names.update(item["generator"] for item in spec["data"] if "generator" in item)
+    return names
+
+
 def import_state(nodes: list[dict[str, Any]]) -> str:
-    """Return ``in-sync``, ``waiting`` or raise ``SetupError`` when a repository failed or has no usable credential."""
+    """Return ``in-sync``, ``unreadable`` or ``waiting``; raise ``SetupError`` when the import failed or the credential is refused."""
     if not nodes:
         return "waiting"
     states = [node["sync_status"]["value"] for node in nodes]
@@ -79,7 +101,12 @@ def import_state(nodes: list[dict[str, Any]]) -> str:
     if any(node["operational_status"]["value"] == "error-cred" for node in nodes):
         message = "Infrahub cannot read the repository: its credentials were refused."
         raise SetupError(message)
-    return "in-sync" if all(state == "in-sync" for state in states) else "waiting"
+    if all(state == "in-sync" for state in states):
+        return "in-sync"
+    unreadable = {"error-connection", "error"}
+    if any(node["operational_status"]["value"] in unreadable for node in nodes):
+        return "unreadable"
+    return "waiting"
 
 
 async def register_repository(client: InfrahubClient, url: str, ref: str) -> None:
@@ -88,27 +115,52 @@ async def register_repository(client: InfrahubClient, url: str, ref: str) -> Non
     await repository.save(allow_upsert=True)
 
 
-async def wait_for_import(client: InfrahubClient, seconds: int = IMPORT_TIMEOUT, interval: int = POLL_INTERVAL) -> None:
-    """Wait until every repository is ``in-sync``."""
+async def wait_for_import(
+    client: InfrahubClient,
+    seconds: int = IMPORT_TIMEOUT,
+    interval: int = POLL_INTERVAL,
+    generators: set[str] | None = None,
+) -> None:
+    """Wait until every repository is ``in-sync`` and the generator definitions that the trigger rules name exist."""
+    needed = required_generators() if generators is None else generators
     deadline = time.monotonic() + seconds
+    unreadable = 0
+    missing = needed
     while True:
-        result = await client.execute_graphql(REPOSITORY_STATUS_QUERY)
+        result = await client.execute_graphql(STATUS_QUERY)
         nodes = [edge["node"] for edge in result["CoreGenericRepository"]["edges"]]
-        if import_state(nodes) == "in-sync":
+        present = {edge["node"]["name"]["value"] for edge in result["CoreGeneratorDefinition"]["edges"]}
+        missing = needed - present
+        state = import_state(nodes)
+        unreadable = unreadable + 1 if state == "unreadable" else 0
+        if unreadable >= UNREADABLE_POLLS:
+            statuses = [node["operational_status"]["value"] for node in nodes]
+            message = f"Infrahub cannot read the repository (operational status {statuses}): check its address and ref."
+            raise SetupError(message)
+        if state == "in-sync" and not missing:
             return
         if time.monotonic() >= deadline:
-            message = f"The repository is still not in sync after {seconds} seconds."
+            detail = f" Missing generator definitions: {sorted(missing)}." if missing else ""
+            message = f"The repository is still not in sync after {seconds} seconds.{detail}"
             raise SetupError(message)
         await asyncio.sleep(interval)
 
 
 def load_trigger_rules() -> None:
     """Load ``triggers.yml`` on the default branch with ``infrahubctl``, which reads the same two variables."""
-    result = subprocess.run(  # noqa: S603
-        ["infrahubctl", "object", "load", TRIGGERS_FILE],  # noqa: S607
-        cwd=ROOT,
-        check=False,
-    )
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["infrahubctl", "object", "load", TRIGGERS_FILE],  # noqa: S607
+            cwd=ROOT,
+            check=False,
+            timeout=TRIGGERS_TIMEOUT,
+        )
+    except FileNotFoundError as error:
+        message = "infrahubctl is not on PATH: run the task with `uv run invoke sandbox-setup`."
+        raise SetupError(message) from error
+    except subprocess.TimeoutExpired as error:
+        message = f"infrahubctl did not load {TRIGGERS_FILE} within {TRIGGERS_TIMEOUT} seconds."
+        raise SetupError(message) from error
     if result.returncode != 0:
         message = f"infrahubctl could not load {TRIGGERS_FILE} (exit code {result.returncode})."
         raise SetupError(message)

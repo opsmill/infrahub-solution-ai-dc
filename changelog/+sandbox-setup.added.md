@@ -1,1 +1,1 @@
-Added `inv sandbox-setup`, the entry point of the public sandbox pipeline: it registers the repository, waits for its import, and loads `triggers.yml`, so one run of `generate-fabric` builds the whole fabric.
+Added `inv sandbox-setup`, the entry point of the public sandbox pipeline: it registers the repository, waits for its import, and loads `triggers.yml`, so a run of `generate-fabric` on a branch builds the whole fabric.
