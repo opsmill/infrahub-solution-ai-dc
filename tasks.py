@@ -140,6 +140,18 @@ def load(ctx: Context) -> None:
     ctx.run("infrahubctl object load repository.yml")
 
 
+@task(name="sandbox-setup")
+def sandbox_setup(ctx: Context) -> None:
+    """Build the demo on an Infrahub that already runs: the entry point of the public sandbox pipeline.
+
+    Reads INFRAHUB_ADDRESS, INFRAHUB_API_TOKEN, INFRAHUB_REPO_URL and INFRAHUB_REPO_REF. Registers the repository,
+    waits for its import, then loads triggers.yml. Starts no container, calls no localhost address, and gives the
+    same result when run again. See scripts/sandbox_setup.py.
+    """
+    with ctx.cd(MAIN_DIRECTORY_PATH):
+        ctx.run("uv run python scripts/sandbox_setup.py")
+
+
 @task(help={"edition": "Infrahub edition to stop, community or enterprise. Defaults to INFRAHUB_EDITION."})
 def stop(ctx: Context, edition: str = "") -> None:
     """
