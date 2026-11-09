@@ -10,6 +10,7 @@ from infrahub_solution_ai_dc.protocols import NetworkDevice, NetworkFabric, Netw
 from infrahub_solution_ai_dc.vendors import vendor_group_for_template
 
 from .fabric_generator_query import FabricGeneratorQuery
+from .tracking import release_from_tracking_group
 
 ASN_POOL_NAME = "Overlay ASN Pool"
 DEFAULT_ROUTING_DESIGN = "ibgp_evpn_ospf_underlay"
@@ -94,12 +95,12 @@ class FabricGenerator(InfrahubGenerator):
             fabric.overlay_asn.value = asn_pool  # type: ignore[assignment]  # number pool -> server-side from_pool allocation
             if not fabric.routing_design.value:
                 fabric.routing_design.value = DEFAULT_ROUTING_DESIGN
-            await fabric.save(allow_upsert=True)
+            await fabric.save(allow_upsert=True, update_group_context=False)
             # FIX: a value allocated from a pool is not readable on the returned node; re-fetch to read it
             fabric = await self.client.get(kind=NetworkFabric, id=self.fabric_id)
         elif not fabric.routing_design.value:
             fabric.routing_design.value = DEFAULT_ROUTING_DESIGN
-            await fabric.save(allow_upsert=True)
+            await fabric.save(allow_upsert=True, update_group_context=False)
 
         overlay_asn = fabric.overlay_asn.value
         if overlay_asn is None:
@@ -151,4 +152,5 @@ class FabricGenerator(InfrahubGenerator):
     async def update_checksum(self) -> None:
         """Drive the pod tier: stamp this run's session checksum on every pod of the fabric."""
         pods = await self.client.filters(kind=NetworkPod, parent__ids=[self.fabric_id])
-        await Checksum.over_session(self.client).stamp_on(pods, logger=self.logger, track=None)
+        await release_from_tracking_group(self.client, [self.fabric_id, *(pod.id for pod in pods)])
+        await Checksum.over_session(self.client).stamp_on(pods, logger=self.logger, track=False)
