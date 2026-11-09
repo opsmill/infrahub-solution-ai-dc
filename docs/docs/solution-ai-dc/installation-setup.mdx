@@ -95,7 +95,7 @@ The tasks refuse to run against a compose file from the other edition rather tha
 uv run inv build
 ```
 
-This will build a custom Infrahub container image, this is needed because this solution is using a custom Python package `src/infrahub_solution_ai_dc` that we want to use in our Generators. This makes importing classes and functions from this package easier and more reliable.
+This builds the local Infrahub container image. The image installs the Python package `infrahub_solution_ai_dc` (in `src/`) that the Generators use, so the local stack imports it from the image. A stock Infrahub image can also run the Generators, because they import the package from the repository checkout.
 
 ### Start Infrahub
 
@@ -103,7 +103,7 @@ This will build a custom Infrahub container image, this is needed because this s
 uv run inv start
 ```
 
-This downloads the base `docker-compose.yml` for the selected [edition](#choose-an-infrahub-edition) (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. Without it, Generators running inside the task workers would not have access to that shared code. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
+This downloads the base `docker-compose.yml` for the selected [edition](#choose-an-infrahub-edition) (if not already present), builds a custom Docker image, then runs `docker compose up -d`. The custom image extends the standard Infrahub image with the `infrahub-solution-ai-dc` Python package — a shared library (in `src/infrahub_solution_ai_dc/`) that the Generators and Transforms use for common logic such as IP addressing, cabling, and interface sorting. A stock Infrahub image also works: `generators/__init__.py` and `transforms/__init__.py` add `src/` to the import path when Infrahub imports the repository. The override file (`docker-compose.override.yml`) ensures the custom image is used in place of the standard one.
 
 **Services started:**
 
