@@ -1,0 +1,51 @@
+docs/sidebars/sidebars-solution-ai-dc.ts
+  s_fd6e06864286e5::t_447c440f382571 22-26
+CHANGELOG.md
+  s_fd6e06864286e5::t_cf7de057b2585c 1-5
+.github/workflows/auto-bump.yml
+  s_fd6e06864286e5::t_1aea12c71b25ad 1-5,7-38,40-165,169-344
+  s_fd6e06864286e5::t_3f484b8d458a25 6,39,166-168
+docs/docs/solution-ai-dc/release-notes/index.md
+  s_fd6e06864286e5::t_72bf2599b1a4f8 1-8
+AGENTS.md
+  s_fd6e06864286e5::t_9a871d86125ab7 122
+  s_fd6e06864286e5::t_a2b59114497d04 123-131
+.github/labels.yml
+  s_fd6e06864286e5::t_b553700f12013a 175-189
+.github/version-drafter.yml
+  s_fd6e06864286e5::t_31bcf97538b2c3 1-8
+changelog/+release-workflow.housekeeping.md
+  s_fd6e06864286e5::t_97e752697f5272 1
+scripts/check_release_labels.py
+  s_fd6e06864286e5::t_7c82f733175bcc 1-72
+tests/test_release_label_contract.py
+  s_fd6e06864286e5::t_4ab7fd26fee561 1-193
+.github/workflows/release-publish.yml
+  s_fd6e06864286e5::t_7b7a09d358236e 1-50,52-116,118-132
+  s_fd6e06864286e5::t_edcf95539e6034 51,117
+.github/workflows/release-label-check.yml
+  s_fd6e06864286e5::t_1af221dab9a786 1-55
+.github/workflows/labels.yml
+  s_fd6e06864286e5::t_fb72392a36b218 1-29
+  s_fd6e06864286e5::t_1a102e74e6d5a1 30
+.github/dependabot.yml
+  s_fd6e06864286e5::t_de049862a0bb0e 14,47
+.github/workflows/update-infrahub.yml
+  s_fd6e06864286e5::t_bd3b9defbf9e1e 235-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e17b0ee2c2c28d1e4ff9a272f2e090b7a9d871f",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e06864286e5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11d36-3189-79e1-b04c-e17dd51f4320",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
