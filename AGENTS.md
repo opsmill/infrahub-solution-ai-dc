@@ -22,6 +22,7 @@ inv build [--no-cache]          # Build Docker image
 inv load                        # Full load: schema → menu → objects → repository
 inv load-schema                 # Load schemas only
 inv load-menu                   # Load menus only
+inv sandbox-setup               # Public sandbox entry point: register the repository, wait for its import, load triggers.yml
 
 inv lint                        # Run all linters (rumdl, yamllint, ruff, mypy) — mirrors CI
 inv lint-ruff / lint-mypy       # The two python-lint gate steps, separately
@@ -103,7 +104,7 @@ Each generator has a paired `.gql` query file and a `*_query.py` generated query
 - `schemas/` — Infrahub schema definitions (YAML), including `overlay.yml` (Tenant/VRF/Segment), `routing.yml` (BGP sessions) and `kubernetes.yml` (Kubernetes cluster)
 - `objects/` — Object data files loaded in numbered order (01-12) by `inv load`
 - `queries/` — Standalone GraphQL queries that belong to no generator or transform: `artifact_ids.gql` (registered as `ArtifactIDs`), which external consumers poll at `/api/query/ArtifactIDs` for artifact id, storage id and checksum
-- `triggers.yml` — Top-level trigger rules (`CoreGeneratorAction` + `CoreNodeTriggerRule`); **not** loaded by `inv load`, loaded manually after repository sync
+- `triggers.yml` — Top-level trigger rules (`CoreGeneratorAction` + `CoreNodeTriggerRule`); **not** loaded by `inv load`, loaded manually after repository sync, or by `inv sandbox-setup`
 - `data/` — Supplementary data **not** loaded by `inv load`: `permissions.yml` (operator account/roles) and `tenant-red.yml` (a second, day-two overlay tenant); load manually with `infrahubctl object load`
 - `menus/` — UI menu definitions
 - `.infrahub.yml` — Registers all generators, transforms, queries, and artifact definitions
