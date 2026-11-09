@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient  # type: ignore[import-not-found]
 
 # Manufacturers that have both a vendor device group and a per-vendor config template.
-SUPPORTED_VENDORS: tuple[str, ...] = ("cisco", "arista", "dell", "juniper")
+SUPPORTED_VENDORS: tuple[str, ...] = ("cisco", "arista", "dell", "juniper", "sonic")
 
 
 def vendor_group_for_manufacturer(manufacturer_name: str | None, *, device_label: str) -> str:
