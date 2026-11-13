@@ -1,0 +1,1 @@
+The Generators and Transforms now import the shared `infrahub_solution_ai_dc` package from the repository checkout, so a stock Infrahub image without a custom build can run them, as the public sandbox deployment does.
