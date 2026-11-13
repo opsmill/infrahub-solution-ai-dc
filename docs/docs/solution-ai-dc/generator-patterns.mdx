@@ -352,7 +352,7 @@ The `if rack.checksum.value != checksum` guard prevents unnecessary saves — if
 
 ## Shared library
 
-The Generators share common logic through the `infrahub_solution_ai_dc` package (in `src/infrahub_solution_ai_dc/`). This package is installed into the custom Infrahub Docker image so that task workers can import it at runtime.
+The Generators share common logic through the `infrahub_solution_ai_dc` package (in `src/infrahub_solution_ai_dc/`). Task workers import it from the repository checkout: `generators/__init__.py` and `transforms/__init__.py` add `src/` to the import path, so a stock Infrahub image runs the Generators and Transforms. The custom Infrahub Docker image installs the package as well.
 
 | Module | Purpose |
 |---|---|
