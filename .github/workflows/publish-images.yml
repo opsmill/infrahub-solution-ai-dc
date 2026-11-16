@@ -1,0 +1,402 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Publish images
+
+# Builds the Infrahub image of the AI/DC solution and publishes it to the OpsMill
+# Harbor registry (public alias registry.opsmill.io):
+#
+#   registry.opsmill.io/opsmill/infrahub-solution-ai-dc             on infrahub
+#   registry.opsmill.io/opsmill/infrahub-enterprise-solution-ai-dc  on infrahub-enterprise
+#
+# Each image is the Infrahub image of the same version plus the `infrahub_solution_ai_dc`
+# package that the Generators and Transforms import. It is built from the Dockerfile that
+# `inv build` uses, and its version is the one that uv.lock pins for infrahub-testcontainers,
+# as in `inv build`. A deployment that cannot install the package, such as the public sandbox,
+# runs this image in place of the stock Infrahub image.
+#
+# Tags: `<infrahub version>` follows the default branch. `<infrahub version>-sha-<commit>` names
+# the commit, with its first 7 characters. A rebuild of the same commit, such as the weekly one,
+# replaces both tags with the rebuilt image, so a deployment that must not change pins the digest.
+# A manual run from another branch gets only the `-sha-` tag, so it cannot replace the version tag.
+#
+# Pull requests build and smoke-test both images without publishing and without reading any
+# secret. Pushes to main, the weekly rebuild and manual runs with `publish` enabled push
+# linux/amd64 and linux/arm64 images, then sign them and attach SBOMs, as the other OpsMill
+# images are.
+#
+# Needs, in the repository settings: variable HARBOR_HOST and secrets HARBOR_USERNAME and
+# HARBOR_PASSWORD (a Harbor robot account allowed to push to the `opsmill` project).
+# The Enterprise image is published only when the variable PUBLISH_ENTERPRISE_IMAGE is `true`.
+# Without it, the Enterprise image is built and tested but not pushed.
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "src/**"
+      - "README.md"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/image-editions.json"
+      - ".github/workflows/publish-images.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "src/**"
+      - "README.md"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/image-editions.json"
+      - ".github/workflows/publish-images.yml"
+  schedule:
+    # Weekly, so the base image's security fixes reach the published version tag.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push the images to Harbor"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A publish run must finish, so only pull request runs are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan the build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      infrahub_version: ${{ steps.plan.outputs.infrahub_version }}
+      editions: ${{ steps.plan.outputs.editions }}
+      publish_editions: ${{ steps.plan.outputs.publish_editions }}
+      test_editions: ${{ steps.plan.outputs.test_editions }}
+      publish: ${{ steps.plan.outputs.publish }}
+      tags: ${{ steps.plan.outputs.tags }}
+      labels: ${{ steps.plan.outputs.labels }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve the version, the editions, the tags and the labels
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUBLISH_INPUT: ${{ inputs.publish }}
+          PUBLISH_ENTERPRISE: ${{ vars.PUBLISH_ENTERPRISE_IMAGE }}
+          SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+
+          # The version `inv build` derives from the installed infrahub-testcontainers.
+          VERSION=$(python3 - <<'PY'
+          import tomllib
+          lock = tomllib.load(open("uv.lock", "rb"))
+          print(next((p["version"] for p in lock["package"] if p["name"] == "infrahub-testcontainers"), ""))
+          PY
+          )
+          # The version becomes an image tag and is written to the step outputs, so it must look like one.
+          if [[ ! "${VERSION}" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
+            echo "::error::uv.lock does not pin a usable version of infrahub-testcontainers."
+            exit 1
+          fi
+
+          EDITIONS=$(jq -c . .github/image-editions.json)
+          if [ "${PUBLISH_ENTERPRISE}" = "true" ]; then
+            PUBLISH_EDITIONS="${EDITIONS}"
+          else
+            PUBLISH_EDITIONS=$(jq -c '[.[] | select(.name == "community")]' .github/image-editions.json)
+          fi
+
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            PUBLISH=false
+          elif [ "${EVENT_NAME}" = "workflow_dispatch" ] && [ "${PUBLISH_INPUT}" != "true" ]; then
+            PUBLISH=false
+          else
+            PUBLISH=true
+          fi
+
+          # A run that publishes tests only the images it publishes, so an image that is not published cannot block the others.
+          if [ "${PUBLISH}" = "true" ]; then
+            TEST_EDITIONS="${PUBLISH_EDITIONS}"
+          else
+            TEST_EDITIONS="${EDITIONS}"
+          fi
+
+          {
+            echo "infrahub_version=${VERSION}"
+            echo "editions=${EDITIONS}"
+            echo "publish_editions=${PUBLISH_EDITIONS}"
+            echo "test_editions=${TEST_EDITIONS}"
+            echo "publish=${PUBLISH}"
+            echo "tags<<EOF"
+            echo "${VERSION}-sha-${SHA::7}"
+            if [ "${REF_NAME}" = "${DEFAULT_BRANCH}" ]; then
+              echo "${VERSION}"
+            fi
+            echo "EOF"
+            echo "labels<<EOF"
+            echo "org.opencontainers.image.source=${SERVER_URL}/${REPOSITORY}"
+            echo "org.opencontainers.image.revision=${SHA}"
+            echo "org.opencontainers.image.vendor=OpsMill"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  test-build:
+    name: "Build and smoke-test ${{ matrix.edition.name }}"
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: ${{ fromJSON(needs.plan.outputs.test_editions) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the image for the platform of the runner
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: smoke:${{ matrix.edition.name }}
+          build-args: |
+            INFRAHUB_BASE_IMAGE=${{ matrix.edition.base_image }}
+            INFRAHUB_BASE_VERSION=${{ needs.plan.outputs.infrahub_version }}
+            INFRAHUB_IMAGE_USER=${{ matrix.edition.user }}
+          cache-from: type=gha,scope=${{ matrix.edition.name }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.edition.name }}-amd64
+
+      - name: Check that the package and its modules import
+        env:
+          EDITION: ${{ matrix.edition.name }}
+        run: |
+          docker run --rm --entrypoint python "smoke:${EDITION}" -c "
+          import importlib
+          import pkgutil
+
+          import infrahub_solution_ai_dc as package
+
+          names = [module.name for module in pkgutil.iter_modules(package.__path__)]
+          assert names, 'the package has no module'
+          for name in names:
+              importlib.import_module(f'{package.__name__}.{name}')
+          print('imported', len(names), 'modules from', package.__path__[0])
+          "
+
+      - name: Check that the image runs as the user of its base image
+        env:
+          EDITION: ${{ matrix.edition.name }}
+          BASE: ${{ matrix.edition.base_image }}:${{ needs.plan.outputs.infrahub_version }}
+        run: |
+          set -euo pipefail
+          image_uid=$(docker run --rm --entrypoint id "smoke:${EDITION}" -u)
+          base_uid=$(docker run --rm --entrypoint id "${BASE}" -u)
+          echo "image uid ${image_uid}, base uid ${base_uid}"
+          if [ "${image_uid}" != "${base_uid}" ]; then
+            echo "::error::The image runs as ${image_uid}, its base image as ${base_uid}."
+            exit 1
+          fi
+
+  build:
+    name: "Build ${{ matrix.edition.name }} (${{ matrix.platform }})"
+    needs: [plan, test-build]
+    if: ${{ needs.plan.outputs.publish == 'true' }}
+    runs-on: ${{ matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: ${{ fromJSON(needs.plan.outputs.publish_editions) }}
+        platform: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push by digest
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/${{ matrix.platform }}
+          provenance: false  # avoids cross-platform "unknown" entries
+          build-args: |
+            INFRAHUB_BASE_IMAGE=${{ matrix.edition.base_image }}
+            INFRAHUB_BASE_VERSION=${{ needs.plan.outputs.infrahub_version }}
+            INFRAHUB_IMAGE_USER=${{ matrix.edition.user }}
+          labels: |
+            ${{ needs.plan.outputs.labels }}
+            org.opencontainers.image.base.name=${{ matrix.edition.base_image }}:${{ needs.plan.outputs.infrahub_version }}
+          outputs: type=image,name=${{ vars.HARBOR_HOST }}/${{ matrix.edition.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.edition.name }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.edition.name }}-${{ matrix.platform }}
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.edition.name }}-${{ matrix.platform }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: "Publish the ${{ matrix.edition.name }} multi-architecture manifest"
+    needs: [plan, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: ${{ fromJSON(needs.plan.outputs.publish_editions) }}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.edition.name }}-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Create the multi-architecture manifest
+        working-directory: /tmp/digests
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ matrix.edition.image }}
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -euo pipefail
+          SOURCES=()
+          for digest in *; do
+            SOURCES+=("${IMAGE}@sha256:${digest}")
+          done
+          TAG_ARGS=()
+          while IFS= read -r tag; do
+            [ -z "${tag}" ] && continue
+            TAG_ARGS+=(--tag "${IMAGE}:${tag}")
+          done <<< "${TAGS}"
+          docker buildx imagetools create "${TAG_ARGS[@]}" "${SOURCES[@]}"
+
+      - name: Summarise the published tags
+        env:
+          EDITION: ${{ matrix.edition.name }}
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ matrix.edition.image }}
+          PUBLIC_IMAGE: registry.opsmill.io/${{ matrix.edition.image }}
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -euo pipefail
+          FIRST_TAG=$(printf '%s\n' "${TAGS}" | sed -n '1p')
+          digest=$(docker buildx imagetools inspect "${IMAGE}:${FIRST_TAG}" \
+            --format '{{json .Manifest}}' | jq -r '.digest')
+          {
+            echo "### ${EDITION}"
+            echo ""
+            echo "Digest: \`${digest}\`"
+            echo ""
+            while IFS= read -r tag; do
+              [ -z "${tag}" ] && continue
+              echo "- \`${PUBLIC_IMAGE}:${tag}\`"
+            done <<< "${TAGS}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  sign:
+    name: "Sign and attach SBOM to ${{ matrix.edition.name }}"
+    needs: [plan, merge]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: ${{ fromJSON(needs.plan.outputs.publish_editions) }}
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0.24.2
+
+      - name: Login to Harbor
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      # The previous job of this run set the `-sha-<commit>` tag, so it resolves to the
+      # manifest that job pushed. Runs of one branch do not overlap: the concurrency group queues them.
+      - name: Resolve the manifest digest
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ matrix.edition.image }}
+          VERSION: ${{ needs.plan.outputs.infrahub_version }}
+        run: |
+          set -euo pipefail
+          digest=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}-sha-${GITHUB_SHA::7}" \
+            --format '{{json .Manifest}}' | jq -r '.digest')
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::The manifest digest is not a sha256 digest."
+            exit 1
+          fi
+          echo "REFERENCE=${IMAGE}@${digest}" >> "$GITHUB_ENV"
+
+      - name: Sign the manifest
+        run: |
+          cosign sign --yes --recursive --new-bundle-format=false --use-signing-config=false \
+            "${REFERENCE}"
+
+      - name: Generate the SBOMs
+        run: |
+          syft "${REFERENCE}" --output spdx-json=sbom.spdx.json
+          syft "${REFERENCE}" --output cyclonedx-json=sbom.cdx.json
+
+      - name: Attest the SBOMs
+        run: |
+          cosign attest --yes --type spdxjson --predicate sbom.spdx.json "${REFERENCE}"
+          cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "${REFERENCE}"
+
+      - name: Upload the SBOMs
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ matrix.edition.name }}-${{ github.sha }}
+          path: |
+            sbom.spdx.json
+            sbom.cdx.json
+          retention-days: 90
