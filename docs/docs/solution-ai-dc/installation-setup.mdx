@@ -97,6 +97,24 @@ uv run inv build
 
 This will build a custom Infrahub container image, this is needed because this solution is using a custom Python package `src/infrahub_solution_ai_dc` that we want to use in our Generators. This makes importing classes and functions from this package easier and more reliable.
 
+### Use the published image
+
+CI builds the same image from the same `Dockerfile` and publishes it to the OpsMill registry, so a deployment can pull it instead of building it. A deployment that cannot install the `infrahub_solution_ai_dc` package runs this image in place of the stock Infrahub image.
+
+| Edition | Image |
+|---|---|
+| `community` | `registry.opsmill.io/opsmill/infrahub-solution-ai-dc` |
+| `enterprise` | `registry.opsmill.io/opsmill/infrahub-enterprise-solution-ai-dc` (published only when `PUBLISH_ENTERPRISE_IMAGE` is `true`) |
+
+Each image is the Infrahub image of one version plus the package, for `linux/amd64` and `linux/arm64`. It adds only the package: every other package keeps the version of the Infrahub image, and CI checks that. Two tags name it:
+
+- `<infrahub version>` follows the `main` branch and is rebuilt each week, so the security fixes of the base image reach it. The version is the one that `uv.lock` pins for `infrahub-testcontainers`, the version `inv build` uses.
+- `<infrahub version>-sha-<commit>` names the commit, with its first 7 characters. A rebuild of the same commit, such as the weekly one, replaces it. Pin the image digest when a deployment must not change.
+
+An IPv6-only cluster, such as the public sandbox cluster, cannot pull `registry.opsmill.io/...` directly: the node times out on the registry's token request. On that cluster, name the image through the OpsMill IPv6 proxy, for example `ipv6-registry-proxy.opsmill.io/registry.opsmill.io/opsmill/infrahub-enterprise-solution-ai-dc:<tag>`. Tested on the pre-prod sandbox cluster on 2026-11-18.
+
+The workflow publishes the Enterprise image only when the repository variable `PUBLISH_ENTERPRISE_IMAGE` is `true`. Without it, the workflow builds and tests the Enterprise image but does not push it.
+
 ### Start Infrahub
 
 ```bash

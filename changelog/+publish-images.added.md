@@ -1,0 +1,1 @@
+CI now builds the Infrahub image of the solution for the Community and the Enterprise edition and publishes it to the OpsMill registry, so a deployment that cannot install the `infrahub_solution_ai_dc` package can run it in place of a stock Infrahub image. The Enterprise image is pushed only when the repository variable `PUBLISH_ENTERPRISE_IMAGE` is `true`.

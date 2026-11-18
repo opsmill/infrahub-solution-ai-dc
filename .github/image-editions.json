@@ -1,0 +1,14 @@
+[
+  {
+    "name": "community",
+    "base_image": "registry.opsmill.io/opsmill/infrahub",
+    "image": "opsmill/infrahub-solution-ai-dc",
+    "user": "root"
+  },
+  {
+    "name": "enterprise",
+    "base_image": "registry.opsmill.io/opsmill/infrahub-enterprise",
+    "image": "opsmill/infrahub-enterprise-solution-ai-dc",
+    "user": "infrahub"
+  }
+]
