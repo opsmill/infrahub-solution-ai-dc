@@ -15,12 +15,12 @@ USER root
 
 WORKDIR /opt/local
 
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml README.md ./
 COPY src/ src/
 
-# --no-dev is necessary to avoid installing dev dependencies including a different version of the infrahub-sdk
-# --inexact is necessary to avoid uninstaling the existing infrahub environment
-RUN uv sync --no-dev --frozen --inexact
+# Install only this package, editable so that a mounted src/ is used. Its dependencies come from the Infrahub image:
+# `uv sync` would install the versions of uv.lock over the newer ones of the image, and over its infrahub-sdk.
+RUN uv pip install --python /.venv/bin/python --no-deps --editable .
 
 USER ${INFRAHUB_IMAGE_USER}
 

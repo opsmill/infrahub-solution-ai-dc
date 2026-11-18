@@ -46,3 +46,13 @@ def test_workflow_passes_the_build_arguments_that_the_dockerfile_declares() -> N
     for argument in ("INFRAHUB_BASE_IMAGE", "INFRAHUB_BASE_VERSION", "INFRAHUB_IMAGE_USER"):
         assert f"ARG {argument}" in dockerfile
         assert f"{argument}=${{{{" in workflow
+
+
+def test_dockerfile_installs_only_this_package() -> None:
+    """`uv sync` would install the versions of uv.lock over the packages of the Infrahub image."""
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    run_lines = [line for line in dockerfile.splitlines() if line.startswith("RUN ")]
+
+    assert run_lines
+    assert not any("uv sync" in line for line in run_lines)
+    assert any("uv pip install" in line and "--no-deps" in line for line in run_lines)

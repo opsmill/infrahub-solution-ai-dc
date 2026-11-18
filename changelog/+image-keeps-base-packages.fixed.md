@@ -1,0 +1,1 @@
+The image built from the Dockerfile no longer replaces packages of the Infrahub image with the older versions of `uv.lock`: it installs only the solution package, so `anyio`, `certifi` and `idna` keep the versions of the Infrahub image.

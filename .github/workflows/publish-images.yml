@@ -213,6 +213,24 @@ jobs:
             exit 1
           fi
 
+      - name: Check that the image adds only this package to its base image
+        env:
+          EDITION: ${{ matrix.edition.name }}
+          BASE: ${{ matrix.edition.base_image }}:${{ needs.plan.outputs.infrahub_version }}
+        run: |
+          set -euo pipefail
+          list='import importlib.metadata as m
+          print("\n".join(sorted("%s==%s" % (d.metadata["Name"].lower(), d.version) for d in m.distributions())))'
+          docker run --rm --entrypoint python "${BASE}" -c "${list}" > base-packages.txt
+          docker run --rm --entrypoint python "smoke:${EDITION}" -c "${list}" > image-packages.txt
+          unexpected=$(diff base-packages.txt image-packages.txt | grep '^[<>]' | grep -v '^> infrahub-solution-ai-dc==' || true)
+          if [ -n "${unexpected}" ]; then
+            echo "::error::The image changes the packages of its base image:"
+            echo "${unexpected}"
+            exit 1
+          fi
+          echo "The image adds only infrahub-solution-ai-dc to $(wc -l < base-packages.txt) packages of its base image."
+
   build:
     name: "Build ${{ matrix.edition.name }} (${{ matrix.platform }})"
     needs: [plan, test-build]

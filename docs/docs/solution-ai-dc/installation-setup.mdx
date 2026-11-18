@@ -106,7 +106,7 @@ CI builds the same image from the same `Dockerfile` and publishes it to the OpsM
 | `community` | `registry.opsmill.io/opsmill/infrahub-solution-ai-dc` |
 | `enterprise` | `registry.opsmill.io/opsmill/infrahub-enterprise-solution-ai-dc` (published only when `PUBLISH_ENTERPRISE_IMAGE` is `true`) |
 
-Each image is the Infrahub image of one version plus the package, for `linux/amd64` and `linux/arm64`. Two tags name it:
+Each image is the Infrahub image of one version plus the package, for `linux/amd64` and `linux/arm64`. It adds only the package: every other package keeps the version of the Infrahub image, and CI checks that. Two tags name it:
 
 - `<infrahub version>` follows the `main` branch and is rebuilt each week, so the security fixes of the base image reach it. The version is the one that `uv.lock` pins for `infrahub-testcontainers`, the version `inv build` uses.
 - `<infrahub version>-sha-<commit>` names the commit, with its first 7 characters. A rebuild of the same commit, such as the weekly one, replaces it. Pin the image digest when a deployment must not change.
