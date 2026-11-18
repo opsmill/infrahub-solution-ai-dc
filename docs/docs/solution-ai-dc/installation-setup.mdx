@@ -111,6 +111,8 @@ Each image is the Infrahub image of one version plus the package, for `linux/amd
 - `<infrahub version>` follows the `main` branch and is rebuilt each week, so the security fixes of the base image reach it. The version is the one that `uv.lock` pins for `infrahub-testcontainers`, the version `inv build` uses.
 - `<infrahub version>-sha-<commit>` names the commit, with its first 7 characters. A rebuild of the same commit, such as the weekly one, replaces it. Pin the image digest when a deployment must not change.
 
+An IPv6-only cluster, such as the public sandbox cluster, cannot pull `registry.opsmill.io/...` directly: the node times out on the registry's token request. On that cluster, name the image through the OpsMill IPv6 proxy, for example `ipv6-registry-proxy.opsmill.io/registry.opsmill.io/opsmill/infrahub-enterprise-solution-ai-dc:<tag>`. Tested on the pre-prod sandbox cluster on 2026-11-18.
+
 The workflow publishes the Enterprise image only when the repository variable `PUBLISH_ENTERPRISE_IMAGE` is `true`. Without it, the workflow builds and tests the Enterprise image but does not push it.
 
 ### Start Infrahub
