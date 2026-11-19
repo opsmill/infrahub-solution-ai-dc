@@ -153,10 +153,10 @@ curl http://localhost:8001/health
 
 **Authentication.** The container is configured with no Infrahub credential. Every client authenticates for itself by sending its own token in an `Authorization: Bearer` header, and a request that carries no such header is rejected. Like Infrahub's own port `8000`, the MCP port is published on all interfaces.
 
-**Version.** The image is pinned in `docker-compose.override.yml` to `registry.opsmill.io/opsmill/infrahub-mcp:v1.1.7`. Bump it to another published version with `INFRAHUB_MCP_VERSION`:
+**Version.** The default image is pinned in `docker-compose.override.yml`. Bump it to another published version with `INFRAHUB_MCP_VERSION`:
 
 ```bash
-export INFRAHUB_MCP_VERSION="v1.1.8"
+export INFRAHUB_MCP_VERSION="v1.3.0"
 uv run inv start
 ```
 
