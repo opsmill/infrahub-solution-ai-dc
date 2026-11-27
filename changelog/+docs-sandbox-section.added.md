@@ -1,0 +1,1 @@
+The overview page of the documentation has a "Try it in a sandbox" section that links the AI Data Center sandbox, where the reference design's data and automation are already loaded in an Infrahub instance that you open in your browser.

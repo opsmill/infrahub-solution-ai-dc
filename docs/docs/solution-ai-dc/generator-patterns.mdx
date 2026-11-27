@@ -163,7 +163,7 @@ The device is re-fetched with `include=["ip_address"]` to retrieve the pool-allo
 
 ## IP pool allocation
 
-The Generators build a hierarchical IP pool tree using Infrahub's [Resource Manager](https://docs.infrahub.app/topics/resource-manager). Each tier carves a subnet from the pool created by the tier above.
+The Generators build a hierarchical IP pool tree using Infrahub's [Resource Manager](https://docs.infrahub.app/resource-manager/overview). Each tier carves a subnet from the pool created by the tier above.
 
 ### Hierarchical pool delegation
 
@@ -371,5 +371,5 @@ The Generators share common logic through the `infrahub_solution_ai_dc` package 
 - [EVPN/VXLAN overlay](./evpn-vxlan-overlay) — the OverlayGenerator's allocation and placement patterns
 - [Multivendor configuration](./multivendor-config) — per-vendor resolution and artifact targeting
 - [Installation & Setup](./installation-setup) — repository structure and environment setup
-- [Infrahub documentation: Generators](https://docs.infrahub.app/topics/generator)
-- [Infrahub documentation: Resource Manager](https://docs.infrahub.app/topics/resource-manager)
+- [Infrahub documentation: Generators](https://docs.infrahub.app/generators/overview)
+- [Infrahub documentation: Resource Manager](https://docs.infrahub.app/resource-manager/overview)

@@ -9,6 +9,10 @@ The AI Data Center reference design demonstrates how to use Infrahub to automate
 
 All of the content provided in this reference design can be found on the [`infrahub-solution-ai-dc` GitHub repository](https://github.com/opsmill/infrahub-solution-ai-dc).
 
+## Try it in a sandbox
+
+Try the reference design in the [AI Data Center sandbox](https://docs.infrahub.app/sandboxes/demo-ai-dc), an Infrahub instance that you open in your browser, with its data and automation already loaded. Generate a fabric from how many switches each level has and which switch model fills each role, then review the switches, cabling, IP addresses and configurations Infrahub generates. Find the logins, and the sections of the [demo guide](./demo-guide) to follow in the sandbox, on the [sandbox page](https://docs.infrahub.app/sandboxes/demo-ai-dc).
+
 ## The problem this solves
 
 - Large-scale data center operators must deploy standardized environments rapidly, repeatedly, and without deviation — while extending those environments over time without disrupting what is already running.
@@ -35,7 +39,7 @@ Trigger once at the fabric level — the entire data center builds itself.
 
 On top of this physical fabric, a fourth Generator — the **OverlayGenerator** (registered as `generate-tenant`) — turns tenant intent into multi-tenant EVPN/VXLAN services. See [EVPN/VXLAN overlay](./evpn-vxlan-overlay).
 
-The demo data includes three complete, single-vendor fabrics:
+The demo data includes four complete, single-vendor fabrics:
 
 - **Fabric-A** — Cisco equipment
 - **Fabric-B** — Arista equipment
@@ -104,7 +108,7 @@ Four Generators — three own one layer of the physical hierarchy, and one mater
 ### Demo data
 
 - Four complete single-vendor fabrics (Cisco, Arista, Dell, Juniper) with pods, racks, device templates, and IP pools
-- A seed overlay tenant (`Blue` on Fabric-A) with VRFs and segments
+- Two seed overlay tenants (`Blue` on Fabric-A and `Green` on Fabric-D) with VRFs and segments
 - Manufacturer and device type definitions
 - Overlay resource pools (ASN, L2VNI, L3VNI, VLAN)
 - Event trigger rules (`CoreNodeTriggerRule` and `CoreGeneratorAction`) for automatic modular Generator execution

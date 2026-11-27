@@ -1,0 +1,1 @@
+The documentation now counts four demo fabrics, lists the seeded `Green` tenant on Fabric-D with `Blue`, numbers the steps for adding a rack in order, and links the current Generators and Resource Manager pages of the Infrahub documentation.
